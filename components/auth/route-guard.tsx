@@ -28,7 +28,7 @@ export function RouteGuard({ children, requireApproved = true, requireAdmin = fa
     }
 
     if (requireApproved && !profile.is_approved) {
-      router.push('/esperando-aprobacion')
+   
     }
   }, [profile, loading, requireApproved, requireAdmin, router])
 

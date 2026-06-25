@@ -38,7 +38,7 @@ function LoginForm() {
       if (data.is_approved) {
         router.push(redirect)
       } else {
-        router.push('/esperando-aprobacion')
+
       }
       router.refresh()
     } catch {
