@@ -29,18 +29,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(data.profile ?? null)
     } catch {
       setProfile(null)
+    } finally {
+      setLoading(false)
     }
   }
 
   const signOut = async () => {
     await fetch('/api/auth/signout', { method: 'POST' })
     setProfile(null)
-    window.location.href = '/login'
+    window.location.href = '/'
   }
 
   useEffect(() => {
-    refreshProfile().finally(() => setLoading(false))
-
+    refreshProfile()
+    
     const supabase = createClient()
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       refreshProfile()
