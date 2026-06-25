@@ -35,11 +35,8 @@ function LoginForm() {
         return
       }
 
-      if (data.is_approved) {
-        router.push(redirect)
-      } else {
-
-      }
+      // Login exitoso: siempre redirigir
+      router.push(redirect)
       router.refresh()
     } catch {
       setError('Error al iniciar sesión')
