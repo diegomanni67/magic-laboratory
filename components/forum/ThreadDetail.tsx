@@ -3,21 +3,21 @@
 // VERSIÓN LOCAL ABIERTA - SIN LOGIN REQUERIDO
 
 import { useState, useEffect } from "react"
-import { academyForumStorage, studioForumStorage, ForumThread, ForumReply } from "@/lib/forum-storage"
+import { fundamentosForumStorage, maestriaForumStorage, ForumThread, ForumReply } from "@/lib/forum-storage"
 import { ArrowLeft, MessageCircle, Heart, Clock, User, Send, Pin, Reply, ChevronDown, ChevronUp } from "lucide-react"
 import { ReplyComponent } from "./ReplyComponent"
-import { initializeDemoData, academyDemoReplies, studioDemoReplies } from "@/lib/forum-demo-data"
+import { initializeDemoData, fundamentosDemoReplies, maestriaDemoReplies } from "@/lib/forum-demo-data"
 
 interface ThreadDetailProps {
   threadId: string
   onBack: () => void
   categoryName?: string
-  forumType?: 'academy' | 'studio'
+  forumType?: 'fundamentos' | 'maestria'
 }
 
-export function ThreadDetail({ threadId, onBack, categoryName, forumType = 'academy' }: ThreadDetailProps) {
-  const forumStorage = forumType === 'academy' ? academyForumStorage : studioForumStorage
-  const demoReplies = forumType === 'academy' ? academyDemoReplies : studioDemoReplies
+export function ThreadDetail({ threadId, onBack, categoryName, forumType = 'fundamentos' }: ThreadDetailProps) {
+  const forumStorage = forumType === 'fundamentos' ? fundamentosForumStorage : maestriaForumStorage
+  const demoReplies = forumType === 'fundamentos' ? fundamentosDemoReplies : maestriaDemoReplies
   const [thread, setThread] = useState<ForumThread | null>(null)
   const [replies, setReplies] = useState<ForumReply[]>([])
   const [replyContent, setReplyContent] = useState("")

@@ -1,7 +1,7 @@
 import { ForumThread, ForumReply } from './forum-storage'
 
-// Datos demo realistas para Academy Forum - sin métricas falsas
-export const academyDemoThreads: ForumThread[] = [
+// Datos demo realistas para Fundamentos Forum - sin métricas falsas
+export const fundamentosDemoThreads: ForumThread[] = [
   // Movies
   {
     id: 'demo-1',
@@ -227,7 +227,7 @@ export const academyDemoThreads: ForumThread[] = [
   }
 ]
 
-export const academyDemoReplies: ForumReply[] = [
+export const fundamentosDemoReplies: ForumReply[] = [
   // Replies for Stranger Things thread
   {
     id: 'reply-1',
@@ -531,8 +531,8 @@ export const academyDemoReplies: ForumReply[] = [
   }
 ]
 
-// Datos demo realistas para Studio Forum - sin métricas falsas
-export const studioDemoThreads: ForumThread[] = [
+// Datos demo realistas para Maestria Forum - sin métricas falsas
+export const maestriaDemoThreads: ForumThread[] = [
   // Movies
   {
     id: 'studio-demo-1',
@@ -758,7 +758,7 @@ export const studioDemoThreads: ForumThread[] = [
   }
 ]
 
-export const studioDemoReplies: ForumReply[] = [
+export const maestriaDemoReplies: ForumReply[] = [
   // Replies for business movies thread
   {
     id: 'studio-reply-1',
@@ -1063,14 +1063,14 @@ export const studioDemoReplies: ForumReply[] = [
 ]
 
 // Función para inicializar datos demo en localStorage
-export const initializeDemoData = (forumType: 'academy' | 'studio' = 'academy') => {
+export const initializeDemoData = (forumType: 'fundamentos' | 'maestria' = 'fundamentos') => {
   if (typeof window === 'undefined') return
 
   const threadsKey = `forum_threads_${forumType}`
   const repliesKey = `forum_replies_${forumType}`
 
-  const demoThreads = forumType === 'academy' ? academyDemoThreads : studioDemoThreads
-  const demoReplies = forumType === 'academy' ? academyDemoReplies : studioDemoReplies
+  const demoThreads = forumType === 'fundamentos' ? fundamentosDemoThreads : maestriaDemoThreads
+  const demoReplies = forumType === 'fundamentos' ? fundamentosDemoReplies : maestriaDemoReplies
 
   try {
     // Serializar fechas como strings ISO para localStorage

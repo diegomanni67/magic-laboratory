@@ -3,7 +3,7 @@
 // VERSIÓN LOCAL ABIERTA - SIN LOGIN REQUERIDO
 
 import { useState } from "react"
-import { academyForumStorage, studioForumStorage } from "@/lib/forum-storage"
+import { fundamentosForumStorage, maestriaForumStorage } from "@/lib/forum-storage"
 import { X, Send, Tag } from "lucide-react"
 
 interface CreateThreadFormProps {
@@ -11,11 +11,11 @@ interface CreateThreadFormProps {
   categoryName: string
   onBack: () => void
   onThreadCreated: (threadId: string) => void
-  forumType?: 'academy' | 'studio'
+  forumType?: 'fundamentos' | 'maestria'
 }
 
-export function CreateThreadForm({ categoryId, categoryName, onBack, onThreadCreated, forumType = 'academy' }: CreateThreadFormProps) {
-  const forumStorage = forumType === 'academy' ? academyForumStorage : studioForumStorage
+export function CreateThreadForm({ categoryId, categoryName, onBack, onThreadCreated, forumType = 'fundamentos' }: CreateThreadFormProps) {
+  const forumStorage = forumType === 'fundamentos' ? fundamentosForumStorage : maestriaForumStorage
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [tags, setTags] = useState<string[]>([])

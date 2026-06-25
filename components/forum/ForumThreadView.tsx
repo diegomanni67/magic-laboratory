@@ -3,9 +3,9 @@
 // VERSIÓN LOCAL ABIERTA - SIN LOGIN REQUERIDO
 
 import { useState, useEffect } from "react"
-import { academyForumStorage, studioForumStorage, ForumThread } from "@/lib/forum-storage"
+import { fundamentosForumStorage, maestriaForumStorage, ForumThread } from "@/lib/forum-storage"
 import { MessageCircle, Eye, Pin, Clock, Plus, Search } from "lucide-react"
-import { initializeDemoData, academyDemoThreads, studioDemoThreads } from "@/lib/forum-demo-data"
+import { initializeDemoData, fundamentosDemoThreads, maestriaDemoThreads } from "@/lib/forum-demo-data"
 
 interface ForumThreadViewProps {
   categoryId: string
@@ -13,12 +13,12 @@ interface ForumThreadViewProps {
   onBack: () => void
   onThreadClick: (threadId: string) => void
   onCreateThread: () => void
-  forumType?: 'academy' | 'studio'
+  forumType?: 'fundamentos' | 'maestria'
 }
 
-export function ForumThreadView({ categoryId, categoryName, onBack, onThreadClick, onCreateThread, forumType = 'academy' }: ForumThreadViewProps) {
-  const forumStorage = forumType === 'academy' ? academyForumStorage : studioForumStorage
-  const demoThreads = forumType === 'academy' ? academyDemoThreads : studioDemoThreads
+export function ForumThreadView({ categoryId, categoryName, onBack, onThreadClick, onCreateThread, forumType = 'fundamentos' }: ForumThreadViewProps) {
+  const forumStorage = forumType === 'fundamentos' ? fundamentosForumStorage : maestriaForumStorage
+  const demoThreads = forumType === 'fundamentos' ? fundamentosDemoThreads : maestriaDemoThreads
   const [threads, setThreads] = useState<ForumThread[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState<"latest" | "popular" | "views">("latest")
