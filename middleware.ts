@@ -7,18 +7,19 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const { user, supabaseResponse } = await updateSession(request)
 
-  // Rutas públicas: cualquiera entra
+  // Si es ruta pública, deja pasar
   if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/api/auth/')) {
     return supabaseResponse
   }
 
-  // Si no hay usuario y no es ruta pública, al login
+  // Si no hay usuario y no es ruta pública, manda al login
   if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
+  // Si hay usuario, deja pasar a todo lo demás
   return supabaseResponse
 }
 
