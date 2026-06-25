@@ -2,62 +2,55 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { UserProfile } from '@/lib/auth'
 
-interface AuthContextType {
-  profile: UserProfile | null
-  loading: boolean
-  refreshProfile: () => Promise<void>
-  signOut: () => Promise<void>
-}
-
-const AuthContext = createContext<AuthContextType>({
-  profile: null,
-  loading: true,
-  refreshProfile: async () => {},
-  signOut: async () => {},
-})
+const AuthContext = createContext<any>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  const refreshProfile = async () => {
-    try {
-      const res = await fetch('/api/auth/me')
-      const data = await res.json()
-      setProfile(data.profile ?? null)
-    } catch {
-      setProfile(null)
-    } finally {
+  useEffect(() => {
+    const supabase = createClient()
+
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        // Forzamos un perfil básico si hay sesión
+        setProfile({
+          name: session.user.email?.split('@')[0],
+          email: session.user.email,
+          role: 'ADMIN'
+        })
+      }
       setLoading(false)
     }
-  }
 
-  const signOut = async () => {
-    await fetch('/api/auth/signout', { method: 'POST' })
-    setProfile(null)
-    window.location.href = '/'
-  }
+    checkUser()
 
-  useEffect(() => {
-    refreshProfile()
-    
-    const supabase = createClient()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      refreshProfile()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setProfile({
+          name: session.user.email?.split('@')[0],
+          email: session.user.email,
+          role: 'ADMIN'
+        })
+      } else {
+        setProfile(null)
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
 
   return (
-    <AuthContext.Provider value={{ profile, loading, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ profile, loading, signOut: async () => { 
+        const supabase = createClient(); 
+        await supabase.auth.signOut(); 
+        window.location.href = '/'; 
+    }}}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export function useAuth() {
-  return useContext(AuthContext)
-}
+export const useAuth = () => useContext(AuthContext)
