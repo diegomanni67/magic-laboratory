@@ -1,8 +1,8 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
-  PROFESSOR = 'PROFESSOR',
-  STUDENT_ACADEMY = 'STUDENT_ACADEMY',
-  STUDENT_STUDIO = 'STUDENT_STUDIO'
+  MASTER = 'MASTER',
+  APPRENTICE = 'APPRENTICE',
+  EXPERT = 'EXPERT'
 }
 
 export interface User {
@@ -10,8 +10,8 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  interests: string[];
-  classSchedule?: string;
+  specialties: string[];
+  practiceSchedule?: string;
   avatar?: string;
   createdAt: Date;
   updatedAt: Date;

@@ -6,14 +6,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import {
-  GraduationCap,
-  Rocket,
-  BookOpenCheck,
-  Languages,
-  Mic,
-  Briefcase,
-  ArrowRight,
+  Wand2,
   Sparkles,
+  Eye,
+  Hand,
+  Target,
+  ArrowRight,
+  Star,
   Users,
   Zap,
 } from "lucide-react"
@@ -36,7 +35,7 @@ interface HeroCardProps {
   activeNow: number
   imageSrc: string
   icon: React.ElementType
-  variant: "academy" | "studio"
+  variant: "fundamentos" | "maestria"
   isHovered: boolean
   onHover: () => void
   onLeave: () => void
@@ -59,7 +58,7 @@ function HeroCard({
   onLeave,
   onClick,
 }: HeroCardProps) {
-  const isAcademy = variant === "academy"
+  const isFundamentos = variant === "fundamentos"
 
   return (
     <button
@@ -98,7 +97,7 @@ function HeroCard({
           <span
             className={cn(
               "flex items-center gap-1.5 rounded-2xl px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-white border",
-              isAcademy
+              isFundamentos
                 ? "bg-blue-500/20 border-blue-500/30"
                 : "bg-pink-500/20 border-pink-500/30"
             )}
@@ -118,7 +117,7 @@ function HeroCard({
               <div
                 className={cn(
                   "flex size-10 items-center justify-center rounded-2xl transition-all duration-500",
-                  isAcademy
+                  isFundamentos
                     ? "bg-gradient-to-br from-[oklch(0.72_0.19_220)] to-[oklch(0.65_0.2_250)]"
                     : "bg-gradient-to-br from-[oklch(0.72_0.22_350)] to-[oklch(0.65_0.22_20)]"
                 )}
@@ -143,7 +142,7 @@ function HeroCard({
             className={cn(
               "flex size-9 shrink-0 items-center justify-center rounded-xl transition-all duration-500",
               isHovered
-                ? isAcademy
+                ? isFundamentos
                   ? "bg-blue-500 text-white"
                   : "bg-pink-500 text-white"
                 : "bg-slate-700 text-slate-300"
@@ -198,46 +197,46 @@ export function HeroCards() {
   return (
     <div className="grid gap-4 sm:gap-5 sm:grid-cols-2">
       <HeroCard
-        title="Academy"
-        tagline="Your Growth Hub"
-        description="Join a vibrant community building their English foundation. Interactive lessons, live rooms, and guided challenges."
-        levels="A1 - A2"
+        title="Fundamentos"
+        tagline="Tu Base Técnica"
+        description="Desarrolla los fundamentos del ilusionismo. Aprende manipulación básica, control de audiencia y principios esenciales."
+        levels="Principiante"
         features={[
-          { icon: BookOpenCheck, label: "Grammar" },
-          { icon: Languages, label: "Vocab" },
-          { icon: GraduationCap, label: "Guided" },
-          { icon: Sparkles, label: "Daily" },
+          { icon: Hand, label: "Manipulación" },
+          { icon: Eye, label: "Atención" },
+          { icon: Wand2, label: "Técnica" },
+          { icon: Sparkles, label: "Diario" },
         ]}
         memberCount="2.4k"
         activeNow={142}
         imageSrc="/images/academy-social.jpg"
-        icon={GraduationCap}
-        variant="academy"
-        isHovered={hoveredCard === "academy"}
-        onHover={() => setHoveredCard("academy")}
+        icon={Wand2}
+        variant="fundamentos"
+        isHovered={hoveredCard === "fundamentos"}
+        onHover={() => setHoveredCard("fundamentos")}
         onLeave={() => setHoveredCard(null)}
-        onClick={() => handleCardClick('/academy-forum')}
+        onClick={() => handleCardClick('/fundamentos-forum')}
       />
       <HeroCard
-        title="Studio"
-        tagline="The Pro Lounge"
-        description="Where advanced speakers refine fluency. Business English, presentations, and real-world challenges."
-        levels="B1+"
+        title="Maestría"
+        tagline="El Salón Profesional"
+        description="Ilusionistas avanzados perfeccionan su arte. Creación de efectos originales, análisis de performances y desafíos reales."
+        levels="Avanzado"
         features={[
-          { icon: Mic, label: "Fluency" },
-          { icon: Briefcase, label: "Business" },
-          { icon: Rocket, label: "Produce" },
-          { icon: Users, label: "Reviews" },
+          { icon: Target, label: "Precisión" },
+          { icon: Star, label: "Creatividad" },
+          { icon: Sparkles, label: "Producción" },
+          { icon: Users, label: "Análisis" },
         ]}
         memberCount="1.8k"
         activeNow={89}
         imageSrc="/images/studio-social.jpg"
-        icon={Rocket}
-        variant="studio"
-        isHovered={hoveredCard === "studio"}
-        onHover={() => setHoveredCard("studio")}
+        icon={Sparkles}
+        variant="maestria"
+        isHovered={hoveredCard === "maestria"}
+        onHover={() => setHoveredCard("maestria")}
         onLeave={() => setHoveredCard(null)}
-        onClick={() => handleCardClick('/studio-forum')}
+        onClick={() => handleCardClick('/maestria-forum')}
       />
     </div>
   )

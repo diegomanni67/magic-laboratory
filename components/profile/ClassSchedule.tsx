@@ -4,36 +4,36 @@ import { useState } from "react"
 import { Video, Calendar, Clock, Users, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-interface ClassScheduleProps {
-  classDay?: string
-  classTime?: string
-  classType?: 'zoom' | 'meet' | 'teams'
-  instructorName?: string
-  classLevel?: string
+interface PracticeScheduleProps {
+  practiceDay?: string
+  practiceTime?: string
+  practiceType?: 'zoom' | 'meet' | 'teams'
+  mentorName?: string
+  practiceLevel?: string
   isJoining?: boolean
 }
 
-export function ClassSchedule({ 
-  classDay = "Martes",
-  classTime = "19:00",
-  classType = 'zoom',
-  instructorName = "Prof. Sarah Mitchell",
-  classLevel = "Academy B1",
+export function PracticeSchedule({ 
+  practiceDay = "Martes",
+  practiceTime = "19:00",
+  practiceType = 'zoom',
+  mentorName = "Maestro Alejandro",
+  practiceLevel = "Fundamentos Intermedio",
   isJoining = false
-}: ClassScheduleProps) {
-  const [isJoiningClass, setIsJoiningClass] = useState(false)
+}: PracticeScheduleProps) {
+  const [isJoiningPractice, setIsJoiningPractice] = useState(false)
 
-  const handleJoinClass = () => {
-    setIsJoiningClass(true)
-    // Simular redirección a la clase virtual
+  const handleJoinPractice = () => {
+    setIsJoiningPractice(true)
+    // Simular redirección a la sesión de práctica
     setTimeout(() => {
-      setIsJoiningClass(false)
+      setIsJoiningPractice(false)
       window.open('#', '_blank')
     }, 1500)
   }
 
   const getPlatformInfo = () => {
-    switch (classType) {
+    switch (practiceType) {
       case 'zoom':
         return {
           name: 'Zoom',
@@ -70,7 +70,7 @@ export function ClassSchedule({
   return (
     <div className="rounded-3xl glass border border-border/50 p-6 bg-gradient-to-br from-[oklch(0.12_0.02_250)] to-[oklch(0.15_0.03_260)]">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-[oklch(0.95_0.01_250)]">Mi Clase Semanal</h3>
+        <h3 className="text-xl font-bold text-[oklch(0.95_0.01_250)]">Mi Sesión Semanal</h3>
         <div className={cn(
           "px-3 py-1 rounded-full text-xs font-medium border",
           platformInfo.bgColor,
@@ -81,71 +81,71 @@ export function ClassSchedule({
       </div>
 
       <div className="space-y-4">
-        {/* Class Info Card */}
+        {/* Practice Info Card */}
         <div className="p-4 rounded-2xl bg-[oklch(0.1_0.02_250)] border border-[oklch(0.2_0.03_250)]">
           <div className="flex items-center gap-3 mb-3">
             <div className="size-10 rounded-xl bg-gradient-to-br from-[oklch(0.72_0.19_220)] to-[oklch(0.65_0.2_250)] flex items-center justify-center">
               <Video className="size-5 text-[oklch(0.99_0_0)]" />
             </div>
             <div>
-              <h4 className="font-semibold text-[oklch(0.85_0.01_250)]">Clase Virtual</h4>
-              <p className="text-sm text-[oklch(0.6_0.01_250)]">{classLevel}</p>
+              <h4 className="font-semibold text-[oklch(0.85_0.01_250)]">Sesión de Práctica</h4>
+              <p className="text-sm text-[oklch(0.6_0.01_250)]">{practiceLevel}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2">
               <Calendar className="size-4 text-[oklch(0.6_0.01_250)]" />
-              <span className="text-[oklch(0.7_0.01_250)]">{classDay}</span>
+              <span className="text-[oklch(0.7_0.01_250)]">{practiceDay}</span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="size-4 text-[oklch(0.6_0.01_250)]" />
-              <span className="text-[oklch(0.7_0.01_250)]">{classTime} hs</span>
+              <span className="text-[oklch(0.7_0.01_250)]">{practiceTime} hs</span>
             </div>
           </div>
 
           <div className="mt-3 pt-3 border-t border-[oklch(0.2_0.03_250)]">
             <div className="flex items-center gap-2">
               <Users className="size-4 text-[oklch(0.6_0.01_250)]" />
-              <span className="text-sm text-[oklch(0.7_0.01_250)]">Profesor: {instructorName}</span>
+              <span className="text-sm text-[oklch(0.7_0.01_250)]">Mentor: {mentorName}</span>
             </div>
           </div>
         </div>
 
-        {/* Class Status */}
+        {/* Practice Status */}
         <div className="p-4 rounded-2xl bg-[oklch(0.1_0.02_250)] border border-[oklch(0.2_0.03_250)]">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-[oklch(0.7_0.01_250)]">Estado</span>
             <div className="flex items-center gap-1">
               <div className="size-2 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-xs text-green-400">Activa</span>
+              <span className="text-xs text-green-400">Programada</span>
             </div>
           </div>
           <p className="text-xs text-[oklch(0.5_0.01_250)]">
-            Tu clase está programada y lista para comenzar
+            Tu sesión está programada y lista para comenzar
           </p>
         </div>
 
         {/* Join Button */}
         <button
-          onClick={handleJoinClass}
-          disabled={isJoiningClass}
+          onClick={handleJoinPractice}
+          disabled={isJoiningPractice}
           className={cn(
             "w-full flex items-center justify-center gap-3 px-4 py-3 rounded-2xl transition-all duration-300",
-            isJoiningClass 
+            isJoiningPractice 
               ? "bg-green-600/20 text-green-400 cursor-not-allowed"
               : "bg-gradient-to-r from-[oklch(0.72_0.19_220)] via-[oklch(0.72_0.22_350)] to-[oklch(0.75_0.18_55)] text-[oklch(0.99_0_0)] hover:shadow-[0_8px_30px_oklch(0.72_0.19_220/0.4)] hover:scale-[1.02]"
           )}
         >
-          {isJoiningClass ? (
+          {isJoiningPractice ? (
             <>
               <div className="size-5 animate-spin rounded-full border-2 border-[oklch(0.99_0_0)] border-t-transparent" />
-              <span>Uniéndose a la clase...</span>
+              <span>Uniéndose a la sesión...</span>
             </>
           ) : (
             <>
               <Video className="size-5" />
-              <span>Unirse a la Clase</span>
+              <span>Unirse a la Sesión</span>
               <ExternalLink className="size-4" />
             </>
           )}
@@ -153,9 +153,9 @@ export function ClassSchedule({
 
         {/* Additional Info */}
         <div className="text-xs text-[oklch(0.5_0.01_250)] space-y-1">
-          <p>La clase comenzará 5 minutos antes de la hora programada</p>
+          <p>La sesión comenzará 5 minutos antes de la hora programada</p>
           <p>Asegúrate de tener cámara y micrófono funcionando</p>
-          <p>El enlace se activará 15 minutos antes de la clase</p>
+          <p>El enlace se activará 15 minutos antes de la sesión</p>
         </div>
       </div>
     </div>

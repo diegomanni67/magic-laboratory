@@ -1,7 +1,27 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Forum Threads Table
+-- Practice Videos Table (for magic practice submissions)
+CREATE TABLE IF NOT EXISTS practice_videos (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  video_url TEXT NOT NULL,
+  thumbnail_url TEXT,
+  author TEXT NOT NULL,
+  author_email TEXT NOT NULL,
+  author_role TEXT NOT NULL,
+  technique_category TEXT NOT NULL,
+  difficulty_level TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  replies INTEGER DEFAULT 0,
+  views INTEGER DEFAULT 0,
+  pinned BOOLEAN DEFAULT FALSE,
+  tags TEXT[] DEFAULT '{}'
+);
+
+-- Forum Threads Table (for discussions and techniques)
 CREATE TABLE IF NOT EXISTS forum_threads (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   title TEXT NOT NULL,
@@ -31,7 +51,7 @@ CREATE TABLE IF NOT EXISTS forum_replies (
   parent_id UUID REFERENCES forum_replies(id) ON DELETE CASCADE
 );
 
--- Material Links Table
+-- Material Links Table (for magic resources and tutorials)
 CREATE TABLE IF NOT EXISTS material_links (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
@@ -41,14 +61,40 @@ CREATE TABLE IF NOT EXISTS material_links (
   added_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- AI Analysis Table (for technical critiques of practice videos)
+CREATE TABLE IF NOT EXISTS ai_analyses (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  video_id UUID REFERENCES practice_videos(id) ON DELETE CASCADE,
+  analysis_text TEXT NOT NULL,
+  technical_score INTEGER,
+  performance_score INTEGER,
+  suggestions TEXT[] DEFAULT '{}',
+  strengths TEXT[] DEFAULT '{}',
+  areas_for_improvement TEXT[] DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  model_version TEXT NOT NULL
+);
+
+-- Magic Events Table (for congresses and conventions)
+CREATE TABLE IF NOT EXISTS magic_events (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  event_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  location TEXT NOT NULL,
+  registration_url TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Users Table (for authentication and user management)
 CREATE TABLE IF NOT EXISTS users (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'STUDENT_ACADEMY',
-  interests TEXT[] DEFAULT '{}',
-  class_schedule TEXT,
+  role TEXT NOT NULL DEFAULT 'APPRENTICE',
+  specialties TEXT[] DEFAULT '{}',
+  practice_schedule TEXT,
   avatar TEXT,
   has_paid BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -56,12 +102,17 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Create indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_practice_videos_technique_category ON practice_videos(technique_category);
+CREATE INDEX IF NOT EXISTS idx_practice_videos_created_at ON practice_videos(created_at);
+CREATE INDEX IF NOT EXISTS idx_practice_videos_difficulty_level ON practice_videos(difficulty_level);
 CREATE INDEX IF NOT EXISTS idx_forum_threads_category ON forum_threads(category);
 CREATE INDEX IF NOT EXISTS idx_forum_threads_created_at ON forum_threads(created_at);
 CREATE INDEX IF NOT EXISTS idx_forum_threads_pinned ON forum_threads(pinned);
 CREATE INDEX IF NOT EXISTS idx_forum_replies_thread_id ON forum_replies(thread_id);
 CREATE INDEX IF NOT EXISTS idx_forum_replies_created_at ON forum_replies(created_at);
 CREATE INDEX IF NOT EXISTS idx_material_links_subcategory_id ON material_links(subcategory_id);
+CREATE INDEX IF NOT EXISTS idx_ai_analyses_video_id ON ai_analyses(video_id);
+CREATE INDEX IF NOT EXISTS idx_magic_events_event_date ON magic_events(event_date);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Function to increment counters
@@ -84,10 +135,17 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Enable Row Level Security (RLS)
+ALTER TABLE practice_videos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE forum_threads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE forum_replies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE material_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_analyses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE magic_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Policies for practice_videos (allow all operations for now)
+CREATE POLICY "Enable all operations on practice_videos" ON practice_videos
+  FOR ALL USING (true);
 
 -- Policies for forum_threads (allow all operations for now)
 CREATE POLICY "Enable all operations on forum_threads" ON forum_threads
@@ -99,6 +157,14 @@ CREATE POLICY "Enable all operations on forum_replies" ON forum_replies
 
 -- Policies for material_links (allow all operations for now)
 CREATE POLICY "Enable all operations on material_links" ON material_links
+  FOR ALL USING (true);
+
+-- Policies for ai_analyses (allow all operations for now)
+CREATE POLICY "Enable all operations on ai_analyses" ON ai_analyses
+  FOR ALL USING (true);
+
+-- Policies for magic_events (allow all operations for now)
+CREATE POLICY "Enable all operations on magic_events" ON magic_events
   FOR ALL USING (true);
 
 -- Policies for users (allow all operations for now)

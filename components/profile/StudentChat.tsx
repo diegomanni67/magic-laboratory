@@ -11,17 +11,17 @@ interface Message {
   timestamp: Date
 }
 
-interface StudentChatProps {
-  studentName: string
-  teacherName: string
+interface MemberChatProps {
+  memberName: string
+  mentorName: string
   isCommunityChat?: boolean
 }
 
-export function StudentChat({ 
-  studentName, 
-  teacherName, 
+export function MemberChat({ 
+  memberName, 
+  mentorName, 
   isCommunityChat = false 
-}: StudentChatProps) {
+}: MemberChatProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -40,13 +40,13 @@ export function StudentChat({
     const welcomeMessage: Message = {
       id: "1",
       text: isCommunityChat 
-        ? `¡Hola! Soy ${studentName}. ¿Cómo estás?`
-        : `¡Hola ${studentName}! Soy ${teacherName}, tu profesor. ¿En qué puedo ayudarte hoy?`,
+        ? `¡Hola! Soy ${memberName}. ¿Cómo estás?`
+        : `¡Hola ${memberName}! Soy ${mentorName}, tu mentor. ¿En qué puedo ayudarte hoy?`,
       sender: "other",
       timestamp: new Date()
     }
     setMessages([welcomeMessage])
-  }, [studentName, teacherName, isCommunityChat])
+  }, [memberName, mentorName, isCommunityChat])
 
   const handleSendMessage = () => {
     if (newMessage.trim()) {
@@ -67,7 +67,7 @@ export function StudentChat({
           id: (Date.now() + 1).toString(),
           text: isCommunityChat 
             ? `¡Qué bueno! Me encanta esa idea. ¿Quieres que practiquemos juntos?`
-            : `Entendido ${studentName}. Estoy aquí para ayudarte con lo que necesites.`,
+            : `Entendido ${memberName}. Estoy aquí para ayudarte con lo que necesites.`,
           sender: "other",
           timestamp: new Date()
         }
@@ -87,17 +87,17 @@ export function StudentChat({
   return (
     <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-blue-50">
+      <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
             <MessageCircle className="w-5 h-5 text-white" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">
-              {isCommunityChat ? `Chat con ${studentName}` : "Chat con Profesor"}
+              {isCommunityChat ? `Chat con ${memberName}` : "Chat con Mentor"}
             </h3>
             <p className="text-sm text-gray-500">
-              {isCommunityChat ? "Estudiante" : "Profesor de inglés"}
+              {isCommunityChat ? "Miembro" : "Mentor de ilusionismo"}
             </p>
           </div>
         </div>
@@ -117,14 +117,14 @@ export function StudentChat({
               className={cn(
                 "max-w-xs px-4 py-2 rounded-2xl",
                 message.sender === "user"
-                  ? "bg-purple-600 text-white"
+                  ? "bg-amber-600 text-white"
                   : "bg-gray-100 text-gray-900"
               )}
             >
               <p className="text-sm">{message.text}</p>
               <p className={cn(
                 "text-xs mt-1",
-                message.sender === "user" ? "text-purple-200" : "text-gray-500"
+                message.sender === "user" ? "text-amber-200" : "text-gray-500"
               )}>
                 {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </p>
@@ -161,7 +161,7 @@ export function StudentChat({
           <button
             onClick={handleSendMessage}
             disabled={!newMessage.trim()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 bg-amber-600 text-white rounded-xl hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="w-5 h-5" />
           </button>

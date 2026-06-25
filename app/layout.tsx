@@ -16,8 +16,8 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: 'Koterie Language Studio',
-  description: 'Your premium social language club. Academy for growth, Studio for mastery.',
+  title: 'Magic Laboratory - Private Illusionists Club',
+  description: 'Exclusive private laboratory for professional illusionists. Practice techniques, receive AI-powered technical analysis, and connect with masters of the art.',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#e8ecf4',
+  themeColor: '#0a0f1e',
   userScalable: true,
 }
 

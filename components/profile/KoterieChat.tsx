@@ -7,55 +7,55 @@ import { cn } from "@/lib/utils"
 interface Message {
   id: string
   text: string
-  sender: 'student' | 'teacher'
+  sender: 'apprentice' | 'mentor'
   timestamp: string
   senderName?: string
 }
 
-interface KoterieChatProps {
-  studentName?: string
-  teacherName?: string
+interface MagicLabChatProps {
+  apprenticeName?: string
+  mentorName?: string
 }
 
-export function KoterieChat({ 
-  studentName = "Estudiante", 
-  teacherName = "Prof. Sarah Mitchell"
-}: KoterieChatProps) {
+export function MagicLabChat({ 
+  apprenticeName = "Aprendiz", 
+  mentorName = "Maestro Alejandro"
+}: MagicLabChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "¡Hola! Bienvenido a Koterie. Soy tu profesor y estoy aquí para ayudarte en tu aprendizaje de inglés.",
-      sender: "teacher",
+      text: "¡Hola! Bienvenido a Magic Laboratory. Soy tu mentor y estoy aquí para ayudarte en tu perfeccionamiento del ilusionismo.",
+      sender: "mentor",
       timestamp: "10:00",
-      senderName: teacherName
+      senderName: mentorName
     },
     {
       id: "2", 
-      text: "Hola profesor, mucho gusto. Estoy muy emocionado por empezar a aprender inglés.",
-      sender: "student",
+      text: "Hola mentor, mucho gusto. Estoy muy emocionado por empezar a perfeccionar mi arte.",
+      sender: "apprentice",
       timestamp: "10:02",
-      senderName: studentName
+      senderName: apprenticeName
     },
     {
       id: "3",
-      text: "¡Excelente! La motivación es clave. ¿Has estudiado inglés antes o es tu primera vez?",
-      sender: "teacher", 
+      text: "¡Excelente! La dedicación es clave. ¿Has practicado ilusionismo antes o es tu primera vez?",
+      sender: "mentor", 
       timestamp: "10:03",
-      senderName: teacherName
+      senderName: mentorName
     },
     {
       id: "4",
-      text: "He estudiado un poco en la escuela, pero hace mucho tiempo que no practico. Quiero poder conversar con confianza.",
-      sender: "student",
+      text: "He practicado un poco por mi cuenta, pero hace mucho tiempo que no lo hago. Quiero poder ejecutar con confianza.",
+      sender: "apprentice",
       timestamp: "10:05",
-      senderName: studentName
+      senderName: apprenticeName
     },
     {
       id: "5",
-      text: "Perfecto. Con práctica constante y las técnicas correctas, vas a lograr ese objetivo. Nuestra primera clase será para evaluar tu nivel actual y diseñar un plan personalizado.",
-      sender: "teacher",
+      text: "Perfecto. Con práctica constante y las técnicas correctas, vas a lograr ese objetivo. Nuestra primera sesión será para evaluar tu nivel actual y diseñar un plan personalizado.",
+      sender: "mentor",
       timestamp: "10:06", 
-      senderName: teacherName
+      senderName: mentorName
     }
   ])
   
@@ -76,26 +76,26 @@ export function KoterieChat({
       const newMsg: Message = {
         id: Date.now().toString(),
         text: newMessage.trim(),
-        sender: "student",
+        sender: "apprentice",
         timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-        senderName: studentName
+        senderName: apprenticeName
       }
       
       setMessages(prev => [...prev, newMsg])
       setNewMessage("")
       
-      // Simular respuesta del profesor
+      // Simular respuesta del mentor
       setTimeout(() => {
         setIsTyping(true)
         setTimeout(() => {
-          const teacherResponse: Message = {
+          const mentorResponse: Message = {
             id: (Date.now() + 1).toString(),
             text: "Gracias por tu mensaje. Lo he recibido y te responderé pronto.",
-            sender: "teacher",
+            sender: "mentor",
             timestamp: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-            senderName: teacherName
+            senderName: mentorName
           }
-          setMessages(prev => [...prev, teacherResponse])
+          setMessages(prev => [...prev, mentorResponse])
           setIsTyping(false)
         }, 2000)
       }, 500)
@@ -121,7 +121,7 @@ export function KoterieChat({
             <div className="absolute -bottom-1 -right-1 size-3 rounded-full bg-green-400 border-2 border-[oklch(0.12_0.02_250)]" />
           </div>
           <div className="flex-1">
-            <h4 className="font-semibold text-[oklch(0.95_0.01_250)]">{teacherName}</h4>
+            <h4 className="font-semibold text-[oklch(0.95_0.01_250)]">{mentorName}</h4>
             <p className="text-xs text-[oklch(0.6_0.01_250)]">
               {isTyping ? "Escribiendo..." : "En línea"}
             </p>
@@ -136,13 +136,13 @@ export function KoterieChat({
             key={message.id}
             className={cn(
               "flex gap-3",
-              message.sender === "student" ? "flex-row-reverse" : "flex-row"
+              message.sender === "apprentice" ? "flex-row-reverse" : "flex-row"
             )}
           >
             <div className={cn(
               "size-8 rounded-full flex items-center justify-center flex-shrink-0",
-              message.sender === "student" 
-                ? "bg-gradient-to-br from-[oklch(0.72_0.19_220)] to-[oklch(0.65_0.2_250)]" 
+              message.sender === "apprentice" 
+                ? "bg-gradient-to-br from-[oklch(0.72_0.18_55)] to-[oklch(0.65_0.2_250)]" 
                 : "bg-gradient-to-br from-[oklch(0.72_0.22_350)] to-[oklch(0.65_0.22_20)]"
             )}>
               <span className="text-xs font-bold text-[oklch(0.99_0_0)]">
@@ -152,19 +152,19 @@ export function KoterieChat({
             
             <div className={cn(
               "max-w-[70%] space-y-1",
-              message.sender === "student" ? "items-end" : "items-start"
+              message.sender === "apprentice" ? "items-end" : "items-start"
             )}>
               <div className={cn(
                 "rounded-2xl px-4 py-2 text-sm",
-                message.sender === "student"
-                  ? "bg-gradient-to-r from-[oklch(0.72_0.19_220)] via-[oklch(0.72_0.22_350)] to-[oklch(0.75_0.18_55)] text-[oklch(0.99_0_0)] rounded-br-sm"
+                message.sender === "apprentice"
+                  ? "bg-gradient-to-r from-[oklch(0.72_0.18_55)] via-[oklch(0.72_0.22_350)] to-[oklch(0.75_0.18_55)] text-[oklch(0.99_0_0)] rounded-br-sm"
                   : "bg-[oklch(0.2_0.03_250)] text-[oklch(0.85_0.01_250)] rounded-bl-sm"
               )}>
                 {message.text}
               </div>
               <div className={cn(
                 "text-xs text-[oklch(0.5_0.01_250)]",
-                message.sender === "student" ? "text-right" : "text-left"
+                message.sender === "apprentice" ? "text-right" : "text-left"
               )}>
                 {message.timestamp}
               </div>

@@ -4,32 +4,32 @@ import { useState } from "react"
 import { User, MapPin, Heart, MessageCircle, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-interface StudentCardProps {
-  student: {
+interface MemberCardProps {
+  member: {
     id: string
     name: string
     avatar?: string
     bio: string
-    interests: string[]
+    specialties: string[]
     level: string
     location?: string
     joinDate: string
   }
   currentUserId?: string
-  onViewProfile?: (studentId: string) => void
-  onConnect?: (studentId: string) => void
-  onMessage?: (studentId: string) => void
+  onViewProfile?: (memberId: string) => void
+  onConnect?: (memberId: string) => void
+  onMessage?: (memberId: string) => void
   isOwnProfile?: boolean
 }
 
-export function StudentCard({ 
-  student, 
+export function MemberCard({ 
+  member, 
   currentUserId,
   onViewProfile,
   onConnect,
   onMessage,
   isOwnProfile = false
-}: StudentCardProps) {
+}: MemberCardProps) {
   const [isConnecting, setIsConnecting] = useState(false)
   const [showNotification, setShowNotification] = useState(false)
 
@@ -38,7 +38,7 @@ export function StudentCard({
     setTimeout(() => {
       setIsConnecting(false)
       setShowNotification(true)
-      onConnect?.(student.id)
+      onConnect?.(member.id)
       
       setTimeout(() => {
         setShowNotification(false)
@@ -46,20 +46,20 @@ export function StudentCard({
     }, 1000)
   }
 
-  const getInterestIcon = (interest: string) => {
+  const getSpecialtyIcon = (specialty: string) => {
     const icons: { [key: string]: string } = {
-      'Cine': 'film',
-      'Gaming': 'gamepad',
-      'Música': 'music',
-      'Viajes': 'plane',
-      'Deportes': 'trophy',
-      'Lectura': 'book',
-      'Cocina': 'chef-hat',
-      'Fotografía': 'camera',
-      'Tecnología': 'laptop',
-      'Arte': 'palette'
+      'Manipulación de Cartas': 'cards',
+      'Monedas': 'coins',
+      'Mentalismo': 'brain',
+      'Ilusionismo de Escenario': 'stage',
+      'Magia Cercana': 'close-up',
+      'Escapología': 'escape',
+      'Levitación': 'float',
+      'Transformación': 'transform',
+      'Predicción': 'predict',
+      'Telepatía': 'telepathy'
     }
-    return icons[interest] || 'star'
+    return icons[specialty] || 'wand'
   }
 
   return (
@@ -67,19 +67,19 @@ export function StudentCard({
       {/* Notification */}
       {showNotification && (
         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-50 px-4 py-2 bg-green-600 text-white rounded-full text-sm font-medium shadow-lg">
-          ¡Amistad solicitada!
+          ¡Conexión solicitada!
         </div>
       )}
 
-      <div className="rounded-3xl glass border border-[oklch(0.2_0.03_250)] p-6 bg-gradient-to-br from-[oklch(0.12_0.02_250)] to-[oklch(0.15_0.03_260)] transition-all duration-300 hover:shadow-[0_8px_30px_oklch(0_0_0/0.12)] hover:border-[oklch(0.72_0.19_220/0.3)] hover:scale-[1.02]">
+      <div className="rounded-3xl glass border border-[oklch(0.2_0.03_250)] p-6 bg-gradient-to-br from-[oklch(0.12_0.02_250)] to-[oklch(0.15_0.03_260)] transition-all duration-300 hover:shadow-[0_8px_30px_oklch(0_0_0/0.12)] hover:border-[oklch(0.72_0.18_55/0.3)] hover:scale-[1.02]">
         {/* Header */}
         <div className="flex items-start gap-4 mb-4">
           <div className="relative">
-            <div className="size-16 rounded-full bg-gradient-to-br from-[oklch(0.72_0.19_220)] to-[oklch(0.65_0.2_250)] flex items-center justify-center shadow-[0_4px_20px_oklch(0.72_0.19_220/0.3)]">
-              {student.avatar ? (
+            <div className="size-16 rounded-full bg-gradient-to-br from-[oklch(0.72_0.18_55)] to-[oklch(0.65_0.2_250)] flex items-center justify-center shadow-[0_4px_20px_oklch(0.72_0.18_55/0.3)]">
+              {member.avatar ? (
                 <img 
-                  src={student.avatar} 
-                  alt={student.name}
+                  src={member.avatar} 
+                  alt={member.name}
                   className="size-full rounded-full object-cover"
                 />
               ) : (
@@ -91,39 +91,39 @@ export function StudentCard({
           
           <div className="flex-1">
             <h3 className="font-bold text-[oklch(0.95_0.01_250)] text-lg mb-1">
-              {student.name}
+              {member.name}
             </h3>
             <div className="flex items-center gap-2 text-sm text-[oklch(0.6_0.01_250)] mb-2">
-              <span className="px-2 py-1 rounded-full bg-[oklch(0.72_0.19_220/0.2)] text-[oklch(0.72_0.19_220)] text-xs font-medium">
-                {student.level}
+              <span className="px-2 py-1 rounded-full bg-[oklch(0.72_0.18_55/0.2)] text-[oklch(0.72_0.18_55)] text-xs font-medium">
+                {member.level}
               </span>
-              {student.location && (
+              {member.location && (
                 <div className="flex items-center gap-1">
                   <MapPin className="size-3" />
-                  <span>{student.location}</span>
+                  <span>{member.location}</span>
                 </div>
               )}
             </div>
             <p className="text-sm text-[oklch(0.7_0.01_250)] line-clamp-2">
-              {student.bio}
+              {member.bio}
             </p>
           </div>
         </div>
 
-        {/* Interests */}
+        {/* Specialties */}
         <div className="mb-4">
           <div className="flex flex-wrap gap-2">
-            {student.interests.slice(0, 4).map((interest, index) => (
+            {member.specialties.slice(0, 4).map((specialty, index) => (
               <span 
                 key={index}
                 className="px-3 py-1 rounded-full bg-[oklch(0.72_0.22_350/0.2)] text-[oklch(0.72_0.22_350)] text-xs font-medium border border-[oklch(0.72_0.22_350/0.3)]"
               >
-                {interest}
+                {specialty}
               </span>
             ))}
-            {student.interests.length > 4 && (
+            {member.specialties.length > 4 && (
               <span className="px-3 py-1 rounded-full bg-[oklch(0.2_0.03_250)] text-[oklch(0.6_0.01_250)] text-xs font-medium">
-                +{student.interests.length - 4} más
+                +{member.specialties.length - 4} más
               </span>
             )}
           </div>
@@ -132,7 +132,7 @@ export function StudentCard({
         {/* Actions */}
         <div className="flex gap-2">
           <button
-            onClick={() => onViewProfile?.(student.id)}
+            onClick={() => onViewProfile?.(member.id)}
             className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[oklch(0.1_0.02_250)] border border-[oklch(0.2_0.03_250)] text-[oklch(0.7_0_01_250)] hover:bg-[oklch(0.15_0_03_250)] transition-colors text-sm font-medium"
           >
             <Eye className="size-4" />
@@ -148,7 +148,7 @@ export function StudentCard({
                   "flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium transition-all duration-300",
                   isConnecting
                     ? "bg-green-600/20 text-green-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-[oklch(0.72_0.19_220)] via-[oklch(0.72_0.22_350)] to-[oklch(0.75_0.18_55)] text-[oklch(0.99_0_0)] hover:shadow-[0_4px_20px_oklch(0.72_0.19_220/0.4)] hover:scale-[1.05]"
+                    : "bg-gradient-to-r from-[oklch(0.72_0.18_55)] via-[oklch(0.72_0.22_350)] to-[oklch(0.75_0.18_55)] text-[oklch(0.99_0_0)] hover:shadow-[0_4px_20px_oklch(0.72_0.18_55/0.4)] hover:scale-[1.05]"
                 )}
               >
                 {isConnecting ? (
@@ -165,7 +165,7 @@ export function StudentCard({
               </button>
               
               <button
-                onClick={() => onMessage?.(student.id)}
+                onClick={() => onMessage?.(member.id)}
                 className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[oklch(0.1_0_02_250)] border border-[oklch(0.2_0_03_250)] text-[oklch(0.7_0_01_250)] hover:bg-[oklch(0.15_0_03_250)] transition-colors text-sm font-medium"
               >
                 <MessageCircle className="size-4" />
@@ -180,7 +180,7 @@ export function StudentCard({
           <div className="mt-4 pt-4 border-t border-[oklch(0.2_0_03_250)]">
             <div className="flex items-center justify-center gap-2 text-xs text-[oklch(0.6_0_01_250)]">
               <div className="size-2 rounded-full bg-pink-400 animate-pulse" />
-              <span>¡Comparten {Math.floor(Math.random() * 3) + 1} gustos!</span>
+              <span>¡Comparten {Math.floor(Math.random() * 3) + 1} especialidades!</span>
             </div>
           </div>
         )}

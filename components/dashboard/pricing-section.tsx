@@ -8,12 +8,12 @@ import { CreditCard, Zap, Shield, Star, ArrowRight, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const benefits = [
-  "Acceso completo a Academy o Studio",
-  "Seminarios exclusivos mensuales",
-  "Clase en vivo de 2 horas semanal", 
-  "Material de estudio descargable",
-  "Docentes especializados",
-  "Soporte personalizado 24/7"
+  "Acceso completo al Laboratorio",
+  "Análisis técnico con IA de tus prácticas",
+  "Sesiones de mentoría mensuales", 
+  "Biblioteca de técnicas exclusivas",
+  "Notificaciones de congresos de magia",
+  "Feedback de maestros del ilusionismo"
 ]
 
 export function PricingSection() {
@@ -27,8 +27,8 @@ export function PricingSection() {
       // Datos del producto
       const items = [
         {
-          id: 'koterie-membership',
-          title: 'Membresía Koterie',
+          id: 'magic-lab-membership',
+          title: 'Membresía Magic Laboratory',
           unit_price: 100000, // $100.000 ARS
           quantity: 1,
         },
@@ -64,12 +64,12 @@ export function PricingSection() {
   return (
     <div className="relative max-w-md mx-auto">
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
-        {/* Top section with purple translucent background */}
-        <div className="bg-purple-500/10 border-b border-purple-500/20 p-8 text-center">
+        {/* Top section with amber translucent background */}
+        <div className="bg-amber-500/10 border-b border-amber-500/20 p-8 text-center">
           {/* Plan Premium label */}
           <div className="inline-block mb-4">
-            <span className="text-sm font-semibold uppercase tracking-wider text-purple-300">
-              Plan Premium
+            <span className="text-sm font-semibold uppercase tracking-wider text-amber-300">
+              Membresía Maestro
             </span>
           </div>
 
@@ -104,9 +104,9 @@ export function PricingSection() {
           <button
             className={cn(
               "group relative w-full overflow-hidden rounded-2xl px-8 py-4 text-base font-bold transition-all duration-500",
-              "bg-gradient-to-r from-violet-600 to-purple-600",
-              "text-white shadow-lg shadow-purple-500/25",
-              "hover:shadow-purple-500/40 hover:scale-[1.02]",
+              "bg-gradient-to-r from-amber-600 to-orange-600",
+              "text-white shadow-lg shadow-amber-500/25",
+              "hover:shadow-amber-500/40 hover:scale-[1.02]",
               "active:scale-[0.98]",
               "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             )}
@@ -123,7 +123,7 @@ export function PricingSection() {
                 </>
               ) : (
                 <>
-                  <span>Inscribirse</span>
+                  <span>Unirse al Laboratorio</span>
                   <ArrowRight className={cn(
                     "size-5 transition-transform duration-300",
                     isHovered && "translate-x-1"

@@ -1,3 +1,22 @@
+export interface PracticeVideo {
+  id: string
+  title: string
+  description: string
+  videoUrl: string
+  thumbnailUrl?: string
+  author: string
+  authorEmail: string
+  authorRole: string
+  techniqueCategory: string
+  difficultyLevel: string
+  createdAt: Date
+  updatedAt: Date
+  replies: number
+  views: number
+  pinned: boolean
+  tags: string[]
+}
+
 export interface ForumThread {
   id: string
   title: string
@@ -33,20 +52,50 @@ export interface DownloadLink {
   addedAt: Date
 }
 
+export interface AIAnalysis {
+  id: string
+  videoId: string
+  analysisText: string
+  technicalScore?: number
+  performanceScore?: number
+  suggestions: string[]
+  strengths: string[]
+  areasForImprovement: string[]
+  createdAt: Date
+  modelVersion: string
+}
+
+export interface MagicEvent {
+  id: string
+  title: string
+  description: string
+  eventDate: Date
+  location: string
+  registrationUrl?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
 // import { databaseStorage } from './database-storage' // DESACTIVADO - VERSIÓN LOCAL
 
 class ForumStorage {
-  private forumType: 'academy' | 'studio'
+  private forumType: 'fundamentos' | 'maestria'
   private threadsKey: string
   private repliesKey: string
   private materialLinksKey: string
+  private practiceVideosKey: string
+  private aiAnalysesKey: string
+  private magicEventsKey: string
   private useDatabase = false // VERSIÓN LOCAL ABIERTA - SIN SUPABASE
 
-  constructor(forumType: 'academy' | 'studio' = 'academy') {
+  constructor(forumType: 'fundamentos' | 'maestria' = 'fundamentos') {
     this.forumType = forumType
     this.threadsKey = `forum_threads_${forumType}`
     this.repliesKey = `forum_replies_${forumType}`
     this.materialLinksKey = `material_links_${forumType}`
+    this.practiceVideosKey = `practice_videos_${forumType}`
+    this.aiAnalysesKey = `ai_analyses_${forumType}`
+    this.magicEventsKey = `magic_events`
   }
 
   // Threads
@@ -177,6 +226,6 @@ class ForumStorage {
   }
 }
 
-export const forumStorage = new ForumStorage('academy')
-export const academyForumStorage = new ForumStorage('academy')
-export const studioForumStorage = new ForumStorage('studio')
+export const forumStorage = new ForumStorage('fundamentos')
+export const fundamentosForumStorage = new ForumStorage('fundamentos')
+export const maestriaForumStorage = new ForumStorage('maestria')
