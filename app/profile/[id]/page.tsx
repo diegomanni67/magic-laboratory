@@ -12,8 +12,8 @@ import {
   Home
 } from "lucide-react"
 import { ProfileHeader } from "@/components/profile/ProfileHeader"
-import { StudentChat } from "@/components/profile/StudentChat"
-import { ClassInfo } from "@/components/profile/ClassInfo"
+import { MemberChat } from "@/components/profile/StudentChat"
+import { PracticeInfo } from "@/components/profile/ClassInfo"
 import { getStudentById, currentUser, Student } from "@/lib/mock-data"
 
 interface PageProps {
@@ -214,40 +214,40 @@ export default function Page({ params }: PageProps) {
             {activeTab === 'overview' ? (
               <>
                 {/* Chat */}
-                <StudentChat
-                  studentName={profileData.nombre}
-                  teacherName={isOwnProfile ? "Prof. Sarah Mitchell" : profileData.nombre}
+                <MemberChat
+                  memberName={profileData.nombre}
+                  mentorName={isOwnProfile ? "Prof. Sarah Mitchell" : profileData.nombre}
                   isCommunityChat={!isOwnProfile}
                 />
                 
-                {/* Class Info */}
+                {/* Practice Info */}
                 {isOwnProfile && (
-                  <ClassInfo
-                    levelingStatus="pending"
-                    classDay="Martes"
-                    classTime="19:00"
-                    instructorName="Prof. Sarah Mitchell"
-                    className="Academy B1"
+                  <PracticeInfo
+                    evaluationStatus="pending"
+                    practiceDay="Martes"
+                    practiceTime="19:00"
+                    mentorName="Prof. Sarah Mitchell"
+                    practiceName="Academy B1"
                   />
                 )}
               </>
             ) : (
               /* Chat Full Screen */
               <div className="space-y-6">
-                <StudentChat
-                  studentName={profileData.nombre}
-                  teacherName={isOwnProfile ? "Prof. Sarah Mitchell" : profileData.nombre}
+                <MemberChat
+                  memberName={profileData.nombre}
+                  mentorName={isOwnProfile ? "Prof. Sarah Mitchell" : profileData.nombre}
                   isCommunityChat={!isOwnProfile}
                 />
                 
                 {isOwnProfile && (
                   <div className="lg:hidden">
-                    <ClassInfo
-                      levelingStatus="pending"
-                      classDay="Martes"
-                      classTime="19:00"
-                      instructorName="Prof. Sarah Mitchell"
-                      className="Academy B1"
+                    <PracticeInfo
+                      evaluationStatus="pending"
+                      practiceDay="Martes"
+                      practiceTime="19:00"
+                      mentorName="Prof. Sarah Mitchell"
+                      practiceName="Academy B1"
                     />
                   </div>
                 )}
