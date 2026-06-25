@@ -27,7 +27,7 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-8">
             <Link href="#laboratory" className="text-white/50 hover:text-white transition-colors">Laboratorio</Link>
             <Link href="#community" className="text-white/50 hover:text-white transition-colors">Logia</Link>
-            {profile?.is_approved && (
+            {profile && (
               <Link href="/community" className="text-white/50 hover:text-white transition-colors">Comunidad</Link>
             )}
           </nav>
@@ -45,15 +45,13 @@ export function Header() {
                       Admin
                     </Link>
                   )}
-                  {profile.is_approved && (
-                    <Link
-                      href="/profile/current"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white/70 hover:bg-white/10 transition-colors text-sm"
-                    >
-                      <User className="w-4 h-4" />
-                      {profile.name}
-                    </Link>
-                  )}
+                  <Link
+                    href="/profile/current"
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white/70 hover:bg-white/10 transition-colors text-sm"
+                  >
+                    <User className="w-4 h-4" />
+                    {profile.name || 'Perfil'}
+                  </Link>
                   <button
                     onClick={signOut}
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors text-sm"
@@ -75,29 +73,4 @@ export function Header() {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden p-2 rounded-2xl bg-amber-800/50 text-amber-100 hover:bg-amber-700/50 transition-colors"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-slate-900/90 backdrop-blur-md border-t border-amber-800/50">
-          <div className="px-4 py-3 space-y-2">
-            <Link href="#laboratory" className="block px-3 py-2 rounded-xl text-white/50 hover:text-white hover:bg-amber-800/30">Laboratorio</Link>
-            <Link href="#community" className="block px-3 py-2 rounded-xl text-white/50 hover:text-white hover:bg-amber-800/30">Logia</Link>
-            {profile?.is_approved && (
-              <Link href="/community" className="block px-3 py-2 rounded-xl text-white/50 hover:text-white hover:bg-amber-800/30">Comunidad</Link>
-            )}
-            {profile?.role === 'ADMIN' && (
-              <Link href="/admin/users" className="block px-3 py-2 rounded-xl text-amber-300 hover:bg-amber-800/30">Admin</Link>
-            )}
-            {!profile && (
-              <Link href="/login" className="block px-3 py-2 rounded-xl text-white/50 hover:text-white hover:bg-amber-800/30">Iniciar sesión</Link>
-            )}
-          </div>
-        </div>
-      )}
-    </header>
-  )
-}
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5
