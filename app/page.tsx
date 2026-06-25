@@ -5,8 +5,7 @@
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { HeroCards } from '@/components/dashboard/hero-cards'
-import { PricingSection } from '@/components/dashboard/pricing-section'
-import { Sparkles, Wand2, Users, ArrowRight, User, MessageCircle, Star, Eye } from 'lucide-react'
+import { Sparkles, Wand2, Users, ArrowRight, MessageCircle, Eye } from 'lucide-react'
 
 export default function HomePage() {
   const router = useRouter()
@@ -47,12 +46,12 @@ export default function HomePage() {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <button className="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold hover:from-amber-700 hover:to-orange-700 transition-all shadow-lg shadow-amber-500/25">
+            <Link href="/registro" className="px-8 py-4 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold hover:from-amber-700 hover:to-orange-700 transition-all shadow-lg shadow-amber-500/25 text-center">
               Unirse al Laboratorio
-            </button>
-            <button className="px-8 py-4 rounded-2xl bg-white/10 border border-white/20 text-white font-semibold hover:bg-white/20 transition-all backdrop-blur-sm">
+            </Link>
+            <Link href="#laboratory" className="px-8 py-4 rounded-2xl bg-white/10 border border-white/20 text-white font-semibold hover:bg-white/20 transition-all backdrop-blur-sm text-center">
               Explorar
-            </button>
+            </Link>
           </div>
         </div>
       </section>
@@ -126,13 +125,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="membership" className="py-24 border-t border-white/[0.06]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <PricingSection />
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -151,7 +143,6 @@ export default function HomePage() {
               <ul className="space-y-2 text-gray-400">
                 <li><Link href="#laboratory" className="hover:text-white transition-colors">Laboratorio</Link></li>
                 <li><Link href="#community" className="hover:text-white transition-colors">Logia</Link></li>
-                <li><Link href="#membership" className="hover:text-white transition-colors">Membresía</Link></li>
               </ul>
             </div>
 

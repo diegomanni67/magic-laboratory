@@ -89,14 +89,14 @@ CREATE TABLE IF NOT EXISTS magic_events (
 
 -- Users Table (for authentication and user management)
 CREATE TABLE IF NOT EXISTS users (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'APPRENTICE',
   specialties TEXT[] DEFAULT '{}',
   practice_schedule TEXT,
   avatar TEXT,
-  has_paid BOOLEAN DEFAULT FALSE,
+  is_approved BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -114,6 +114,28 @@ CREATE INDEX IF NOT EXISTS idx_material_links_subcategory_id ON material_links(s
 CREATE INDEX IF NOT EXISTS idx_ai_analyses_video_id ON ai_analyses(video_id);
 CREATE INDEX IF NOT EXISTS idx_magic_events_event_date ON magic_events(event_date);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_is_approved ON users(is_approved);
+
+-- Auto-create user profile on signup (is_approved defaults to false)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.users (id, email, name, is_approved)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    FALSE
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Function to increment counters
 CREATE OR REPLACE FUNCTION increment(column_name TEXT, table_name TEXT, row_id UUID)
@@ -167,6 +189,22 @@ CREATE POLICY "Enable all operations on ai_analyses" ON ai_analyses
 CREATE POLICY "Enable all operations on magic_events" ON magic_events
   FOR ALL USING (true);
 
--- Policies for users (allow all operations for now)
-CREATE POLICY "Enable all operations on users" ON users
-  FOR ALL USING (true);
+-- Policies for users
+DROP POLICY IF EXISTS "Enable all operations on users" ON users;
+
+CREATE POLICY "Users can read own profile" ON users
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can update own profile" ON users
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Admins can read all users" ON users
+  FOR SELECT USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'ADMIN')
+  );
+
+CREATE POLICY "Admins can update all users" ON users
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM users u WHERE u.id = auth.uid() AND u.role = 'ADMIN')
+  );

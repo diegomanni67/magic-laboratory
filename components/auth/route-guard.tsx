@@ -1,15 +1,48 @@
 "use client"
 
-// ROUTE GUARD DESACTIVADO - VERSIÓN LOCAL ABIERTA
-// Esta versión permite acceso público a todo el contenido
+import { useAuth } from '@/components/auth/AuthProvider'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 interface RouteGuardProps {
   children: React.ReactNode
-  requiredForum?: 'academy' | 'studio'
-  fallback?: React.ReactNode
+  requireApproved?: boolean
+  requireAdmin?: boolean
 }
 
-export function RouteGuard({ children }: RouteGuardProps) {
-  // VERSIÓN LOCAL ABIERTA - SIN RESTRICCIONES DE ACCESO
+export function RouteGuard({ children, requireApproved = true, requireAdmin = false }: RouteGuardProps) {
+  const { profile, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (loading) return
+
+    if (!profile) {
+      router.push('/login')
+      return
+    }
+
+    if (requireAdmin && profile.role !== 'ADMIN') {
+      router.push('/')
+      return
+    }
+
+    if (requireApproved && !profile.is_approved) {
+      router.push('/esperando-aprobacion')
+    }
+  }, [profile, loading, requireApproved, requireAdmin, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500" />
+      </div>
+    )
+  }
+
+  if (!profile) return null
+  if (requireAdmin && profile.role !== 'ADMIN') return null
+  if (requireApproved && !profile.is_approved) return null
+
   return <>{children}</>
 }
