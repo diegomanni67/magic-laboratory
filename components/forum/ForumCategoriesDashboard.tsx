@@ -10,7 +10,6 @@ import {
   Gamepad2, 
   Trophy, 
   MessageCircle, 
-  FolderOpen,
   BookOpen,
   FileText,
   Headphones,
