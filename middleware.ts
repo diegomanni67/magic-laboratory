@@ -1,7 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
-const PUBLIC_PATHS = ['/', '/login']
+// Rutas públicas (no requieren iniciar sesión)
+const PUBLIC_PATHS = [
+  '/',
+  '/login',
+  '/registro',
+  '/registro-simple',
+  '/success',
+  '/failure',
+  '/esperando-aprobacion'
+]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -24,13 +33,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Si hay usuario, deja pasar a todo lo demás
+  // Si hay usuario, deja pasar
   return supabaseResponse
 }
 
 export const config = {
   matcher: [
-    // Excluir archivos estáticos, imágenes, favicon, y archivos de Next.js
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)',
   ],
 }
