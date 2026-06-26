@@ -21,6 +21,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: session.user.email,
           role: 'ADMIN'
         })
+      } else {
+        setProfile(null)
       }
       setLoading(false)
     }
