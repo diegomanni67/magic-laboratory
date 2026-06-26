@@ -8,18 +8,20 @@ export default function MemberCount() {
 
   useEffect(() => {
     async function fetchMemberCount() {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('users')
-        .select('id')
-      
-      if (!error && data) {
-        setCount(data.length)
-      } else {
+      try {
+        const supabase = createClient()
+        const { data, error } = await supabase.rpc('get_member_count')
+        if (!error && typeof data === 'number') {
+          setCount(data)
+        } else {
+          console.error('Error fetching member count:', error)
+          setCount(0)
+        }
+      } catch (err) {
+        console.error('Error fetching member count:', err)
         setCount(0)
       }
     }
-
     fetchMemberCount()
   }, [])
 
