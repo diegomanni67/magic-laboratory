@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter, Space_Grotesk } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { Providers } from '@/components/Providers'
-import { Header } from '@/components/Header'
+import Header from '@/components/Header'
 import './globals.css'
 
 const inter = Inter({
