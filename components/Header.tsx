@@ -1,76 +1,100 @@
 "use client"
 
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, Wand2, LogOut, User, Shield } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthProvider'
 
-export function Header() {
-  const router = useRouter()
-  const { profile, loading, signOut } = useAuth()
+export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { profile, signOut } = useAuth()
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-blue-800/50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                <Wand2 className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-white font-bold text-xl">Magic Laboratory</span>
-            </div>
-          </Link>
+    <header className="w-full bg-amber-950 text-amber-50 shadow-md">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <Link href="/" className="text-xl font-bold text-amber-200">
+              Magic Laboratory
+            </Link>
+          </div>
 
-          <nav className="hidden md:flex items-center gap-8">
-            <Link href="#laboratory" className="text-white/50 hover:text-white transition-colors">Laboratorio</Link>
-            <Link href="#community" className="text-white/50 hover:text-white transition-colors">Logia</Link>
-            {profile && (
-              <Link href="/community" className="text-white/50 hover:text-white transition-colors">Comunidad</Link>
-            )}
-          </nav>
-
-          <div className="flex items-center gap-3">
-            {!loading && (
-              profile ? (
-                <div className="hidden sm:flex items-center gap-2">
-                  {profile.role === 'ADMIN' && (
-                    <Link
-                      href="/admin/users"
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-amber-300 hover:bg-amber-500/10 transition-colors text-sm"
-                    >
-                      <Shield className="w-4 h-4" />
-                      Admin
-                    </Link>
-                  )}
-                  <Link
-                    href="/profile/current"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white/70 hover:bg-white/10 transition-colors text-sm"
-                  >
-                    <User className="w-4 h-4" />
-                    {profile.name || 'Perfil'}
-                  </Link>
-                  <button
-                    onClick={signOut}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors text-sm"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href="/registro"
-                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:from-amber-600 hover:to-orange-700 transition-colors font-semibold"
+          {/* Menú Desktop */}
+          <div className="hidden md:flex space-x-8 items-center">
+            <Link href="/" className="hover:text-amber-300 transition-colors">
+              Inicio
+            </Link>
+            
+            {/* Lógica de Autenticación Desktop */}
+            {profile ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-amber-200 font-medium">
+                  Hola, {profile.name || 'Mago'}
+                </span>
+                <button 
+                  onClick={signOut}
+                  className="px-4 py-2 text-sm bg-red-800 hover:bg-red-700 rounded-xl transition-colors"
                 >
-                  <span className="hidden sm:inline">Unirse</span>
-                </Link>
-              )
+                  Salir
+                </button>
+              </div>
+            ) : (
+              <Link 
+                href="/login" 
+                className="px-4 py-2 text-sm bg-amber-700 hover:bg-amber-600 rounded-xl transition-colors"
+              >
+                Unirse
+              </Link>
             )}
+          </div>
 
+          {/* Botón Menú Mobile */}
+          <div className="md:hidden flex items-center">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-2xl bg-amber-800/50 text-amber-100 hover:bg-amber-700/50 transition-colors"
+              className="p-2 rounded-2xl bg-amber-800/50 text-amber-100 hover:bg-amber-700/50 transition-colors"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Menú Mobile Desplegable */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden bg-amber-900 px-2 pt-2 pb-3 space-y-1 sm:px-3">
+          <Link 
+            href="/" 
+            className="block px-3 py-2 rounded-md text-base font-medium hover:bg-amber-800 transition-colors"
+          >
+            Inicio
+          </Link>
+          
+          {/* Lógica de Autenticación Mobile */}
+          {profile ? (
+            <div className="pt-4 border-t border-amber-800">
+              <div className="px-3 py-2 text-amber-200 font-medium">
+                Hola, {profile.name || 'Mago'}
+              </div>
+              <button 
+                onClick={signOut}
+                className="w-full text-left mt-2 px-3 py-2 text-base font-medium text-red-200 hover:bg-amber-800 rounded-md transition-colors"
+              >
+                Salir
+              </button>
+            </div>
+          ) : (
+            <Link 
+              href="/login" 
+              className="block mt-4 px-3 py-2 text-center text-base font-medium bg-amber-700 hover:bg-amber-600 rounded-xl transition-colors"
+            >
+              Unirse
+            </Link>
+          )}
+        </div>
+      )}
+    </header>
+  )
+}
