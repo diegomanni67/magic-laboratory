@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { HeroCards } from '@/components/dashboard/hero-cards'
-import { Sparkles, Wand2, Users, ArrowRight, MessageCircle, Eye } from 'lucide-react'
+import { Sparkles, Wand2, Users, ArrowRight, Eye } from 'lucide-react'
 
 export default function HomePage() {
   const router = useRouter()
@@ -21,17 +21,7 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section id="hero" className="relative overflow-hidden">
-        <div className="relative mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8 flex flex-col items-center text-center">
-          {/* Logo */}
-          <div className="flex items-center justify-center mb-8">
-            <Wand2 className="w-16 h-16 text-amber-400 drop-shadow-[0_0_20px_rgba(212,175,55,0.4)]" />
-          </div>
-
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 border border-amber-500/30 mb-8">
-            <span className="text-amber-300 text-sm font-medium">Club privado de ilusionistas</span>
-          </div>
-
+        <div className="relative mx-auto max-w-7xl px-4 pt-16 sm:px-6 lg:px-8 flex flex-col items-center text-center">
           {/* H1 with gradient */}
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6">
             Tu arte,{" "}
