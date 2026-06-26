@@ -66,9 +66,18 @@ export default function CommunityPage() {
                 <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
                   <Users className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Comunidad</h1>
-                  <p className="text-sm text-gray-500">{mockStudents.length} miembros</p>
+                <div className="flex items-center gap-6">
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">Comunidad</h1>
+                    <p className="text-sm text-gray-500">{mockStudents.length} miembros</p>
+                  </div>
+                  <Link
+                    href="/laboratorio"
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Laboratorio</span>
+                  </Link>
                 </div>
               </div>
             </div>
