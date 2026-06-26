@@ -4,6 +4,7 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { HeroCards } from '@/components/dashboard/hero-cards'
 import { Sparkles, Wand2, Users, ArrowRight, MessageCircle, Eye } from 'lucide-react'
 
@@ -38,6 +39,16 @@ export default function HomePage() {
               al siguiente nivel
             </span>
           </h1>
+
+          {/* Logo Image */}
+          <Image
+            alt="Magic Laboratory Hero"
+            className="w-full max-w-4xl mx-auto rounded-xl shadow-2xl mt-8"
+            height={400}
+            priority
+            src="/logo.png"
+            width={800}
+          />
 
           {/* Subtitle */}
           <p className="text-xl text-white/50 max-w-2xl mb-10">

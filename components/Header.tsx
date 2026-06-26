@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Menu, X } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthProvider'
 
@@ -14,18 +13,11 @@ export default function Header() {
     <header className="w-full bg-amber-950 text-amber-50 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          
+
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
-              <Image 
-                src="/logo.png" 
-                alt="Magic Laboratory Logo" 
-                width={160} 
-                height={40} 
-                className="h-10 w-auto object-contain"
-                priority
-              />
+              <span className="text-xl font-bold">Magic Laboratory</span>
             </Link>
           </div>
 
