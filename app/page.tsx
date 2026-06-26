@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { HeroCards } from '@/components/dashboard/hero-cards'
+import MemberCount from '@/components/MemberCount'
 import { Sparkles, Wand2, Users, ArrowRight, Eye } from 'lucide-react'
 
 export default function HomePage() {
@@ -39,6 +40,9 @@ export default function HomePage() {
             src="/logo.png"
             width={800}
           />
+
+          {/* Member Count */}
+          <MemberCount />
 
           {/* Subtitle */}
           <p className="text-xl text-white/50 max-w-2xl mb-10">
