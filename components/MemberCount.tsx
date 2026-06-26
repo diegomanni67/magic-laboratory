@@ -9,7 +9,6 @@ export default function MemberCount() {
   useEffect(() => {
     async function fetchMemberCount() {
       const supabase = createClient()
-      // Apuntando a 'users' donde ya está tu registro
       const { data, error } = await supabase
         .from('users')
         .select('id')
@@ -25,20 +24,6 @@ export default function MemberCount() {
   }, [])
 
   if (count === null) return null
-
-  return (
-    <div className="mt-8 text-center">
-      <p className="text-amber-500/60 text-sm font-medium">
-        <span className="text-amber-400 font-bold">{count}</span> magos activos en el laboratorio
-      </p>
-    </div>
-  )
-}
-
-    fetchMemberCount()
-  }, [])
-
-  if (count === null) return null // No muestra nada mientras carga
 
   return (
     <div className="mt-8 text-center">
