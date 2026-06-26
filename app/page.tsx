@@ -119,7 +119,10 @@ export default function HomePage() {
                 <p className="mb-6 text-white/60">
                   Sube videos de tus ejecuciones, recibe feedback técnico de IA y de otros maestros. Perfecciona cada movimiento.
                 </p>
-                <button className="inline-flex items-center gap-2 px-6 py-3 bg-white text-amber-600 rounded-2xl font-semibold hover:bg-amber-50 transition-colors">
+                <button
+                  onClick={() => router.push('/laboratorio')}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-white text-amber-600 rounded-2xl font-semibold hover:bg-amber-50 transition-colors"
+                >
                   <Wand2 className="w-5 h-5" />
                   Comenzar a Practicar
                   <ArrowRight className="w-5 h-5" />
@@ -146,8 +149,9 @@ export default function HomePage() {
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Explorar</h4>
               <ul className="space-y-2 text-gray-400">
-                <li><Link href="#laboratory" className="hover:text-white transition-colors">Laboratorio</Link></li>
-                <li><Link href="#community" className="hover:text-white transition-colors">Logia</Link></li>
+                <li><Link href="/laboratorio" className="hover:text-white transition-colors">Laboratorio</Link></li>
+                <li><Link href="/cronicas" className="hover:text-white transition-colors">Crónicas</Link></li>
+                <li><Link href="/archivo-maestro" className="hover:text-white transition-colors">Archivo Maestro</Link></li>
               </ul>
             </div>
 
@@ -155,8 +159,7 @@ export default function HomePage() {
               <h4 className="text-xs font-semibold uppercase tracking-wider text-white/50 mb-4">Comunidad</h4>
               <ul className="space-y-2 text-gray-400">
                 <li><Link href="#community" className="hover:text-white transition-colors">Miembros</Link></li>
-                <li><Link href="/events" className="hover:text-white transition-colors">Congresos</Link></li>
-                <li><Link href="/practice" className="hover:text-white transition-colors">Prácticas</Link></li>
+                <li><Link href="/laboratorio" className="hover:text-white transition-colors">Prácticas</Link></li>
               </ul>
             </div>
 

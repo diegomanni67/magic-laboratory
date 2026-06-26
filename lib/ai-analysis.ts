@@ -1,7 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 // Inicializar el cliente de Google Generative AI
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '')
+// IMPORTANTE: esta key NO debe tener prefijo NEXT_PUBLIC_, porque este
+// servicio solo se debe usar desde el servidor (API routes), nunca
+// directamente desde el navegador. Si la marcás como NEXT_PUBLIC_, queda
+// expuesta en el bundle de JS y cualquiera puede robarla y usarla.
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
 export interface MagicAnalysisResult {
   analysisText: string
@@ -16,8 +20,8 @@ export class AIAnalysisService {
   private model: any
 
   constructor() {
-    // Usar el modelo Gemini Pro para análisis de texto
-    this.model = genAI.getGenerativeModel({ model: 'gemini-pro' })
+    // Usamos un modelo estable y económico de la familia Gemini 2.5
+    this.model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
   }
 
   /**
