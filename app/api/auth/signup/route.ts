@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Cuenta creada. Espera la aprobación de un administrador.',
+      message: 'PRUEBA DIEGO 123456',
     })
   } catch {
     return NextResponse.json({ error: 'Error al registrar usuario' }, { status: 500 })
