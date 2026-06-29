@@ -9,9 +9,22 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  const url = getSupabaseUrl()
+  const key = getSupabaseAnonKey()
+
+  if (!url || !key) {
+    console.error('[supabase] Middleware initialization skipped because env vars are missing', {
+      hasUrl: Boolean(url),
+      hasAnonKey: Boolean(key),
+      urlPreview: url ? url.slice(0, 40) : '(missing)',
+      nodeEnv: process.env.NODE_ENV,
+      vercel: Boolean(process.env.VERCEL),
+    })
+  }
+
   const supabase = createServerClient(
-    getSupabaseUrl(),
-    getSupabaseAnonKey(),
+    url || 'https://placeholder.supabase.co',
+    key || 'placeholder-key',
     {
       cookies: {
         get(name: string) {
@@ -56,7 +69,17 @@ export async function middleware(request: NextRequest) {
   )
 
   // Esto refresca el token de sesión si es necesario
-  await supabase.auth.getUser()
+  try {
+    await supabase.auth.getUser()
+  } catch (error) {
+    console.error('[supabase] Middleware auth check failed', {
+      error,
+      hasUrl: Boolean(url),
+      hasAnonKey: Boolean(key),
+      nodeEnv: process.env.NODE_ENV,
+      vercel: Boolean(process.env.VERCEL),
+    })
+  }
 
   return response
 }

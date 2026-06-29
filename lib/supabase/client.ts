@@ -5,7 +5,17 @@ export function createClient() {
   const url = getSupabaseUrl()
   const key = getSupabaseAnonKey()
 
-  return createBrowserClient(url, key, {
+  if (!url || !key) {
+    console.error('[supabase] Browser client skipped because env vars are missing', {
+      hasUrl: Boolean(url),
+      hasAnonKey: Boolean(key),
+      urlPreview: url ? url.slice(0, 40) : '(missing)',
+      nodeEnv: process.env.NODE_ENV,
+      vercel: Boolean(process.env.VERCEL),
+    })
+  }
+
+  return createBrowserClient(url || 'https://placeholder.supabase.co', key || 'placeholder-key', {
     cookies: {
       getAll() {
         return document.cookie.split(';').map((cookie) => {

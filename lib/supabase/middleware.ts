@@ -4,10 +4,22 @@ import { getSupabaseAnonKey, getSupabaseUrl } from './env'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
+  const url = getSupabaseUrl()
+  const key = getSupabaseAnonKey()
+
+  if (!url || !key) {
+    console.error('[supabase] Middleware client skipped because env vars are missing', {
+      hasUrl: Boolean(url),
+      hasAnonKey: Boolean(key),
+      urlPreview: url ? url.slice(0, 40) : '(missing)',
+      nodeEnv: process.env.NODE_ENV,
+      vercel: Boolean(process.env.VERCEL),
+    })
+  }
 
   const supabase = createServerClient(
-    getSupabaseUrl(),
-    getSupabaseAnonKey(),
+    url || 'https://placeholder.supabase.co',
+    key || 'placeholder-key',
     {
       cookies: {
         getAll() {

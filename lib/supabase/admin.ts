@@ -5,7 +5,17 @@ export function createAdminClient() {
   const url = getSupabaseUrl()
   const key = getSupabaseServiceRoleKey()
 
-  return createClient(url, key, {
+  if (!url || !key) {
+    console.error('[supabase] Admin client skipped because env vars are missing', {
+      hasUrl: Boolean(url),
+      hasServiceRoleKey: Boolean(key),
+      urlPreview: url ? url.slice(0, 40) : '(missing)',
+      nodeEnv: process.env.NODE_ENV,
+      vercel: Boolean(process.env.VERCEL),
+    })
+  }
+
+  return createClient(url || 'https://placeholder.supabase.co', key || 'placeholder-key', {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }

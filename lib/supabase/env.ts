@@ -1,44 +1,86 @@
+const FALLBACK_SUPABASE_URL = 'https://placeholder.supabase.co'
+const FALLBACK_SUPABASE_ANON_KEY = 'placeholder-anon-key'
+const FALLBACK_SUPABASE_SERVICE_ROLE_KEY = 'placeholder-service-role-key'
+
+function logSupabaseEnvIssue(message: string, details: Record<string, unknown>) {
+  console.error(`[supabase] ${message}`, details)
+}
+
 function readEnvValue(...names: string[]) {
   for (const name of names) {
     const value = process.env[name]?.trim().replace(/^['"]|['"]$/g, '')
-    if (value) return value
+    if (value) {
+      return { name, value }
+    }
   }
 
   return undefined
 }
 
-export function getSupabaseUrl() {
-  const url = readEnvValue('NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_URL')
-
-  if (!url) {
-    throw new Error('Missing Supabase URL. Set NEXT_PUBLIC_SUPABASE_URL (or SUPABASE_URL) in your environment.')
-  }
-
+function isValidSupabaseUrl(value: string) {
   try {
-    new URL(url)
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
   } catch {
-    throw new Error(`Invalid Supabase URL: ${url}`)
+    return false
+  }
+}
+
+export function getSupabaseUrl() {
+  const candidates = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_URL']
+  const found = readEnvValue(...candidates)
+
+  if (found) {
+    if (isValidSupabaseUrl(found.value)) {
+      return found.value
+    }
+
+    logSupabaseEnvIssue('Invalid Supabase URL detected', {
+      envName: found.name,
+      value: found.value,
+      nodeEnv: process.env.NODE_ENV,
+      vercel: Boolean(process.env.VERCEL),
+    })
+  } else {
+    logSupabaseEnvIssue('Missing Supabase URL environment variable', {
+      triedEnvNames: candidates,
+      nodeEnv: process.env.NODE_ENV,
+      vercel: Boolean(process.env.VERCEL),
+    })
   }
 
-  return url
+  return FALLBACK_SUPABASE_URL
 }
 
 export function getSupabaseAnonKey() {
-  const key = readEnvValue('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_ANON_KEY')
+  const candidates = ['NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_ANON_KEY']
+  const found = readEnvValue(...candidates)
 
-  if (!key) {
-    throw new Error('Missing Supabase anon key. Set NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_ANON_KEY) in your environment.')
+  if (found) {
+    return found.value
   }
 
-  return key
+  logSupabaseEnvIssue('Missing Supabase anon key environment variable', {
+    triedEnvNames: candidates,
+    nodeEnv: process.env.NODE_ENV,
+    vercel: Boolean(process.env.VERCEL),
+  })
+
+  return FALLBACK_SUPABASE_ANON_KEY
 }
 
 export function getSupabaseServiceRoleKey() {
-  const key = readEnvValue('SUPABASE_SERVICE_ROLE_KEY')
+  const found = readEnvValue('SUPABASE_SERVICE_ROLE_KEY')
 
-  if (!key) {
-    throw new Error('Missing Supabase service role key. Set SUPABASE_SERVICE_ROLE_KEY in your environment.')
+  if (found) {
+    return found.value
   }
 
-  return key
+  logSupabaseEnvIssue('Missing Supabase service role key environment variable', {
+    triedEnvNames: ['SUPABASE_SERVICE_ROLE_KEY'],
+    nodeEnv: process.env.NODE_ENV,
+    vercel: Boolean(process.env.VERCEL),
+  })
+
+  return FALLBACK_SUPABASE_SERVICE_ROLE_KEY
 }
