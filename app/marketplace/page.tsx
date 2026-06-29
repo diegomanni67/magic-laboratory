@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { Plus, Search, Filter, MapPin, Sparkles, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
 
 type MarketplaceProduct = {
   id: string
@@ -41,19 +40,22 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     const loadProducts = async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("marketplace_products")
-        .select(`*, users: user_id (name, country, city)`)
-        .order("created_at", { ascending: false })
-
-      if (!error) {
-        setProducts((data as MarketplaceProduct[]) ?? [])
+      try {
+        const response = await fetch("/api/marketplace")
+        const data = await response.json()
+        if (response.ok) {
+          setProducts((data.products as MarketplaceProduct[]) ?? [])
+        } else {
+          setError(data.error || "No se pudo cargar el marketplace")
+        }
+      } catch {
+        setError("No se pudo cargar el marketplace")
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
-    loadProducts()
+    void loadProducts()
   }, [])
 
   const filteredProducts = useMemo(() => {
@@ -74,35 +76,34 @@ export default function MarketplacePage() {
     setSubmitting(true)
     setError("")
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      const response = await fetch("/api/marketplace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: form.title,
+          description: form.description,
+          type: form.type,
+          price: form.type === "venta" && form.price ? Number(form.price) : null,
+          trade_preference: form.type === "canje" ? form.trade_preference : null,
+          image_url: form.image_url || null,
+        }),
+      })
 
-    if (!user) {
-      setError("Debes iniciar sesión para publicar")
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || "No se pudo publicar")
+      } else {
+        setForm({ title: "", description: "", type: "venta", price: "", trade_preference: "", image_url: "" })
+        setShowForm(false)
+        setProducts([data.product, ...products])
+      }
+    } catch {
+      setError("No se pudo publicar")
+    } finally {
       setSubmitting(false)
-      return
     }
-
-    const { error } = await supabase.from("marketplace_products").insert({
-      title: form.title,
-      description: form.description,
-      type: form.type,
-      price: form.type === "venta" && form.price ? Number(form.price) : null,
-      trade_preference: form.type === "canje" ? form.trade_preference : null,
-      image_url: form.image_url || null,
-      user_id: user.id,
-    })
-
-    if (error) {
-      setError(error.message)
-    } else {
-      setForm({ title: "", description: "", type: "venta", price: "", trade_preference: "", image_url: "" })
-      setShowForm(false)
-      const { data } = await supabase.from("marketplace_products").select(`*, users: user_id (name, country, city)`).order("created_at", { ascending: false })
-      setProducts((data as MarketplaceProduct[]) ?? [])
-    }
-
-    setSubmitting(false)
   }
 
   return (

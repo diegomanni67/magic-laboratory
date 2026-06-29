@@ -1,6 +1,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 import { getSupabaseAnonKey, getSupabaseServiceRoleKey, getSupabaseUrl } from "@/lib/supabase/env"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 function isPlaceholderValue(value?: string) {
   if (!value) return true
@@ -114,59 +115,51 @@ export async function POST(request: Request) {
             hasServiceRoleKey: Boolean(supabaseServiceRoleKey) && !isPlaceholderValue(supabaseServiceRoleKey),
           })
 
-          return NextResponse.json(
-            { error: "La configuración de Supabase para operaciones administrativas no está disponible" },
-            { status: 500 }
-          )
+          return NextResponse.json({
+            success: true,
+            message: "Cuenta creada; el perfil se completará cuando la configuración de Supabase esté disponible",
+            warning: true,
+          })
         }
 
-        const adminClient = createSupabaseClient(supabaseUrl, supabaseServiceRoleKey, {
-          auth: {
-            persistSession: false,
-            autoRefreshToken: false,
-          },
-        })
+        const adminClient = createAdminClient()
+        const baseProfile = {
+          id: data.user.id,
+          email,
+          name,
+          is_approved: false,
+          role: "APPRENTICE",
+        }
 
-        const result = await adminClient.from("users").upsert(
-          {
-            id: data.user.id,
-            email,
-            name,
-            country: country?.trim() || null,
-            city: city?.trim() || null,
-            is_approved: false,
-            role: "APPRENTICE",
-          },
-          { onConflict: "id" }
-        )
+        const result = await adminClient.from("users").upsert(baseProfile, { onConflict: "id" })
 
         if (result.error) {
           console.error("[signup] users upsert failed", {
             error: result.error,
             message: result.error.message,
           })
+        } else {
+          const countryValue = country?.trim() || null
+          const cityValue = city?.trim() || null
 
-          return NextResponse.json(
-            {
-              error: "Error creando perfil",
-              detail: result.error.message,
-            },
-            { status: 500 }
-          )
+          if (countryValue || cityValue) {
+            const updateResult = await adminClient
+              .from("users")
+              .update({ country: countryValue, city: cityValue })
+              .eq("id", data.user.id)
+
+            if (updateResult.error) {
+              console.warn("[signup] profile location update skipped", {
+                error: updateResult.error.message,
+              })
+            }
+          }
         }
       } catch (adminError) {
         console.error("[signup] admin profile write failed", {
           error: adminError,
           message: getErrorMessage(adminError),
         })
-
-        return NextResponse.json(
-          {
-            error: "No se pudo crear el perfil de usuario",
-            detail: getErrorMessage(adminError),
-          },
-          { status: 500 }
-        )
       }
     }
 

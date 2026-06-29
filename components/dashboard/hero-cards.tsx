@@ -173,6 +173,25 @@ export function HeroCards() {
         onClick={() => handleCardClick("/cronicas")}
       />
       <HeroCard
+        title="Marketplace"
+        tagline="Venta y Canje"
+        description="Publicá objetos, materiales o experiencias para vender o intercambiar con la comunidad de magos."
+        features={[
+          { icon: Users, label: "Comunidad" },
+          { icon: Sparkles, label: "Ventas" },
+          { icon: Star, label: "Canjes" },
+        ]}
+        icon={Users}
+        gradientFrom="from-emerald-500"
+        gradientTo="to-teal-600"
+        accentText="text-white"
+        accentBg="bg-emerald-500"
+        isHovered={hoveredCard === "marketplace"}
+        onHover={() => setHoveredCard("marketplace")}
+        onLeave={() => setHoveredCard(null)}
+        onClick={() => handleCardClick("/marketplace")}
+      />
+      <HeroCard
         title="Archivo Maestro"
         tagline="Curaduría de Excelencia"
         description="Lo mejor de la logia, seleccionado a mano: técnicas, materiales y relatos que vale la pena no perderse."

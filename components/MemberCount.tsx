@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useEffect, useState } from "react"
 
 export default function MemberCount() {
   const [count, setCount] = useState<number | null>(null)
@@ -9,20 +8,21 @@ export default function MemberCount() {
   useEffect(() => {
     async function fetchMemberCount() {
       try {
-        const supabase = createClient()
-        const { data, error } = await supabase.rpc('get_member_count')
-        if (!error && typeof data === 'number') {
-          setCount(data)
+        const response = await fetch("/api/member-count")
+        const data = await response.json()
+        if (response.ok && typeof data.count === "number") {
+          setCount(data.count)
         } else {
-          console.error('Error fetching member count:', error)
+          console.error("Error fetching member count:", data)
           setCount(0)
         }
       } catch (err) {
-        console.error('Error fetching member count:', err)
+        console.error("Error fetching member count:", err)
         setCount(0)
       }
     }
-    fetchMemberCount()
+
+    void fetchMemberCount()
   }, [])
 
   if (count === null) return null
