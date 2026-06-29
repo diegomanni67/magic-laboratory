@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function POST(request: Request) {
   try {
@@ -8,7 +8,7 @@ export async function POST(request: Request) {
 
     if (!email || !password || !name) {
       return NextResponse.json(
-        { error: 'Email, contraseña y nombre son obligatorios' },
+        { error: "Email, contraseña y nombre son obligatorios" },
         { status: 400 }
       )
     }
@@ -24,32 +24,66 @@ export async function POST(request: Request) {
     })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      console.error("SIGNUP ERROR:", error)
+      return NextResponse.json(
+        {
+          error: error.message,
+          full: error,
+        },
+        { status: 400 }
+      )
     }
 
     if (data.user) {
       try {
         const admin = createAdminClient()
-        await admin.from('users').upsert(
+
+        const result = await admin.from("users").upsert(
           {
             id: data.user.id,
             email,
             name,
             is_approved: false,
-            role: 'APPRENTICE',
+            role: "APPRENTICE",
           },
-          { onConflict: 'id' }
+          { onConflict: "id" }
         )
-      } catch {
-        // Profile may be created by DB trigger
+
+        if (result.error) {
+          console.error("UPSERT ERROR:", result.error)
+          return NextResponse.json(
+            {
+              error: "Error creando perfil",
+              full: result.error,
+            },
+            { status: 500 }
+          )
+        }
+      } catch (e: any) {
+        console.error("ADMIN ERROR:", e)
+
+        return NextResponse.json(
+          {
+            error: "Admin exception",
+            full: e?.message ?? e,
+          },
+          { status: 500 }
+        )
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: 'PRUEBA DIEGO 123456',
+      message: "Cuenta creada",
     })
-  } catch {
-    return NextResponse.json({ error: 'Error al registrar usuario' }, { status: 500 })
+  } catch (e: any) {
+    console.error(e)
+
+    return NextResponse.json(
+      {
+        error: e?.message ?? "Error desconocido",
+      },
+      { status: 500 }
+    )
   }
 }
