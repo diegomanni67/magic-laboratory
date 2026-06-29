@@ -65,4 +65,4 @@ export const config = {
     // Aplica el middleware a todas las rutas excepto archivos estáticos e imágenes
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-}
+}// Forzando reconstrucción de variables limpias
