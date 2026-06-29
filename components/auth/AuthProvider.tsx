@@ -15,12 +15,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        // Forzamos un perfil básico si hay sesión
         setProfile({
           id: session.user.id,
-          name: session.user.email?.split('@')[0],
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
           email: session.user.email,
-          role: 'ADMIN'
+          role: session.user.user_metadata?.role || 'APPRENTICE'
         })
       } else {
         setProfile(null)
@@ -34,9 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (session) {
         setProfile({
           id: session.user.id,
-          name: session.user.email?.split('@')[0],
+          name: session.user.user_metadata?.name || session.user.email?.split('@')[0],
           email: session.user.email,
-          role: 'ADMIN'
+          role: session.user.user_metadata?.role || 'APPRENTICE'
         })
       } else {
         setProfile(null)

@@ -1,5 +1,12 @@
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  return 'Error desconocido'
+}
 
 export async function POST(request: Request) {
   try {
@@ -12,25 +19,43 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = await createClient()
+    const supabaseUrl = getSupabaseUrl()
+    const supabaseAnonKey = getSupabaseAnonKey()
 
-    // Intentamos el login en Supabase
-    const { data, error } = await supabase.auth.signInWithPassword({ 
-      email, 
-      password 
+    const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     })
 
     if (error) {
+      console.error('[login] signInWithPassword failed', {
+        error,
+        message: error.message,
+      })
+
       return NextResponse.json({ error: error.message }, { status: 401 })
     }
 
-    // Login exitoso: respondemos que sí para que el frontend avance
     return NextResponse.json({
       success: true,
-      is_approved: true, // Forzamos esto en true
-      role: 'ADMIN',     // Te damos rol de admin para evitar bloqueos
+      user: data.user,
+      session: data.session,
+      is_approved: true,
+      role: 'APPRENTICE',
     })
-  } catch (err) {
-    return NextResponse.json({ error: 'Error al iniciar sesión' }, { status: 500 })
+  } catch (error) {
+    console.error('[login] login failed', {
+      error,
+      message: getErrorMessage(error),
+    })
+
+    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 })
   }
 }
