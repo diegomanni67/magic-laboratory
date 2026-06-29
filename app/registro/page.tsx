@@ -16,6 +16,8 @@ export default function RegistroPage() {
     lastName: "",
     email: "",
     password: "",
+    country: "",
+    city: "",
   })
 
   const router = useRouter()
@@ -44,6 +46,8 @@ export default function RegistroPage() {
           email: formData.email,
           password: formData.password,
           name,
+          country: formData.country.trim(),
+          city: formData.city.trim(),
         }),
       })
 
@@ -163,6 +167,33 @@ export default function RegistroPage() {
                   }
                   className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-white/30 focus:border-amber-500/50 focus:outline-none"
                   placeholder="Tu apellido"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1">
+                  País
+                </label>
+                <input
+                  type="text"
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-white/30 focus:border-amber-500/50 focus:outline-none"
+                  placeholder="Argentina"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-white/70 mb-1">
+                  Ciudad
+                </label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-white/30 focus:border-amber-500/50 focus:outline-none"
+                  placeholder="Buenos Aires"
                 />
               </div>
             </div>

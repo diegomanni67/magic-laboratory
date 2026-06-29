@@ -16,7 +16,13 @@ function getErrorMessage(error: unknown) {
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
-    const { email, password, name } = body as { email?: string; password?: string; name?: string }
+    const { email, password, name, country, city } = body as {
+      email?: string
+      password?: string
+      name?: string
+      country?: string
+      city?: string
+    }
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -64,7 +70,11 @@ export async function POST(request: Request) {
         email,
         password,
         options: {
-          data: { name },
+          data: {
+            name,
+            country: country?.trim() || null,
+            city: city?.trim() || null,
+          },
         },
       }))
     } catch (signUpError) {
@@ -122,6 +132,8 @@ export async function POST(request: Request) {
             id: data.user.id,
             email,
             name,
+            country: country?.trim() || null,
+            city: city?.trim() || null,
             is_approved: false,
             role: "APPRENTICE",
           },
