@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-// Lista de todos los miembros registrados (sin filtro de aprobación,
-// ya que el club actualmente no distingue entre aprobados y no aprobados
-// para la vista pública de la comunidad).
+// Lista pública de miembros aprobados.
 // Admin client porque la RLS de users solo permite leer el propio registro.
 // Lista blanca de columnas: nunca se expone email.
 export async function GET() {
@@ -12,6 +10,7 @@ export async function GET() {
   const { data, error } = await admin
     .from('users')
     .select('id, name, artistic_name, role, country, city, bio, instagram, youtube, avatar')
+    .eq('is_approved', true)
     .order('created_at', { ascending: false })
 
   if (error) {

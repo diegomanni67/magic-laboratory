@@ -1,13 +1,9 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
-import { getSupabaseAnonKey, getSupabaseUrl } from '@/lib/supabase/env'
+import { createClient } from '@/lib/supabase/server'
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message
-  if (typeof error === 'string') return error
-  return 'Error desconocido'
-}
-
+// Usa el server client de @supabase/ssr que sí setea las cookies de sesión
+// en la respuesta. Sin esto, el browser nunca recibe el token y el
+// AuthProvider siempre muestra "no hay sesión".
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json()
@@ -19,15 +15,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabaseUrl = getSupabaseUrl()
-    const supabaseAnonKey = getSupabaseAnonKey()
-
-    const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    })
+    const supabase = await createClient()
 
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -35,27 +23,18 @@ export async function POST(request: Request) {
     })
 
     if (error) {
-      console.error('[login] signInWithPassword failed', {
-        error,
-        message: error.message,
-      })
-
+      console.error('[login] signInWithPassword failed', { message: error.message })
       return NextResponse.json({ error: error.message }, { status: 401 })
     }
 
+    // Las cookies de sesión las setea automáticamente el server client de @supabase/ssr
     return NextResponse.json({
       success: true,
       user: data.user,
-      session: data.session,
-      is_approved: true,
-      role: 'APPRENTICE',
     })
   } catch (error) {
-    console.error('[login] login failed', {
-      error,
-      message: getErrorMessage(error),
-    })
-
-    return NextResponse.json({ error: getErrorMessage(error) }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Error desconocido'
+    console.error('[login] failed', { message })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
