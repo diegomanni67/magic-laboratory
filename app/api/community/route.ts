@@ -1,13 +1,22 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { getSupabaseUrl, getSupabaseServiceRoleKey } from '@/lib/supabase/env'
 
-// Lista de todos los miembros registrados (sin filtro de aprobación,
-// ya que el club actualmente no distingue entre aprobados y no aprobados
-// para la vista pública de la comunidad).
-// Admin client porque la RLS de users solo permite leer el propio registro.
-// Lista blanca de columnas: nunca se expone email.
 export async function GET() {
-  const admin = createAdminClient()
+  const url = getSupabaseUrl()
+  const serviceKey = getSupabaseServiceRoleKey()
+
+  // Si no hay service role key real, lo detectamos por el valor placeholder
+  if (!serviceKey || serviceKey === 'placeholder-service-role-key') {
+    return NextResponse.json(
+      { error: 'SUPABASE_SERVICE_ROLE_KEY no configurada en Vercel', members: [] },
+      { status: 500 }
+    )
+  }
+
+  const admin = createSupabaseClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
 
   const { data, error } = await admin
     .from('users')
@@ -15,7 +24,8 @@ export async function GET() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error('[community] Supabase error:', error.message)
+    return NextResponse.json({ error: error.message, members: [] }, { status: 500 })
   }
 
   return NextResponse.json({ members: data ?? [] })

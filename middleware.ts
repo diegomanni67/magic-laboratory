@@ -2,25 +2,29 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSupabaseAnonKey, getSupabaseUrl } from './lib/supabase/env'
 
+// Rutas que requieren sesión activa
+const PROTECTED_ROUTES = [
+  '/profile',
+  '/laboratorio',
+  '/marketplace',
+  '/cronicas',
+  '/archivo-maestro',
+  '/admin',
+  '/studio',
+  '/academy-forum',
+  '/studio-forum',
+]
+
+// Rutas que deben redirigir al home si ya hay sesión
+const AUTH_ROUTES = ['/login', '/registro']
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request: { headers: request.headers },
   })
 
   const url = getSupabaseUrl()
   const key = getSupabaseAnonKey()
-
-  if (!url || !key) {
-    console.error('[supabase] Middleware initialization skipped because env vars are missing', {
-      hasUrl: Boolean(url),
-      hasAnonKey: Boolean(key),
-      urlPreview: url ? url.slice(0, 40) : '(missing)',
-      nodeEnv: process.env.NODE_ENV,
-      vercel: Boolean(process.env.VERCEL),
-    })
-  }
 
   const supabase = createServerClient(
     url || 'https://placeholder.supabase.co',
@@ -31,54 +35,28 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          request.cookies.set({ name, value, ...options })
+          response = NextResponse.next({ request: { headers: request.headers } })
+          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          request.cookies.set({ name, value: '', ...options })
+          response = NextResponse.next({ request: { headers: request.headers } })
+          response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  // Esto refresca el token de sesión si es necesario
-  try {
-    await supabase.auth.getUser()
-  } catch (error) {
-    console.error('[supabase] Middleware auth check failed', {
-      error,
-      hasUrl: Boolean(url),
-      hasAnonKey: Boolean(key),
-      nodeEnv: process.env.NODE_ENV,
-      vercel: Boolean(process.env.VERCEL),
-    })
+  const { data: { user } } = await supabase.auth.getUser()
+
+  const path = request.nextUrl.pathname
+
+  // Si no hay sesión y la ruta es protegida → redirige al login
+  if (!user && PROTECTED_ROUTES.some((r) => path.startsWith(r))) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', path)
+    return NextResponse.redirect(loginUrl)
   }
 
   return response
@@ -86,7 +64,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Aplica el middleware a todas las rutas excepto archivos estáticos e imágenes
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-}// Forzando reconstrucción de variables limpias
+}
