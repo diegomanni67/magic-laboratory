@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
-// GET: usa el cliente admin para que el join users:user_id funcione
-// aunque la RLS de users no permita lectura anónima.
-// Solo exponemos name, country y city — nunca el email.
 export async function GET() {
-  const admin = createAdminClient()
-  const { data, error } = await admin
+  const supabase = await createClient()
+  const { data, error } = await supabase
     .from('marketplace_products')
     .select('id, title, description, type, price, trade_preference, image_url, created_at, user_id, users:user_id (name, country, city)')
     .order('created_at', { ascending: false })

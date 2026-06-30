@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, User } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthProvider'
 
 export default function Header() {
@@ -22,18 +22,24 @@ export default function Header() {
           </div>
 
           {/* Menú Desktop */}
-          <div className="hidden md:flex space-x-8 items-center">
+          <div className="hidden md:flex space-x-6 items-center">
             <Link href="/" className="hover:text-amber-300 transition-colors">
               Inicio
             </Link>
-            
-            {/* Lógica de Autenticación Desktop */}
+            <Link href="/community" className="hover:text-amber-300 transition-colors">
+              Comunidad
+            </Link>
+
             {profile ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-amber-200 font-medium">
-                  Hola, {profile.name || 'Mago'}
-                </span>
-                <button 
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/profile"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-800/60 hover:bg-amber-700/60 transition-colors text-sm"
+                >
+                  <User className="size-4" />
+                  {profile.name || 'Mi perfil'}
+                </Link>
+                <button
                   onClick={signOut}
                   className="px-4 py-2 text-sm bg-red-800 hover:bg-red-700 rounded-xl transition-colors"
                 >
@@ -41,8 +47,8 @@ export default function Header() {
                 </button>
               </div>
             ) : (
-              <Link 
-                href="/login" 
+              <Link
+                href="/login"
                 className="px-4 py-2 text-sm bg-amber-700 hover:bg-amber-600 rounded-xl transition-colors"
               >
                 Unirse
@@ -65,20 +71,32 @@ export default function Header() {
       {/* Menú Mobile Desplegable */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-amber-900 px-2 pt-2 pb-3 space-y-1 sm:px-3">
-          <Link 
-            href="/" 
+          <Link
+            href="/"
+            onClick={() => setIsMobileMenuOpen(false)}
             className="block px-3 py-2 rounded-md text-base font-medium hover:bg-amber-800 transition-colors"
           >
             Inicio
           </Link>
-          
-          {/* Lógica de Autenticación Mobile */}
+          <Link
+            href="/community"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-base font-medium hover:bg-amber-800 transition-colors"
+          >
+            Comunidad
+          </Link>
+
           {profile ? (
             <div className="pt-4 border-t border-amber-800">
-              <div className="px-3 py-2 text-amber-200 font-medium">
-                Hola, {profile.name || 'Mago'}
-              </div>
-              <button 
+              <Link
+                href="/profile"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-amber-200 font-medium hover:bg-amber-800 rounded-md transition-colors"
+              >
+                <User className="size-4" />
+                {profile.name || 'Mi perfil'}
+              </Link>
+              <button
                 onClick={signOut}
                 className="w-full text-left mt-2 px-3 py-2 text-base font-medium text-red-200 hover:bg-amber-800 rounded-md transition-colors"
               >
@@ -86,8 +104,9 @@ export default function Header() {
               </button>
             </div>
           ) : (
-            <Link 
-              href="/login" 
+            <Link
+              href="/login"
+              onClick={() => setIsMobileMenuOpen(false)}
               className="block mt-4 px-3 py-2 text-center text-base font-medium bg-amber-700 hover:bg-amber-600 rounded-xl transition-colors"
             >
               Unirse

@@ -1,226 +1,136 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { 
-  Users, 
-  Search, 
-  ArrowLeft,
-  Sparkles
-} from "lucide-react"
-import { mockStudents, getCurrentUserInterests } from "@/lib/mock-data"
+import { ArrowLeft, Instagram, MapPin, Search, Sparkles, User, Users, Youtube } from "lucide-react"
 
-// Intereses del usuario actual para filtro "Mis gustos"
-const currentUserInterests = getCurrentUserInterests()
+type Member = {
+  id: string
+  name: string | null
+  artistic_name: string | null
+  role: string | null
+  country: string | null
+  city: string | null
+  bio: string | null
+  instagram: string | null
+  youtube: string | null
+  avatar: string | null
+}
 
 export default function CommunityPage() {
-  const router = useRouter()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeFilter, setActiveFilter] = useState("all")
-  const [connections, setConnections] = useState<string[]>([])
+  const [members, setMembers] = useState<Member[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState("")
 
-  const filteredStudents = mockStudents.filter(student => {
-    const allInterests = [...student.interesesGenerales, ...student.interesesEspecificos]
-    const matchesSearch = student.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         allInterests.some(interest => 
-                           interest.toLowerCase().includes(searchTerm.toLowerCase())
-                         )
-    
-    let matchesFilter = true
-    if (activeFilter === "academy") {
-      matchesFilter = student.rango.includes("Academy")
-    } else if (activeFilter === "studio") {
-      matchesFilter = student.rango.includes("Studio")
-    } else if (activeFilter === "my-tastes") {
-      matchesFilter = allInterests.some(interest => 
-        currentUserInterests.includes(interest)
-      )
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch("/api/community")
+        const data = await res.json()
+        setMembers(data.members ?? [])
+      } catch {
+        setMembers([])
+      } finally {
+        setLoading(false)
+      }
     }
-    
-    return matchesSearch && matchesFilter
+    void load()
+  }, [])
+
+  const filtered = members.filter((m) => {
+    const q = search.toLowerCase()
+    return (
+      (m.name ?? "").toLowerCase().includes(q) ||
+      (m.artistic_name ?? "").toLowerCase().includes(q) ||
+      (m.city ?? "").toLowerCase().includes(q) ||
+      (m.country ?? "").toLowerCase().includes(q) ||
+      (m.role ?? "").toLowerCase().includes(q)
+    )
   })
 
-  const handleViewProfile = (studentId: string) => {
-    router.push(`/profile/${studentId}`)
-  }
-
-  const handleConnect = (studentId: string) => {
-    setConnections(prev => [...prev, studentId])
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.back()}
-                className="p-2 rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
-                  <Users className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex items-center gap-6">
-                  <div>
-                    <h1 className="text-xl font-bold text-gray-900">Comunidad</h1>
-                    <p className="text-sm text-gray-500">{mockStudents.length} miembros</p>
-                  </div>
-                  <Link
-                    href="/laboratorio"
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>Laboratorio</span>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#0a0f1e] text-white">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <Link href="/" className="mb-6 inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
+          <ArrowLeft className="size-4" />
+          Volver al inicio
+        </Link>
+
+        <div className="mb-8">
+          <p className="text-sm uppercase tracking-[0.3em] text-amber-400">Comunidad</p>
+          <h1 className="flex items-center gap-3 text-3xl font-semibold">
+            <Users className="size-7 text-amber-300" />
+            Miembros del Laboratorio
+          </h1>
+          <p className="mt-2 text-white/50">
+            {loading ? "Cargando..." : `${members.length} ilusionistas en la comunidad`}
+          </p>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            {/* Search */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 w-4 h-4 text-gray-400 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre o interés..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-300 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
-              />
-            </div>
-
-            {/* Quick Filters */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveFilter("all")}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  activeFilter === "all"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Todos
-              </button>
-              <button
-                onClick={() => setActiveFilter("academy")}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  activeFilter === "academy"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Academy
-              </button>
-              <button
-                onClick={() => setActiveFilter("studio")}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  activeFilter === "studio"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Studio
-              </button>
-              <button
-                onClick={() => setActiveFilter("my-tastes")}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                  activeFilter === "my-tastes"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                Mis gustos
-              </button>
-            </div>
-
-            <div className="text-sm text-gray-500">
-              {filteredStudents.length} resultados
-            </div>
-          </div>
+        {/* Buscador */}
+        <div className="mb-8 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 max-w-md">
+          <Search className="size-4 shrink-0 text-white/40" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, ciudad, rol..."
+            className="w-full bg-transparent text-sm outline-none placeholder:text-white/30"
+          />
         </div>
-      </div>
 
-      {/* Members Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {filteredStudents.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-              <Search className="w-6 h-6 text-gray-400" />
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No se encontraron miembros
-            </h3>
-            <p className="text-sm text-gray-500">
-              Intenta ajustar los filtros de búsqueda
-            </p>
+        {loading ? (
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-white/40">
+            Cargando miembros...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-white/40">
+            No se encontraron miembros.
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredStudents.map((student) => (
-              <div key={student.id} className="bg-white p-6 rounded-2xl border border-gray-200">
-                {/* Avatar */}
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-400 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <span className="text-white text-xl font-bold">{student.nombre.charAt(0)}</span>
-                </div>
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((member) => {
+              const displayName = member.artistic_name || member.name || "Mago"
+              return (
+                <Link
+                  key={member.id}
+                  href={`/profile/${member.id}`}
+                  className="group rounded-3xl border border-white/10 bg-white/5 p-5 transition hover:border-amber-500/40 hover:bg-white/10"
+                >
+                  {/* Avatar */}
+                  <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-2xl font-bold shadow-lg">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
 
-                {/* Name and Rank */}
-                <h3 className="font-bold text-gray-900 text-center mb-1">{student.nombre}</h3>
-                <p className="text-sm text-gray-500 text-center mb-4">{student.rango} {student.nivel}</p>
+                  <h3 className="font-semibold text-white group-hover:text-amber-300 transition-colors">
+                    {displayName}
+                  </h3>
 
-                {/* Interests */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {[...student.interesesGenerales, ...student.interesesEspecificos].slice(0, 3).map((interest, index) => (
-                    <span
-                      key={index}
-                      className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium"
-                    >
-                      {interest}
-                    </span>
-                  ))}
-                  {[...student.interesesGenerales, ...student.interesesEspecificos].length > 3 && (
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
-                      +{[...student.interesesGenerales, ...student.interesesEspecificos].length - 3}
-                    </span>
-                  )}
-                </div>
+                  {member.artistic_name && member.name ? (
+                    <p className="text-xs text-white/40">{member.name}</p>
+                  ) : null}
 
-                {/* Location */}
-                <p className="text-xs text-gray-400 text-center mb-4">{student.ubicacion}</p>
+                  <p className="mt-1 text-xs font-medium text-amber-400/80">{member.role || "APPRENTICE"}</p>
 
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <Link
-                    href={`/profile/${student.id}`}
-                    className="flex-1 px-3 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium hover:bg-purple-700 transition-colors text-center"
-                  >
-                    Ver Perfil
-                  </Link>
-                  <button
-                    onClick={() => handleConnect(student.id)}
-                    disabled={connections.includes(student.id)}
-                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                      connections.includes(student.id)
-                        ? "bg-green-500 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    {connections.includes(student.id) ? "Conectado" : "Conectar"}
-                  </button>
-                </div>
-              </div>
-            ))}
+                  {(member.city || member.country) ? (
+                    <div className="mt-2 flex items-center gap-1 text-xs text-white/40">
+                      <MapPin className="size-3 shrink-0" />
+                      <span>{[member.city, member.country].filter(Boolean).join(", ")}</span>
+                    </div>
+                  ) : null}
+
+                  {member.bio ? (
+                    <p className="mt-3 line-clamp-2 text-xs text-white/50">{member.bio}</p>
+                  ) : null}
+
+                  {(member.instagram || member.youtube) ? (
+                    <div className="mt-3 flex items-center gap-2">
+                      {member.instagram ? <Instagram className="size-3.5 text-pink-400" /> : null}
+                      {member.youtube ? <Youtube className="size-3.5 text-red-400" /> : null}
+                    </div>
+                  ) : null}
+                </Link>
+              )
+            })}
           </div>
         )}
       </div>
