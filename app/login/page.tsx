@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { Mail, Eye, EyeOff, Wand2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 function LoginForm() {
   const router = useRouter()
@@ -21,28 +22,25 @@ function LoginForm() {
     setIsLoading(true)
     setError('')
 
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
+    // Login directo con el cliente de browser — guarda la sesión
+    // en localStorage automáticamente y el AuthProvider la detecta.
+    const supabase = createClient()
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        setError(data.error || 'Credenciales incorrectas')
-        return
-      }
-
-      // Login exitoso: siempre redirigir
-      router.push(redirect)
-      router.refresh()
-    } catch {
-      setError('Error al iniciar sesión')
-    } finally {
+    if (authError) {
+      setError(authError.message === 'Invalid login credentials'
+        ? 'Email o contraseña incorrectos'
+        : authError.message)
       setIsLoading(false)
+      return
     }
+
+    // Sesión guardada — redirigir
+    router.push(redirect)
+    router.refresh()
   }
 
   return (

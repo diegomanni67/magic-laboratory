@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
-// Ruta pública: cualquiera puede ver el perfil artístico de un usuario.
-// Por seguridad usamos el cliente admin (service role) SOLO en el servidor
-// y seleccionamos explícitamente una lista blanca de columnas seguras.
-// El email y cualquier otro dato sensible NUNCA se incluyen en el select,
-// así que jamás pueden filtrarse por accidente al cliente.
+// Usa server client normal — la policy "Public can read basic profile fields"
+// permite SELECT a todos. Columnas seguras únicamente, sin email.
 const PUBLIC_FIELDS =
   'id, name, artistic_name, role, country, city, bio, instagram, youtube, phone, avatar, is_approved'
 
@@ -20,9 +17,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: 'ID inválido' }, { status: 400 })
   }
 
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
-  const { data: profile, error: profileError } = await admin
+  const { data: profile, error: profileError } = await supabase
     .from('users')
     .select(PUBLIC_FIELDS)
     .eq('id', id)
@@ -36,8 +33,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     return NextResponse.json({ error: 'Perfil no encontrado' }, { status: 404 })
   }
 
-  // Productos publicados por este usuario en el marketplace (tabla pública)
-  const { data: products } = await admin
+  const { data: products } = await supabase
     .from('marketplace_products')
     .select('id, title, description, type, price, trade_preference, image_url, created_at')
     .eq('user_id', id)
