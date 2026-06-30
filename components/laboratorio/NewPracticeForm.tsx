@@ -49,6 +49,7 @@ export function NewPracticeForm({
         author_role: profile.role ?? "MEMBER",
         technique_category: category,
         difficulty_level: level,
+        user_id: profile.id,
       })
       .select()
       .single()

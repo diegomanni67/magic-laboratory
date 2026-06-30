@@ -2,11 +2,17 @@
 
 import { ReactNode } from 'react'
 import { AuthProvider } from '@/components/auth/AuthProvider'
+import { Toaster } from '@/components/ui/sonner'
 
 interface ProvidersProps {
   children: ReactNode
 }
 
 export function Providers({ children }: ProvidersProps) {
-  return <AuthProvider>{children}</AuthProvider>
+  return (
+    <AuthProvider>
+      {children}
+      <Toaster position="top-right" richColors />
+    </AuthProvider>
+  )
 }

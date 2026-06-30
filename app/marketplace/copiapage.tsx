@@ -181,15 +181,7 @@ export default function MarketplacePage() {
                     <MapPin className="size-4" />
                     <span>{product.users?.city || "Ubicación no disponible"}, {product.users?.country || ""}</span>
                   </div>
-                  <div className="text-sm text-white/70">
-                    Vendedor:{" "}
-                    <Link
-                      href={`/profile/${product.user_id}`}
-                      className="font-medium text-amber-400 hover:underline cursor-pointer"
-                    >
-                      {product.users?.name || "Usuario"}
-                    </Link>
-                  </div>
+                  <div className="text-sm text-white/70">Vendedor: {product.users?.name || "Usuario"}</div>
                 </div>
               </article>
             ))}

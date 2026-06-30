@@ -20,6 +20,7 @@ export interface PracticeVideo {
   video_url: string
   author: string
   author_email: string
+  user_id?: string | null
   technique_category: string
   difficulty_level: string
   created_at: string
@@ -179,8 +180,18 @@ export function PracticeCard({ video }: { video: PracticeVideo }) {
         <h3 className="text-lg font-bold text-white mb-1">{video.title}</h3>
         <p className="text-sm text-white/60 mb-3">{video.description}</p>
         <p className="text-xs text-white/40 mb-4">
-          Por <span className="text-white/70">{video.author}</span> ·{" "}
-          {new Date(video.created_at).toLocaleDateString("es-AR")}
+          Por{" "}
+          {video.user_id ? (
+            <a
+              href={`/profile/${video.user_id}`}
+              className="text-amber-400 hover:underline cursor-pointer"
+            >
+              {video.author}
+            </a>
+          ) : (
+            <span className="text-white/70">{video.author}</span>
+          )}{" "}
+          · {new Date(video.created_at).toLocaleDateString("es-AR")}
         </p>
 
         <div className="flex gap-2">
