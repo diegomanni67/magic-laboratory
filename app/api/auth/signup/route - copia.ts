@@ -67,10 +67,7 @@ export async function POST(request: Request) {
     let error
 
     try {
-      ;({
-        data,
-        error,
-      } = await publicClient.auth.signUp({
+      ;({ data, error } = await publicClient.auth.signUp({
         email,
         password,
         options: {
@@ -126,18 +123,15 @@ export async function POST(request: Request) {
         }
 
         const adminClient = createAdminClient()
-
         const baseProfile = {
           id: data.user.id,
           email,
           name,
-          is_approved: true,
-          role: "USER",
+          is_approved: false,
+          role: "APPRENTICE",
         }
 
-        const result = await adminClient
-          .from("users")
-          .upsert(baseProfile, { onConflict: "id" })
+        const result = await adminClient.from("users").upsert(baseProfile, { onConflict: "id" })
 
         if (result.error) {
           console.error("[signup] users upsert failed", {
@@ -151,10 +145,7 @@ export async function POST(request: Request) {
           if (countryValue || cityValue) {
             const updateResult = await adminClient
               .from("users")
-              .update({
-                country: countryValue,
-                city: cityValue,
-              })
+              .update({ country: countryValue, city: cityValue })
               .eq("id", data.user.id)
 
             if (updateResult.error) {
