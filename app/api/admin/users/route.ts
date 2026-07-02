@@ -2,30 +2,23 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-async function requireAdmin() {
+export async function GET() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return { error: NextResponse.json({ error: 'No autenticado' }, { status: 401 }) }
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
+  const { data: currentUser } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'ADMIN') {
-    return { error: NextResponse.json({ error: 'Acceso denegado' }, { status: 403 }) }
+  if (currentUser?.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
-
-  return { user }
-}
-
-export async function GET() {
-  const auth = await requireAdmin()
-  if ('error' in auth && auth.error) return auth.error
 
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -41,22 +34,29 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await requireAdmin()
-  if ('error' in auth && auth.error) return auth.error
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const { userId, is_approved } = await request.json()
-
-  if (!userId || typeof is_approved !== 'boolean') {
-    return NextResponse.json(
-      { error: 'userId e is_approved son obligatorios' },
-      { status: 400 }
-    )
+  if (!user) {
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
+
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (currentUser?.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
+
+  const { userId, is_approved, role } = await request.json()
 
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('users')
-    .update({ is_approved, updated_at: new Date().toISOString() })
+    .update({ is_approved, role })
     .eq('id', userId)
     .select('id, email, name, role, is_approved')
     .single()

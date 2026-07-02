@@ -6,14 +6,18 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.json({ profile: null })
+    return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('users')
-    .select('id, email, name, role, is_approved, country, city, artistic_name, bio, instagram, youtube, phone')
+    .select('id, email, name, role, is_approved, country, city, artistic_name, bio, instagram, youtube, phone, avatar')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  return NextResponse.json({ profile: profile ?? null })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ profile })
 }

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// Pequeños límites de cordura para no guardar basura/strings gigantes
 const MAX_TEXT = 160
 const MAX_BIO = 1000
 
@@ -21,17 +20,10 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const {
-    country,
-    city,
-    artistic_name,
-    bio,
-    instagram,
-    youtube,
-    phone,
-  } = body as {
+  const { country, city, name, artistic_name, bio, instagram, youtube, phone } = body as {
     country?: string
     city?: string
+    name?: string
     artistic_name?: string
     bio?: string
     instagram?: string
@@ -39,9 +31,8 @@ export async function PATCH(request: Request) {
     phone?: string
   }
 
-  // Solo actualizamos los campos que vinieron en el body, para no pisar
-  // datos existentes (ej. si el form de ubicación llama a este mismo endpoint).
   const updatePayload: Record<string, string | null> = {}
+  if (name !== undefined) updatePayload.name = clean(name, MAX_TEXT)
   if (country !== undefined) updatePayload.country = clean(country, MAX_TEXT)
   if (city !== undefined) updatePayload.city = clean(city, MAX_TEXT)
   if (artistic_name !== undefined) updatePayload.artistic_name = clean(artistic_name, MAX_TEXT)
@@ -54,8 +45,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Nada para actualizar' }, { status: 400 })
   }
 
-  // RLS ("Users can update own profile") ya garantiza auth.uid() = id,
-  // el .eq('id', user.id) es una segunda barrera explícita en el código.
   const { data, error } = await supabase
     .from('users')
     .update(updatePayload)
