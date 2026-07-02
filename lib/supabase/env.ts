@@ -7,25 +7,20 @@ function logSupabaseEnvIssue(message: string, details: Record<string, unknown>) 
 }
 
 function readEnvValue(...names: string[]) {
-  console.log('[ENV DEBUG]', {
-    names,
-    NODE_ENV: process.env.NODE_ENV,
-    VERCEL: process.env.VERCEL,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '[PRESENTE]' : undefined,
-    SUPABASE_URL: process.env.SUPABASE_URL,
-    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? '[PRESENTE]' : undefined,
-  })
-
   for (const name of names) {
-    const value = process.env[name]?.trim().replace(/^['"]|['"]$/g, '')
-    if (value) {
-      console.log('[ENV DEBUG] Encontrada:', name)
-      return { name, value }
+    const raw = process.env[name]
+
+    console.log('[CHECK]', name, raw)
+
+    if (typeof raw === 'string') {
+      const value = raw.trim().replace(/^['"]|['"]$/g, '')
+
+      if (value.length > 0) {
+        console.log('[FOUND]', name)
+        return { name, value }
+      }
     }
   }
-
-  console.log('[ENV DEBUG] No se encontró ninguna variable de:', names)
 
   return undefined
 }
