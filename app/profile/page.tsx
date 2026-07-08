@@ -43,6 +43,7 @@ export default function ProfilePage() {
   const [checkingSession, setCheckingSession] = useState(true)
 
   const [form, setForm] = useState({
+    name: "",
     artistic_name: "",
     bio: "",
     instagram: "",
@@ -60,6 +61,7 @@ export default function ProfilePage() {
     setProfile(data.profile)
     if (data.profile) {
       setForm({
+        name: data.profile.name || "",
         artistic_name: data.profile.artistic_name || "",
         bio: data.profile.bio || "",
         instagram: data.profile.instagram || "",
@@ -196,6 +198,17 @@ export default function ProfilePage() {
               </p>
 
               <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-white/70">Nombre real</label>
+                  <input
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Ej: Juan Pérez"
+                    maxLength={160}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                  />
+                </div>
+
                 <div>
                   <label className="mb-1 block text-sm font-medium text-white/70">Nombre artístico</label>
                   <input
