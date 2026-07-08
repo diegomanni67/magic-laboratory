@@ -7,7 +7,6 @@ import { toast } from "sonner"
 import {
   ArrowLeft,
   BadgeCheck,
-  Camera,
   ExternalLink,
   FlaskConical,
   Instagram,
@@ -19,7 +18,6 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { LocationEditor } from "@/components/profile/LocationEditor"
-import { UserAvatar } from "@/components/profile/UserAvatar"
 
 type ProfileData = {
   id: string
@@ -36,7 +34,7 @@ type ProfileData = {
   phone: string | null
   studies: string | null
   teacher: string | null
-  avatar_url: string | null
+  avatar: string | null
 }
 
 export default function ProfilePage() {
@@ -56,6 +54,7 @@ export default function ProfilePage() {
     teacher: "",
   })
   const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const loadProfile = async () => {
     setLoading(true)
@@ -121,6 +120,35 @@ export default function ProfilePage() {
     }
   }
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUploadingAvatar(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch("/api/avatar", {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "No se pudo subir la foto")
+        return
+      }
+
+      toast.success("Foto de perfil actualizada")
+      void loadProfile()
+    } catch {
+      toast.error("No se pudo subir la foto. Probá de nuevo.")
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
   if (checkingSession || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0f1e] text-white/70">
@@ -164,7 +192,9 @@ export default function ProfilePage() {
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-center gap-4">
-                <AvatarUploader profile={profile} onUploaded={loadProfile} />
+                <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600">
+                  <Sparkles className="size-7" />
+                </div>
                 <div>
                   <h1 className="text-2xl font-semibold">{profile.artistic_name || profile.name || "Usuario"}</h1>
                   <p className="text-sm text-white/50">{profile.email}</p>
@@ -345,71 +375,5 @@ export default function ProfilePage() {
         </div>
       </div>
     </div>
-  )
-}
-
-// ─── Componente interno: selector de avatar ───────────────────────────────────
-function AvatarUploader({
-  profile,
-  onUploaded,
-}: {
-  profile: { id: string; name: string | null; artistic_name: string | null; avatar_url: string | null }
-  onUploaded: () => void
-}) {
-  const [uploading, setUploading] = useState(false)
-  const inputRef = useState<HTMLInputElement | null>(null)
-  const displayName = profile.artistic_name || profile.name || "?"
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append("avatar", file)
-
-      const res = await fetch("/api/avatar", { method: "POST", body: formData })
-      const data = await res.json()
-
-      if (!res.ok) {
-        toast.error(data.error || "Error al subir la foto")
-        return
-      }
-
-      toast.success("Foto de perfil actualizada ✨")
-      onUploaded()
-    } catch {
-      toast.error("Error al subir la foto")
-    } finally {
-      setUploading(false)
-      // Resetear el input para poder subir la misma foto de nuevo
-      e.target.value = ""
-    }
-  }
-
-  return (
-    <label className="group relative cursor-pointer">
-      <UserAvatar
-        name={displayName}
-        avatarUrl={profile.avatar_url}
-        size="lg"
-        className="ring-2 ring-white/10 transition group-hover:ring-amber-500/50"
-      />
-      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition group-hover:opacity-100">
-        {uploading ? (
-          <div className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-        ) : (
-          <Camera className="size-5 text-white" />
-        )}
-      </div>
-      <input
-        type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp"
-        className="sr-only"
-        onChange={handleFile}
-        disabled={uploading}
-      />
-    </label>
   )
 }
