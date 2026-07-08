@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { HeroCards } from '@/components/dashboard/hero-cards'
 import MemberCount from '@/components/MemberCount'
+import ProfileCompletion from '@/components/ProfileCompletion'
 import { Sparkles, Wand2, Users, ArrowRight, Eye } from 'lucide-react'
 
 export default function HomePage() {
@@ -43,6 +44,9 @@ export default function HomePage() {
 
           {/* Member Count */}
           <MemberCount />
+
+          {/* Profile Completion Banner */}
+          <ProfileCompletion />
 
           {/* Subtitle */}
           <p className="text-xl text-white/50 max-w-2xl mb-10">

@@ -20,7 +20,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}))
-  const { country, city, name, artistic_name, bio, instagram, youtube, phone } = body as {
+  const { country, city, name, artistic_name, bio, instagram, youtube, phone, studies, teacher } = body as {
     country?: string
     city?: string
     name?: string
@@ -29,6 +29,8 @@ export async function PATCH(request: Request) {
     instagram?: string
     youtube?: string
     phone?: string
+    studies?: string
+    teacher?: string
   }
 
   const updatePayload: Record<string, string | null> = {}
@@ -40,6 +42,8 @@ export async function PATCH(request: Request) {
   if (instagram !== undefined) updatePayload.instagram = clean(instagram, MAX_TEXT)
   if (youtube !== undefined) updatePayload.youtube = clean(youtube, MAX_TEXT)
   if (phone !== undefined) updatePayload.phone = clean(phone, MAX_TEXT)
+  if (studies !== undefined) updatePayload.studies = clean(studies, MAX_TEXT)
+  if (teacher !== undefined) updatePayload.teacher = clean(teacher, MAX_TEXT)
 
   if (Object.keys(updatePayload).length === 0) {
     return NextResponse.json({ error: 'Nada para actualizar' }, { status: 400 })
@@ -49,7 +53,7 @@ export async function PATCH(request: Request) {
     .from('users')
     .update(updatePayload)
     .eq('id', user.id)
-    .select('id, email, name, role, country, city, artistic_name, bio, instagram, youtube, phone')
+    .select('id, email, name, role, country, city, artistic_name, bio, instagram, youtube, phone, studies, teacher')
     .single()
 
   if (error) {

@@ -32,6 +32,8 @@ type ProfileData = {
   instagram: string | null
   youtube: string | null
   phone: string | null
+  studies: string | null
+  teacher: string | null
 }
 
 export default function ProfilePage() {
@@ -46,6 +48,8 @@ export default function ProfilePage() {
     instagram: "",
     youtube: "",
     phone: "",
+    studies: "",
+    teacher: "",
   })
   const [saving, setSaving] = useState(false)
 
@@ -61,6 +65,8 @@ export default function ProfilePage() {
         instagram: data.profile.instagram || "",
         youtube: data.profile.youtube || "",
         phone: data.profile.phone || "",
+        studies: data.profile.studies || "",
+        teacher: data.profile.teacher || "",
       })
     }
     setLoading(false)
@@ -252,6 +258,28 @@ export default function ProfilePage() {
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     placeholder="Ej: 5491122334455 (con código de país, sin espacios)"
+                    maxLength={160}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-white/70">Estudios mágicos</label>
+                  <input
+                    value={form.studies}
+                    onChange={(e) => setForm({ ...form, studies: e.target.value })}
+                    placeholder="Ej: Escuela de Magia de Buenos Aires, Card College, etc."
+                    maxLength={160}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-white/70">Profesor / Mentor</label>
+                  <input
+                    value={form.teacher}
+                    onChange={(e) => setForm({ ...form, teacher: e.target.value })}
+                    placeholder="Ej: Juan Tamariz, Dai Vernon, etc."
                     maxLength={160}
                     className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
                   />
