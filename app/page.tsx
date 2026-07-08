@@ -5,18 +5,62 @@
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useEffect, useState } from 'react'
 import { HeroCards } from '@/components/dashboard/hero-cards'
 import MemberCount from '@/components/MemberCount'
 import ProfileCompletion from '@/components/ProfileCompletion'
-import { Sparkles, Wand2, Users, ArrowRight, Eye } from 'lucide-react'
+import { Sparkles, Wand2, Users, ArrowRight, Eye, Trophy, Timer } from 'lucide-react'
+
+type Challenge = {
+  id: string
+  title: string
+  description: string
+  end_date: string
+}
 
 export default function HomePage() {
   const router = useRouter()
+  const [challenge, setChallenge] = useState<Challenge | null>(null)
+  const [loadingChallenge, setLoadingChallenge] = useState(true)
+
+  useEffect(() => {
+    async function loadChallenge() {
+      try {
+        const res = await fetch("/api/challenges")
+        const data = await res.json()
+        setChallenge(data.challenge)
+      } catch (error) {
+        console.error("Error loading challenge:", error)
+      } finally {
+        setLoadingChallenge(false)
+      }
+    }
+    loadChallenge()
+  }, [])
 
   const handleCardClick = (destination: string) => {
     // VERSIÓN LOCAL ABIERTA - ACCESO DIRECTO
     router.push(destination)
   }
+
+  const getTimeRemaining = (endDate: string) => {
+    const total = Date.parse(endDate) - Date.parse(new Date().toISOString())
+    const days = Math.floor(total / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((total / (1000 * 60 * 60)) % 24)
+    return { days, hours, total }
+  }
+
+  const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, total: 0 })
+
+  useEffect(() => {
+    if (challenge) {
+      const timer = setInterval(() => {
+        setTimeRemaining(getTimeRemaining(challenge.end_date))
+      }, 1000)
+      setTimeRemaining(getTimeRemaining(challenge.end_date))
+      return () => clearInterval(timer)
+    }
+  }, [challenge])
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] flex flex-col justify-center">
@@ -47,6 +91,44 @@ export default function HomePage() {
 
           {/* Profile Completion Banner */}
           <ProfileCompletion />
+
+          {/* Challenge Banner */}
+          {!loadingChallenge && challenge && timeRemaining.total > 0 && (
+            <Link
+              href="/desafios"
+              className="w-full max-w-4xl mx-auto mt-6 rounded-3xl border border-purple-500/30 bg-gradient-to-r from-purple-900/30 to-pink-900/20 p-6 shadow-2xl shadow-purple-900/30 hover:border-purple-400/50 transition-all group"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-2xl shadow-lg">
+                    🏆
+                  </div>
+                  <div className="text-left">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Trophy className="size-4 text-purple-300" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-purple-300">
+                        Desafío Semanal
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-white group-hover:text-purple-200 transition-colors">
+                      {challenge.title}
+                    </h3>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 rounded-2xl border border-purple-500/20 bg-purple-500/10 px-4 py-2">
+                    <Timer className="size-4 text-purple-300" />
+                    <div className="text-sm">
+                      <span className="font-bold text-purple-300">{timeRemaining.days}d</span>
+                      <span className="text-white/50 mx-1">:</span>
+                      <span className="font-bold text-purple-300">{timeRemaining.hours}h</span>
+                    </div>
+                  </div>
+                  <ArrowRight className="size-5 text-purple-300 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          )}
 
           {/* Subtitle */}
           <p className="text-xl text-white/50 max-w-2xl mb-10">

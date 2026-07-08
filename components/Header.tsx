@@ -29,6 +29,9 @@ export default function Header() {
             <Link href="/community" className="hover:text-amber-300 transition-colors">
               Comunidad
             </Link>
+            <Link href="/desafios" className="hover:text-amber-300 transition-colors">
+              Desafíos 🏆
+            </Link>
 
             {profile ? (
               <div className="flex items-center gap-3">
@@ -84,6 +87,13 @@ export default function Header() {
             className="block px-3 py-2 rounded-md text-base font-medium hover:bg-amber-800 transition-colors"
           >
             Comunidad
+          </Link>
+          <Link
+            href="/desafios"
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="block px-3 py-2 rounded-md text-base font-medium hover:bg-amber-800 transition-colors"
+          >
+            Desafíos 🏆
           </Link>
 
           {profile ? (
