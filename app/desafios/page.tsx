@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { ArrowLeft, Sparkles, Timer, Video, X, Play, ThumbsUp, ThumbsDown } from "lucide-react"
+import { ArrowLeft, Sparkles, Timer, Video, X, Play, ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 type Challenge = {
@@ -37,6 +37,7 @@ export default function DesafiosPage() {
   const [submitting, setSubmitting] = useState(false)
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set())
   const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [isBookmarked, setIsBookmarked] = useState(false)
 
   useEffect(() => {
     async function loadData() {
@@ -62,6 +63,11 @@ export default function DesafiosPage() {
           if (currentUser) {
             const userSubmission = submissionsData.submissions?.find((s: Submission) => s.user_id === currentUser.id)
             setHasSubmitted(!!userSubmission)
+
+            // Check if challenge is bookmarked
+            const bookmarkRes = await fetch(`/api/bookmarks?challenge_id=${challengeData.challenge.id}`)
+            const bookmarkData = await bookmarkRes.json()
+            setIsBookmarked(bookmarkData.bookmarked)
 
             // Load user's votes
             const votePromises = submissionsData.submissions?.map(async (s: Submission) => {
@@ -164,6 +170,39 @@ export default function DesafiosPage() {
       }
     } catch (error) {
       toast.error("Error al votar")
+    }
+  }
+
+  const handleBookmark = async () => {
+    if (!user) {
+      toast.error("Debes iniciar sesión para guardar el desafío")
+      return
+    }
+
+    if (!challenge) return
+
+    try {
+      const res = await fetch("/api/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_id: challenge.id })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "Error al guardar")
+        return
+      }
+
+      setIsBookmarked(data.bookmarked)
+      if (data.bookmarked) {
+        toast.success("Desafío guardado 📌")
+      } else {
+        toast.success("Desafío eliminado de guardados")
+      }
+    } catch (error) {
+      toast.error("Error al guardar el desafío")
     }
   }
 
@@ -278,15 +317,40 @@ export default function DesafiosPage() {
                   )}
                 </div>
 
-                {user && !hasSubmitted && timeRemaining.total > 0 && (
-                  <button
-                    onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-semibold transition hover:opacity-90 shadow-lg shadow-purple-900/30 whitespace-nowrap"
-                  >
-                    <Video className="size-5" />
-                    Participar en el Desafío
-                  </button>
-                )}
+                <div className="flex flex-col gap-3">
+                  {user && (
+                    <button
+                      onClick={handleBookmark}
+                      className={`flex items-center justify-center gap-2 rounded-2xl px-6 py-3 font-semibold transition hover:opacity-90 shadow-lg whitespace-nowrap ${
+                        isBookmarked
+                          ? "bg-purple-600/20 border border-purple-500/50 text-purple-300 hover:bg-purple-600/30"
+                          : "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-purple-900/30"
+                      }`}
+                    >
+                      {isBookmarked ? (
+                        <>
+                          <BookmarkCheck className="size-5" />
+                          Guardado
+                        </>
+                      ) : (
+                        <>
+                          <Bookmark className="size-5" />
+                          Guardar
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {user && !hasSubmitted && timeRemaining.total > 0 && (
+                    <button
+                      onClick={() => setShowModal(true)}
+                      className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-semibold transition hover:opacity-90 shadow-lg shadow-purple-900/30 whitespace-nowrap"
+                    >
+                      <Video className="size-5" />
+                      Participar en el Desafío
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Menu, X, User } from 'lucide-react'
 import { useAuth } from '@/components/auth/AuthProvider'
+import NotificationsDropdown from '@/components/NotificationsDropdown'
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -35,6 +36,7 @@ export default function Header() {
 
             {profile ? (
               <div className="flex items-center gap-3">
+                <NotificationsDropdown />
                 <Link
                   href="/profile"
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-800/60 hover:bg-amber-700/60 transition-colors text-sm"
