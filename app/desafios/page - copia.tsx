@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { ArrowLeft, Sparkles, Timer, Video, X, Play, ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck, MessageSquare } from "lucide-react"
+import { ArrowLeft, Sparkles, Timer, Video, X, Play, ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 type Challenge = {
@@ -27,19 +27,6 @@ type Submission = {
   challenge_votes: { count: number }[]
 }
 
-type Comment = {
-  id: string
-  submission_id: string
-  user_id: string
-  content: string
-  created_at: string
-  users: {
-    name: string | null
-    artistic_name: string | null
-    avatar_url: string | null
-  }
-}
-
 export default function DesafiosPage() {
   const [challenge, setChallenge] = useState<Challenge | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -51,11 +38,6 @@ export default function DesafiosPage() {
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set())
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
-
-  // Estados nuevos para la sección de comentarios
-  const [comments, setComments] = useState<Record<string, Comment[]>>({})
-  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
-  const [visibleComments, setVisibleComments] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     async function loadData() {
@@ -108,70 +90,6 @@ export default function DesafiosPage() {
 
     loadData()
   }, [])
-
-  // Función para cargar los comentarios de una publicación específica
-  const fetchComments = async (submissionId: string) => {
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("submission_comments")
-        .select(`
-          id,
-          submission_id,
-          user_id,
-          content,
-          created_at,
-          users:user_id (name, artistic_name, avatar_url)
-        `)
-        .eq("submission_id", submissionId)
-        .order("created_at", { ascending: true })
-
-      if (error) throw error
-      setComments(prev => ({ ...prev, [submissionId]: data || [] }))
-    } catch (error) {
-      console.error("Error cargando comentarios:", error)
-    }
-  }
-
-  // Alternar visualización del bloque de comentarios
-  const toggleComments = (submissionId: string) => {
-    const next = new Set(visibleComments)
-    if (next.has(submissionId)) {
-      next.delete(submissionId)
-    } else {
-      next.add(submissionId)
-      fetchComments(submissionId)
-    }
-    setVisibleComments(next)
-  }
-
-  // Publicar un nuevo comentario
-  const handleAddComment = async (e: React.FormEvent, submissionId: string) => {
-    e.preventDefault()
-    const content = commentInputs[submissionId]?.trim()
-    if (!user || !content) return
-
-    try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from("submission_comments")
-        .insert([
-          {
-            submission_id: submissionId,
-            user_id: user.id,
-            content: content
-          }
-        ])
-
-      if (error) throw error
-
-      setCommentInputs(prev => ({ ...prev, [submissionId]: "" }))
-      toast.success("Comentario publicado ✨")
-      fetchComments(submissionId)
-    } catch (error) {
-      toast.error("Error al publicar el comentario")
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -289,16 +207,19 @@ export default function DesafiosPage() {
   }
 
   const getVideoEmbedUrl = (url: string) => {
+    // YouTube
     const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
     if (youtubeMatch) {
       return `https://www.youtube.com/embed/${youtubeMatch[1]}`
     }
 
+    // Vimeo
     const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
     if (vimeoMatch) {
       return `https://player.vimeo.com/video/${vimeoMatch[1]}`
     }
 
+    // Direct video URL
     if (url.match(/\.(mp4|webm|ogg)$/i)) {
       return url
     }
@@ -452,156 +373,68 @@ export default function DesafiosPage() {
                     const displayName = submission.users.artistic_name || submission.users.name || "Mago"
                     const voteCount = submission.challenge_votes[0]?.count || 0
                     const hasVoted = userVotes.has(submission.id)
-                    const isCommentsOpen = visibleComments.has(submission.id)
 
                     return (
                       <div
                         key={submission.id}
-                        className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden shadow-xl shadow-black/20 flex flex-col justify-between"
+                        className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden shadow-xl shadow-black/20"
                       >
-                        <div>
-                          {/* Video Embed */}
-                          <div className="aspect-video bg-black">
-                            {embedUrl ? (
-                              embedUrl.startsWith("http") ? (
-                                <iframe
-                                  src={embedUrl}
-                                  className="h-full w-full"
-                                  allowFullScreen
-                                  title={`Video de ${displayName}`}
-                                />
-                              ) : (
-                                <video
-                                  src={embedUrl}
-                                  controls
-                                  className="h-full w-full"
-                                />
-                              )
+                        {/* Video Embed */}
+                        <div className="aspect-video bg-black">
+                          {embedUrl ? (
+                            embedUrl.startsWith("http") ? (
+                              <iframe
+                                src={embedUrl}
+                                className="h-full w-full"
+                                allowFullScreen
+                                title={`Video de ${displayName}`}
+                              />
                             ) : (
-                              <div className="flex h-full items-center justify-center text-white/30">
-                                Video no compatible
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Card Content */}
-                          <div className="p-5pb-2">
-                            <div className="mb-3 p-5 pb-0">
-                              <h3 className="font-semibold text-white">{displayName}</h3>
-                              <p className="text-xs text-white/40">
-                                {new Date(submission.created_at).toLocaleDateString("es-AR")}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions & Comments Footer */}
-                        <div className="p-5 pt-0 mt-auto">
-                          <div className="flex gap-2">
-                            {/* Vote Button */}
-                            <button
-                              onClick={() => handleVote(submission.id)}
-                              disabled={!user}
-                              className={`flex items-center justify-center gap-2 flex-1 rounded-2xl px-4 py-3 font-medium transition ${
-                                hasVoted
-                                  ? "bg-purple-600/20 border border-purple-500/50 text-purple-300 hover:bg-purple-600/30"
-                                  : "bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
-                              } disabled:opacity-50 disabled:cursor-not-allowed`}
-                            >
-                              {hasVoted ? (
-                                <>
-                                  <ThumbsDown className="size-4" />
-                                  Quitar voto
-                                </>
-                              ) : (
-                                <>
-                                  <ThumbsUp className="size-4" />
-                                  Votar ✨
-                                </>
-                              )}
-                              <span className="ml-auto font-bold">{voteCount}</span>
-                            </button>
-
-                            {/* Toggle Comments Button */}
-                            <button
-                              onClick={() => toggleComments(submission.id)}
-                              className={`flex items-center justify-center p-3 rounded-2xl border transition ${
-                                isCommentsOpen 
-                                  ? "bg-purple-500/20 border-purple-500/50 text-purple-300" 
-                                  : "bg-white/5 border-white/10 hover:bg-white/10 text-white/70 hover:text-white"
-                              }`}
-                              title="Comentarios"
-                            >
-                              <MessageSquare className="size-5" />
-                            </button>
-                          </div>
-
-                          {/* Collapsible Comments Area */}
-                          {isCommentsOpen && (
-                            <div className="mt-4 border-t border-white/10 pt-4 space-y-4">
-                              {/* List of Comments */}
-                              <div className="max-h-52 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                                {!comments[submission.id] ? (
-                                  <p className="text-xs text-white/30 text-center py-2">Cargando comentarios...</p>
-                                ) : comments[submission.id].length === 0 ? (
-                                  <p className="text-xs text-white/40 text-center py-2">Sin comentarios aún. ¡Sé el primero!</p>
-                                ) : (
-                                  comments[submission.id].map((comment) => {
-                                    const cUser = comment.users || {}
-                                    const cName = cUser.artistic_name || cUser.name || "Mago"
-                                    return (
-                                      <div key={comment.id} className="flex gap-2 items-start text-sm">
-                                        {/* Thumbnail Profile Pic */}
-                                        {cUser.avatar_url ? (
-                                          <img
-                                            src={cUser.avatar_url}
-                                            alt={cName}
-                                            className="size-7 rounded-full object-cover border border-purple-500/30 flex-shrink-0"
-                                          />
-                                        ) : (
-                                          <div className="size-7 rounded-full bg-purple-900/50 border border-purple-500/30 flex items-center justify-center text-xs text-purple-300 flex-shrink-0 font-bold uppercase">
-                                            {cName[0]}
-                                          </div>
-                                        )}
-                                        {/* Comment Content Box */}
-                                        <div className="flex-1 bg-white/5 rounded-2xl p-2.5 border border-white/5">
-                                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                                            <span className="font-semibold text-xs text-purple-300">{cName}</span>
-                                            <span className="text-[10px] text-white/30">
-                                              {new Date(comment.created_at).toLocaleDateString("es-AR")}
-                                            </span>
-                                          </div>
-                                          <p className="text-xs text-white/80 break-words">{comment.content}</p>
-                                        </div>
-                                      </div>
-                                    )
-                                  })
-                                )}
-                              </div>
-
-                              {/* New Comment Input Form */}
-                              {user ? (
-                                <form onSubmit={(e) => handleAddComment(e, submission.id)} className="flex gap-2">
-                                  <input
-                                    type="text"
-                                    value={commentInputs[submission.id] || ""}
-                                    onChange={(e) => setCommentInputs(prev => ({ ...prev, [submission.id]: e.target.value }))}
-                                    placeholder="Escribe un comentario..."
-                                    className="flex-1 min-w-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-purple-500/50"
-                                    required
-                                  />
-                                  <button
-                                    type="submit"
-                                    className="rounded-xl bg-purple-600 hover:bg-purple-500 px-3 py-2 text-xs font-semibold transition flex-shrink-0"
-                                  >
-                                    Enviar
-                                  </button>
-                                </form>
-                              ) : (
-                                <p className="text-[11px] text-white/40 text-center">Debes iniciar sesión para comentar.</p>
-                              )}
+                              <video
+                                src={embedUrl}
+                                controls
+                                className="h-full w-full"
+                              />
+                            )
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-white/30">
+                              Video no compatible
                             </div>
                           )}
+                        </div>
+
+                        {/* Card Content */}
+                        <div className="p-5">
+                          <div className="mb-3">
+                            <h3 className="font-semibold text-white">{displayName}</h3>
+                            <p className="text-xs text-white/40">
+                              {new Date(submission.created_at).toLocaleDateString("es-AR")}
+                            </p>
+                          </div>
+
+                          {/* Vote Button */}
+                          <button
+                            onClick={() => handleVote(submission.id)}
+                            disabled={!user}
+                            className={`flex items-center justify-center gap-2 w-full rounded-2xl px-4 py-3 font-medium transition ${
+                              hasVoted
+                                ? "bg-purple-600/20 border border-purple-500/50 text-purple-300 hover:bg-purple-600/30"
+                                : "bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {hasVoted ? (
+                              <>
+                                <ThumbsDown className="size-4" />
+                                Quitar voto
+                              </>
+                            ) : (
+                              <>
+                                <ThumbsUp className="size-4" />
+                                Votar ✨
+                              </>
+                            )}
+                            <span className="ml-auto font-bold">{voteCount}</span>
+                          </button>
                         </div>
                       </div>
                     )
