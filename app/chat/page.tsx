@@ -20,6 +20,7 @@ type ChatMessage = {
     id: string
     name: string | null
     artistic_name: string | null
+    avatar_url: string | null
   }
 }
 
