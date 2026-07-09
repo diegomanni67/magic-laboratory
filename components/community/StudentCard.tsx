@@ -8,7 +8,7 @@ interface MemberCardProps {
   member: {
     id: string
     name: string
-    avatar?: string
+    avatar_url: string
     bio: string
     specialties: string[]
     level: string
