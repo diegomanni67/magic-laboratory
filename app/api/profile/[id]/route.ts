@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 // Usa server client normal — la policy "Public can read basic profile fields"
 // permite SELECT a todos. Columnas seguras únicamente, sin email.
 const PUBLIC_FIELDS =
-  'id, name, artistic_name, role, country, city, bio, instagram, youtube, phone, avatar_url, is_approved'
+  'id, name, artistic_name, role, country, city, bio, instagram, youtube, phone, avatar, is_approved'
 
 interface RouteParams {
   params: Promise<{ id: string }>
