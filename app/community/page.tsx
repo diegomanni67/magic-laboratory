@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import UserAvatar from '@/components/UserAvatar';
+
+const supabase = createClient();
 
 interface MemberProfile {
   id: string;
@@ -26,14 +28,12 @@ export default function CommunityPage() {
       try {
         setLoading(true);
         
-        // Consultar perfiles
         const { data: profiles, error } = await supabase
           .from('profiles')
           .select('id, full_name, artistic_name, bio, country, city, avatar_url')
           .order('full_name', { ascending: true });
 
         if (profiles) {
-          // Traer roles para complementar
           const { data: users } = await supabase
             .from('users')
             .select('id, role');
@@ -57,7 +57,6 @@ export default function CommunityPage() {
     loadCommunity();
   }, []);
 
-  // Filtrar según el término de búsqueda
   const filteredMembers = members.filter((m) => {
     const name = (m.artistic_name || m.full_name || '').toLowerCase();
     const loc = `${m.city || ''} ${m.country || ''}`.toLowerCase();
@@ -80,7 +79,6 @@ export default function CommunityPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-purple-950/20 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
         
-        {/* Cabecera */}
         <div className="text-center">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">
             🔮 Comunidad de Ilusionistas
@@ -90,7 +88,6 @@ export default function CommunityPage() {
           </p>
         </div>
 
-        {/* Buscador */}
         <div className="max-w-md mx-auto">
           <input
             type="text"
@@ -119,7 +116,6 @@ export default function CommunityPage() {
 
                   <div className="space-y-4">
                     
-                    {/* Cabecera de la Tarjeta */}
                     <div className="flex items-center gap-4">
                       <UserAvatar 
                         avatarUrl={member.avatar_url} 
@@ -136,20 +132,17 @@ export default function CommunityPage() {
                       </div>
                     </div>
 
-                    {/* Ubicación */}
                     {(member.city || member.country) && (
                       <p className="text-xs text-slate-400 font-medium flex items-center gap-1">
                         📍 {member.city}{member.city && member.country ? ', ' : ''}{member.country}
                       </p>
                     )}
 
-                    {/* Presentación Corta */}
                     <p className="text-xs text-slate-400 line-clamp-2 h-8 leading-relaxed">
                       {member.bio || 'Este ilusionista prefiere mantener el misterio... 🃏'}
                     </p>
                   </div>
 
-                  {/* Enlace al perfil */}
                   <div className="pt-5 border-t border-slate-800/60 mt-5">
                     <Link
                       href={`/profile/${member.id}`}

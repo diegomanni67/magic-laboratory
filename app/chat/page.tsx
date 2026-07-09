@@ -1,392 +1,266 @@
-"use client"
+'use client';
 
-import { useEffect, useState, useRef } from "react"
-import Link from "next/link"
-import { ArrowLeft, Send, Hash, Users } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { UserAvatar } from "@/components/profile/UserAvatar"
+import React, { useEffect, useState, useRef } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import UserAvatar from '@/components/UserAvatar';
 
-type ChatRoom = {
-  id: string
-  name: string
-  description: string | null
+const supabase = createClient();
+
+interface ChatRoom {
+  id: string;
+  name: string;
+  description: string;
 }
 
-type ChatMessage = {
-  id: string
-  message: string
-  created_at: string
-  user_id: string
-  users: {
-    id: string
-    name: string | null
-    artistic_name: string | null
-    avatar_url: string | null
-  } | null
-}
-
-type CurrentUser = {
-  id: string
-  name: string | null
-  artistic_name: string | null
-  avatar_url: string | null
-}
-
-function getDisplayName(user: { name?: string | null; artistic_name?: string | null } | null) {
-  return user?.artistic_name || user?.name || "Mago"
-}
-
-function formatTime(dateString: string) {
-  return new Date(dateString).toLocaleTimeString("es-AR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+interface Message {
+  id: string;
+  room_id: string;
+  user_id: string;
+  message: string;
+  created_at: string;
+  profiles?: {
+    full_name: string | null;
+    artistic_name: string | null;
+    avatar_url: string | null;
+  } | null;
 }
 
 export default function ChatPage() {
-  const [rooms, setRooms] = useState<ChatRoom[]>([])
-  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [newMessage, setNewMessage] = useState("")
-  const [loading, setLoading] = useState(true)
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
-  const [sending, setSending] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>["channel"]> | null>(null)
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
+  const [activeRoom, setActiveRoom] = useState<string>('cartomagia');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadRooms()
-    loadCurrentUser()
-  }, [])
+    async function initChat() {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      setUser(authUser);
+
+      const { data: dbRooms } = await supabase
+        .from('chat_rooms')
+        .select('*');
+      
+      if (dbRooms) setRooms(dbRooms);
+      setLoading(false);
+    }
+    initChat();
+  }, []);
 
   useEffect(() => {
-    if (selectedRoom) {
-      loadMessages(selectedRoom.id)
-      setupRealtimeSubscription(selectedRoom.id)
-    }
-    return () => {
-      if (channelRef.current) {
-        createClient().removeChannel(channelRef.current)
-      }
-    }
-  }, [selectedRoom])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
-
-  const loadCurrentUser = async () => {
-    try {
-      const res = await fetch("/api/me")
-      const data = await res.json()
-      if (data.profile) {
-        setCurrentUser({
-          id: data.profile.id,
-          name: data.profile.name,
-          artistic_name: data.profile.artistic_name,
-          avatar_url: data.profile.avatar_url ?? null,
-        })
-      }
-    } catch {
-      // no autenticado
-    }
-  }
-
-  const loadRooms = async () => {
-    try {
-      const res = await fetch("/api/chat-rooms")
-      const data = await res.json()
-      setRooms(data.rooms || [])
-      if (data.rooms?.length > 0) setSelectedRoom(data.rooms[0])
-    } catch {
-      console.error("Error cargando salas")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const loadMessages = async (roomId: string) => {
-    try {
-      const res = await fetch(`/api/chat-messages?room_id=${roomId}`)
-      const data = await res.json()
-      setMessages(data.messages || [])
-    } catch {
-      console.error("Error cargando mensajes")
-    }
-  }
-
-  const setupRealtimeSubscription = (roomId: string) => {
-    if (channelRef.current) {
-      createClient().removeChannel(channelRef.current)
-    }
-
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`chat_messages:${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "chat_messages",
-          filter: `room_id=eq.${roomId}`,
-        },
-        async (payload) => {
-          // El payload de realtime no incluye el join de users —
-          // hacemos un fetch del mensaje completo para tener el nombre y avatar.
-          const res = await fetch(
-            `/api/chat-messages?room_id=${roomId}&message_id=${payload.new.id}`
+    async function loadMessages() {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select(`
+          id,
+          room_id,
+          user_id,
+          message,
+          created_at,
+          profiles:user_id (
+            full_name,
+            artistic_name,
+            avatar_url
           )
-          const data = await res.json()
-          if (data.message) {
-            setMessages((prev) => {
-              // Evitar duplicados si el POST ya lo agregó
-              if (prev.find((m) => m.id === data.message.id)) return prev
-              return [...prev, data.message]
-            })
-          }
+        `)
+        .eq('room_id', activeRoom)
+        .order('created_at', { ascending: true });
+
+      if (data) {
+        setMessages(data as any);
+      }
+    }
+
+    loadMessages();
+
+    const channel = supabase
+      .channel(`public:chat_messages:room_id=eq.${activeRoom}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `room_id=eq.${activeRoom}`,
+        },
+        async (payload: any) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, artistic_name, avatar_url')
+            .eq('id', payload.new.user_id)
+            .single();
+
+          const messageWithProfile: Message = {
+            ...payload.new,
+            profiles: profile || null,
+          };
+
+          setMessages((prev) => [...prev, messageWithProfile]);
         }
       )
-      .subscribe()
+      .subscribe();
 
-    channelRef.current = channel
-  }
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeRoom]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newMessage.trim() || !selectedRoom || !currentUser) return
+    e.preventDefault();
+    if (!newMessage.trim() || !user) return;
 
-    setSending(true)
-
-    // Optimistic update con el usuario actual
-    const optimisticMsg: ChatMessage = {
-      id: `temp-${Date.now()}`,
-      message: newMessage.trim(),
-      created_at: new Date().toISOString(),
-      user_id: currentUser.id,
-      users: {
-        id: currentUser.id,
-        name: currentUser.name,
-        artistic_name: currentUser.artistic_name,
-        avatar_url: currentUser.avatar_url,
-      },
-    }
-    setMessages((prev) => [...prev, optimisticMsg])
-    setNewMessage("")
+    const messageText = newMessage;
+    setNewMessage('');
 
     try {
-      const res = await fetch("/api/chat-messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          room_id: selectedRoom.id,
-          message: optimisticMsg.message,
-        }),
-      })
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          room_id: activeRoom,
+          user_id: user.id,
+          message: messageText,
+        });
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        // Revertir optimistic update
-        setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id))
-        setNewMessage(optimisticMsg.message)
-        alert(data.error || "Error al enviar mensaje")
-        return
-      }
-
-      // Reemplazar el mensaje optimista con el real
-      setMessages((prev) =>
-        prev.map((m) => (m.id === optimisticMsg.id ? { ...data.message, users: optimisticMsg.users } : m))
-      )
-    } catch {
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id))
-      setNewMessage(optimisticMsg.message)
-      alert("Error al enviar mensaje")
-    } finally {
-      setSending(false)
+      if (error) throw error;
+    } catch (err) {
+      console.error('Error enviando mensaje:', err);
     }
-  }
+  };
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0f1e] text-white/70">
-        Cargando chat...
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-purple-300">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-medium">Canalizando la señal en vivo...</p>
+        </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="flex h-screen flex-col bg-[#0a0f1e] text-white">
-      {/* Header */}
-      <header className="border-b border-white/10 bg-[#121826]">
-        <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4">
-          <Link href="/" className="text-white/50 hover:text-white">
-            <ArrowLeft className="size-5" />
-          </Link>
-          <div className="flex items-center gap-3">
-            <Hash className="size-5 text-purple-400" />
-            <h1 className="text-xl font-semibold">Chat del Laboratorio</h1>
+    <div className="min-h-screen bg-slate-950 flex text-white">
+      
+      <div className="w-64 bg-slate-900 border-r border-slate-800/80 p-4 hidden md:flex flex-col gap-6">
+        <div>
+          <h2 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 mb-2">
+            🔮 Laboratorio En Vivo
+          </h2>
+          <p className="text-xs text-slate-500">Charlá con otros ilusionistas conectados en tiempo real.</p>
+        </div>
+
+        <div className="flex-1 flex flex-col gap-1 overflow-y-auto">
+          {rooms.map((room) => (
+            <button
+              key={room.id}
+              onClick={() => setActiveRoom(room.id)}
+              className={`w-full text-left px-4 py-3 rounded-xl font-semibold transition text-sm ${
+                activeRoom === room.id
+                  ? 'bg-purple-900/40 border border-purple-500/30 text-purple-200'
+                  : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
+              }`}
+            >
+              {room.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col h-screen">
+        
+        <div className="p-4 bg-slate-900 border-b border-slate-800/80 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-slate-200">
+              {rooms.find((r) => r.id === activeRoom)?.name || 'Cargando sala...'}
+            </h3>
+            <p className="text-xs text-slate-500 hidden sm:block">
+              {rooms.find((r) => r.id === activeRoom)?.description}
+            </p>
           </div>
-          {currentUser && (
-            <div className="ml-auto flex items-center gap-2">
-              <UserAvatar
-                name={getDisplayName(currentUser)}
-                avatarUrl={currentUser.avatar_url}
-                size="sm"
-              />
-              <span className="text-sm text-white/60">{getDisplayName(currentUser)}</span>
+          
+          <select 
+            value={activeRoom} 
+            onChange={(e) => setActiveRoom(e.target.value)}
+            className="md:hidden bg-slate-950 text-purple-300 border border-purple-500/20 rounded-xl px-3 py-1.5 text-xs font-semibold"
+          >
+            {rooms.map((room) => (
+              <option key={room.id} value={room.id}>{room.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/40">
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2">
+              <span className="text-4xl">🃏</span>
+              <p className="text-sm">Silencio en la sala... ¡Comenzá vos la charla!</p>
             </div>
+          ) : (
+            messages.map((msg) => {
+              const creatorName = msg.profiles?.artistic_name || msg.profiles?.full_name || 'Mago Anónimo';
+              const avatarUrl = msg.profiles?.avatar_url || null;
+
+              return (
+                <div 
+                  key={msg.id} 
+                  className="flex items-start gap-3 hover:bg-slate-900/20 p-2 rounded-xl transition duration-150"
+                >
+                  <UserAvatar 
+                    avatarUrl={avatarUrl} 
+                    fullName={creatorName} 
+                    size={40} 
+                    className="border-purple-500/20 ring-1 ring-purple-500/10"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm font-bold text-purple-300">
+                        {creatorName}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-300 mt-1 break-words">{msg.message}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <div className="p-4 bg-slate-900 border-t border-slate-800/80">
+          {user ? (
+            <form onSubmit={handleSendMessage} className="flex gap-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Escribí tu truco o pregunta al chat en vivo..."
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
+              />
+              <button
+                type="submit"
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition duration-200 text-sm shadow-md"
+              >
+                Enviar 🔮
+              </button>
+            </form>
+          ) : (
+            <p className="text-sm text-center text-slate-500 py-2">
+              Debés iniciar sesión para participar de la charla en vivo.
+            </p>
           )}
         </div>
-      </header>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Canales */}
-        <aside className="w-56 shrink-0 border-r border-white/10 bg-[#121826]">
-          <div className="p-4">
-            <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/40">
-              <Users className="size-3.5" />
-              Canales
-            </h2>
-            <div className="space-y-1">
-              {rooms.map((room) => (
-                <button
-                  key={room.id}
-                  onClick={() => setSelectedRoom(room)}
-                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                    selectedRoom?.id === room.id
-                      ? "bg-purple-600/20 text-purple-300"
-                      : "text-white/60 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
-                  <Hash className="size-3.5 shrink-0" />
-                  <span className="font-medium">{room.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </aside>
-
-        {/* Área principal */}
-        <main className="flex flex-1 flex-col overflow-hidden">
-          {/* Room header */}
-          {selectedRoom && (
-            <div className="border-b border-white/10 bg-[#121826]/50 px-6 py-3">
-              <div className="flex items-center gap-2">
-                <Hash className="size-4 text-purple-400" />
-                <span className="font-semibold">{selectedRoom.name}</span>
-                {selectedRoom.description && (
-                  <span className="ml-2 text-sm text-white/40">{selectedRoom.description}</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Mensajes */}
-          <div className="flex-1 space-y-1 overflow-y-auto px-4 py-4">
-            {!selectedRoom ? (
-              <div className="flex h-full items-center justify-center text-white/30">
-                Seleccioná un canal
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-2 text-white/30">
-                <Hash className="size-8" />
-                <p>No hay mensajes. ¡Sé el primero!</p>
-              </div>
-            ) : (
-              messages.map((msg, i) => {
-                const isOwn = msg.user_id === currentUser?.id
-                const senderName = getDisplayName(msg.users)
-                const prevMsg = messages[i - 1]
-                const isSameSender = prevMsg?.user_id === msg.user_id
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={`flex items-end gap-2.5 ${isOwn ? "flex-row-reverse" : ""} ${isSameSender ? "mt-0.5" : "mt-4"}`}
-                  >
-                    {/* Avatar — solo si es el primero de una secuencia */}
-                    <div className="w-9 shrink-0">
-                      {!isSameSender && (
-                        <UserAvatar
-                          name={senderName}
-                          avatarUrl={msg.users?.avatar_url}
-                          size="sm"
-                        />
-                      )}
-                    </div>
-
-                    <div className={`flex max-w-[70%] flex-col ${isOwn ? "items-end" : "items-start"}`}>
-                      {!isSameSender && (
-                        <div className={`mb-1 flex items-center gap-2 ${isOwn ? "flex-row-reverse" : ""}`}>
-                          <Link
-                            href={`/profile/${msg.user_id}`}
-                            className="text-xs font-semibold text-white hover:text-amber-300 hover:underline"
-                          >
-                            {senderName}
-                          </Link>
-                          <span className="text-xs text-white/30">{formatTime(msg.created_at)}</span>
-                        </div>
-                      )}
-                      <div
-                        className={`rounded-2xl px-4 py-2.5 text-sm text-white/90 ${
-                          isOwn
-                            ? "rounded-br-sm bg-purple-600/40 border border-purple-500/30"
-                            : "rounded-bl-sm bg-white/5 border border-white/10"
-                        }`}
-                      >
-                        {msg.message}
-                      </div>
-                      {isSameSender && (
-                        <span className="mt-0.5 text-xs text-white/20">{formatTime(msg.created_at)}</span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          {selectedRoom && (
-            <div className="border-t border-white/10 bg-[#121826]/50 p-4">
-              {currentUser ? (
-                <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                  <UserAvatar
-                    name={getDisplayName(currentUser)}
-                    avatarUrl={currentUser.avatar_url}
-                    size="sm"
-                  />
-                  <input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder={`Mensaje en #${selectedRoom.name}...`}
-                    className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 outline-none focus:border-purple-500/50"
-                    disabled={sending}
-                    autoComplete="off"
-                  />
-                  <button
-                    type="submit"
-                    disabled={sending || !newMessage.trim()}
-                    className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <Send className="size-4" />
-                    {sending ? "..." : "Enviar"}
-                  </button>
-                </form>
-              ) : (
-                <p className="text-center text-sm text-white/40">
-                  <Link href="/login" className="text-purple-400 hover:underline">
-                    Iniciá sesión
-                  </Link>{" "}
-                  para enviar mensajes
-                </p>
-              )}
-            </div>
-          )}
-        </main>
       </div>
+
     </div>
-  )
+  );
 }

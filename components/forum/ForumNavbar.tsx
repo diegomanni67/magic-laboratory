@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import UserAvatar from '@/components/UserAvatar';
+
+const supabase = createClient();
 
 interface CurrentUser {
   id: string;
@@ -25,7 +27,6 @@ export default function ForumNavbar() {
         const { data: { user: authUser } } = await supabase.auth.getUser();
 
         if (authUser) {
-          // Buscamos los datos artísticos del usuario en profiles para traer la foto y nombre
           const { data: profile } = await supabase
             .from('profiles')
             .select('id, full_name, artistic_name, avatar_url')
@@ -35,7 +36,6 @@ export default function ForumNavbar() {
           if (profile) {
             setUserProfile(profile);
           } else {
-            // Fallback si no tiene perfil creado aún
             setUserProfile({
               id: authUser.id,
               full_name: authUser.user_metadata?.full_name || 'Mago',
@@ -55,7 +55,6 @@ export default function ForumNavbar() {
 
     getSessionAndProfile();
 
-    // Escuchar cambios de autenticación para actualizar la foto al instante
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       getSessionAndProfile();
     });
@@ -82,14 +81,12 @@ export default function ForumNavbar() {
     <nav className="bg-slate-950 border-b border-slate-900 px-4 sm:px-6 lg:px-8 py-4 sticky top-0 z-40 shadow-lg">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
-        {/* LOGO */}
         <Link href="/" className="flex items-center gap-2">
           <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">
             🔮 Magic Laboratory
           </span>
         </Link>
 
-        {/* ENLACES DE NAVEGACIÓN */}
         <div className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => {
             const isActive = pathname === link.path;
@@ -109,12 +106,10 @@ export default function ForumNavbar() {
           })}
         </div>
 
-        {/* ACCIONES DE USUARIO (DERECHA) */}
         <div className="flex items-center gap-4">
           {!loading && userProfile ? (
             <div className="flex items-center gap-3">
               
-              {/* Botón de Perfil con Nombre y Foto Circular */}
               <Link 
                 href={`/profile/${userProfile.id}`}
                 className="flex items-center gap-2.5 bg-slate-900 hover:bg-slate-850 px-4 py-2 rounded-xl border border-slate-850 hover:border-purple-500/20 transition duration-200 shadow-md group"
@@ -131,7 +126,6 @@ export default function ForumNavbar() {
                 </span>
               </Link>
 
-              {/* Botón Salir */}
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 rounded-xl text-xs font-bold transition duration-150"

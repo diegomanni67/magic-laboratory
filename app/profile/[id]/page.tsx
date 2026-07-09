@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
 import UserAvatar from '@/components/UserAvatar';
 import Link from 'next/link';
+
+const supabase = createClient();
 
 interface ProfileData {
   id: string;
@@ -49,7 +51,6 @@ export default function PublicProfilePage() {
       try {
         setLoading(true);
 
-        // 1. Consultar los datos artísticos del perfil
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -58,7 +59,6 @@ export default function PublicProfilePage() {
 
         if (profileError) throw new Error('No se encontró el perfil de este ilusionista.');
 
-        // Traer el rol del usuario desde la tabla users si existe
         const { data: userData } = await supabase
           .from('users')
           .select('role')
@@ -70,7 +70,6 @@ export default function PublicProfilePage() {
           role: userData?.role || 'USER',
         });
 
-        // 2. Consultar productos del Marketplace publicados por este usuario
         const { data: productsData } = await supabase
           .from('marketplace_products')
           .select('*')
@@ -126,7 +125,6 @@ export default function PublicProfilePage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-purple-950/20 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-8">
         
-        {/* BOTÓN VOLVER */}
         <div className="flex gap-2">
           <button
             onClick={() => router.back()}
@@ -148,7 +146,6 @@ export default function PublicProfilePage() {
           
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6 sm:gap-8">
             
-            {/* Foto de Perfil Circular Interactiva */}
             <UserAvatar 
               avatarUrl={profile.avatar_url} 
               fullName={profile.full_name} 
@@ -157,7 +154,6 @@ export default function PublicProfilePage() {
               className="ring-4 ring-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.3)]"
             />
 
-            {/* Información Principal */}
             <div className="flex-1 text-center md:text-left space-y-3">
               <div>
                 <h1 className="text-3xl sm:text-4xl font-black text-white flex flex-col sm:flex-row items-center gap-2 justify-center md:justify-start">
@@ -171,14 +167,12 @@ export default function PublicProfilePage() {
                 )}
               </div>
 
-              {/* Ubicación */}
               {(profile.city || profile.country) && (
                 <div className="text-sm text-slate-400 flex items-center justify-center md:justify-start gap-1.5 font-medium">
                   📍 {profile.city}{profile.city && profile.country ? ', ' : ''}{profile.country}
                 </div>
               )}
 
-              {/* Botones de Redes Sociales */}
               {hasSocials && (
                 <div className="flex flex-wrap justify-center md:justify-start gap-3 pt-2">
                   {profile.instagram && (
@@ -219,13 +213,10 @@ export default function PublicProfilePage() {
           </div>
         </div>
 
-        {/* CONTENIDO DETALLADO */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* COLUMNA IZQUIERDA: BIOGRAFÍA Y EDUCACIÓN */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* Presentación */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4">📖 Presentación Mágica</h3>
               <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-line">
@@ -233,7 +224,6 @@ export default function PublicProfilePage() {
               </p>
             </div>
 
-            {/* SECCIÓN NUEVA: Formación y Legado */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-lg backdrop-blur-sm space-y-6">
               <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider">🎓 Formación y Legado</h3>
               
@@ -256,10 +246,8 @@ export default function PublicProfilePage() {
 
           </div>
 
-          {/* COLUMNA DERECHA: INFORMACIÓN EXTRA */}
           <div className="space-y-6">
             
-            {/* Tarjeta de Rol */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-3">🛠️ Rango en el Laboratorio</h3>
               <div className="flex items-center gap-3 bg-purple-500/5 border border-purple-500/20 p-4 rounded-xl">
@@ -271,7 +259,6 @@ export default function PublicProfilePage() {
               </div>
             </div>
 
-            {/* Publicaciones en el Marketplace */}
             <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
               <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-4">🎪 Publicaciones en Marketplace ({products.length})</h3>
               

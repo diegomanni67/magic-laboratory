@@ -1,415 +1,425 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { toast } from "sonner"
-import {
-  ArrowLeft,
-  BadgeCheck,
-  Camera,
-  ExternalLink,
-  FlaskConical,
-  Instagram,
-  MapPin,
-  Phone,
-  Sparkles,
-  Store,
-  Youtube,
-} from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
-import { LocationEditor } from "@/components/profile/LocationEditor"
-import { UserAvatar } from "@/components/profile/UserAvatar"
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import UserAvatar from '@/components/UserAvatar';
 
-type ProfileData = {
-  id: string
-  name: string | null
-  email: string | null
-  role: string | null
-  country: string | null
-  city: string | null
-  is_approved: boolean | null
-  artistic_name: string | null
-  bio: string | null
-  instagram: string | null
-  youtube: string | null
-  phone: string | null
-  studies: string | null
-  teacher: string | null
-  avatar_url: string | null
+const supabase = createClient();
+
+interface ProfileForm {
+  name: string;
+  artistic_name: string;
+  bio: string;
+  country: string;
+  city: string;
+  phone: string;
+  instagram: string;
+  youtube: string;
+  studies: string;
+  teacher: string;
+  avatar_url: string;
 }
 
 export default function ProfilePage() {
-  const router = useRouter()
-  const [profile, setProfile] = useState<ProfileData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [checkingSession, setCheckingSession] = useState(true)
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const [form, setForm] = useState({
-    name: "",
-    artistic_name: "",
-    bio: "",
-    instagram: "",
-    youtube: "",
-    phone: "",
-    studies: "",
-    teacher: "",
-  })
-  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState<ProfileForm>({
+    name: '',
+    artistic_name: '',
+    bio: '',
+    country: '',
+    city: '',
+    phone: '',
+    instagram: '',
+    youtube: '',
+    studies: '',
+    teacher: '',
+    avatar_url: '',
+  });
 
-  const loadProfile = async () => {
-    setLoading(true)
-    const res = await fetch("/api/me")
-    const data = await res.json()
-    setProfile(data.profile)
-    if (data.profile) {
-      setForm({
-        name: data.profile.name || "",
-        artistic_name: data.profile.artistic_name || "",
-        bio: data.profile.bio || "",
-        instagram: data.profile.instagram || "",
-        youtube: data.profile.youtube || "",
-        phone: data.profile.phone || "",
-        studies: data.profile.studies || "",
-        teacher: data.profile.teacher || "",
-      })
-    }
-    setLoading(false)
-  }
-
-  // Ruta protegida: si no hay sesión activa de Supabase, redirige al login.
   useEffect(() => {
-    const checkSession = async () => {
-      const supabase = createClient()
-      const { data } = await supabase.auth.getSession()
+    async function loadUserProfile() {
+      try {
+        setLoading(true);
+        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
 
-      if (!data.session) {
-        router.replace("/login")
-        return
+        if (authError || !authUser) {
+          router.push('/login');
+          return;
+        }
+
+        setUser(authUser);
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+
+        if (profile) {
+          setForm({
+            name: profile.full_name || '',
+            artistic_name: profile.artistic_name || '',
+            bio: profile.bio || '',
+            country: profile.country || '',
+            city: profile.city || '',
+            phone: profile.phone || '',
+            instagram: profile.instagram || '',
+            youtube: profile.youtube || '',
+            studies: profile.studies || '',
+            teacher: profile.teacher || '',
+            avatar_url: profile.avatar_url || '',
+          });
+        }
+      } catch (err: any) {
+        console.error('Error cargando perfil:', err);
+        setMessage({ type: 'error', text: 'Error al conectar con el servidor mágico.' });
+      } finally {
+        setLoading(false);
       }
-
-      setCheckingSession(false)
-      void loadProfile()
     }
 
-    void checkSession()
-  }, [router])
+    loadUserProfile();
+  }, [router]);
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setSaving(true)
+  const calculateProgress = () => {
+    let total = 0;
+    if (form.name) total += 10;
+    if (form.artistic_name) total += 15;
+    if (form.bio) total += 20;
+    if (form.country || form.city) total += 15;
+    if (form.phone) total += 15;
+    if (form.instagram || form.youtube) total += 10;
+    if (form.studies) total += 10;
+    if (form.teacher) total += 5;
+    return total;
+  };
+
+  const progressPercent = calculateProgress();
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      })
-      const data = await res.json()
+      setUploading(true);
+      setMessage(null);
+      const file = files[0];
+      const formData = new FormData();
+      formData.append('file', file);
 
-      if (!res.ok) {
-        toast.error(data.error || "No se pudo guardar el perfil")
-        return
-      }
+      const res = await fetch('/api/avatar', {
+        method: 'POST',
+        body: formData,
+      });
 
-      toast.success("Perfil artístico actualizado")
-      void loadProfile()
-    } catch {
-      toast.error("No se pudo guardar el perfil. Probá de nuevo.")
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al subir la imagen');
+
+      setForm((prev) => ({ ...prev, avatar_url: data.url }));
+      setMessage({ type: 'success', text: '📷 ¡Foto cargada! Presioná Guardar para confirmar los cambios.' });
+    } catch (err: any) {
+      console.error('Error subiendo avatar:', err);
+      setMessage({ type: 'error', text: err.message || 'Error al subir la imagen de perfil.' });
     } finally {
-      setSaving(false)
+      setUploading(false);
     }
-  }
+  };
 
-  if (checkingSession || loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0f1e] text-white/70">
-        Cargando perfil...
-      </div>
-    )
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      setMessage(null);
 
-  if (!profile) {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          full_name: form.name,
+          artistic_name: form.artistic_name,
+          bio: form.bio,
+          country: form.country,
+          city: form.city,
+          phone: form.phone,
+          instagram: form.instagram,
+          youtube: form.youtube,
+          studies: form.studies,
+          teacher: form.teacher,
+          avatar_url: form.avatar_url,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: '✨ ¡Perfil de mago guardado con éxito!' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err: any) {
+      console.error('Error guardando perfil:', err);
+      setMessage({ type: 'error', text: 'No se pudo guardar la información.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0f1e] px-6 text-center text-white">
-        <div className="max-w-md rounded-3xl border border-white/10 bg-white/5 p-8">
-          <h1 className="mb-3 text-2xl font-semibold">Todavía no hay perfil disponible</h1>
-          <p className="mb-6 text-white/60">Iniciá sesión para ver tus datos y completar tu perfil artístico.</p>
-          <Link href="/login" className="rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2 font-semibold">
-            Iniciar sesión
-          </Link>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-purple-300">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-medium">Abriendo el libro de hechizos...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
-            <ArrowLeft className="size-4" />
-            Volver al inicio
-          </Link>
-          <Link
-            href={`/profile/${profile.id}`}
-            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 hover:bg-white/10"
-          >
-            <ExternalLink className="size-4" />
-            Ver mi perfil público
-          </Link>
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-purple-950/20 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto">
+        
+        <div className="text-center mb-8">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">
+            🔮 Tu Perfil de Ilusionista
+          </h1>
+          <p className="mt-2 text-sm sm:text-base text-slate-400">
+            Completá tu identidad mágica para interactuar y destacar en la comunidad.
+          </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <AvatarUploader profile={profile} onUploaded={loadProfile} />
-                <div>
-                  <h1 className="text-2xl font-semibold">{profile.artistic_name || profile.name || "Usuario"}</h1>
-                  <p className="text-sm text-white/50">{profile.email}</p>
-                </div>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-300">
-                <BadgeCheck className="size-4" />
-                {profile.is_approved ? "Aprobado" : "Pendiente de aprobación"}
-              </div>
+        {message && (
+          <div className={`p-4 rounded-xl mb-6 border ${
+            message.type === 'success' 
+              ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200' 
+              : 'bg-rose-950/40 border-rose-500/40 text-rose-200'
+          }`}>
+            <p className="text-sm font-medium flex items-center gap-2">
+              {message.type === 'success' ? '✨' : '⚠️'} {message.text}
+            </p>
+          </div>
+        )}
+
+        <div className="bg-slate-900/80 border border-purple-500/20 rounded-2xl p-6 mb-8 shadow-xl backdrop-blur-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+            <div>
+              <h3 className="text-lg font-bold text-purple-300">Progreso de tu Perfil</h3>
+              <p className="text-xs text-slate-400">Un perfil completo genera mayor autoridad en el laboratorio.</p>
             </div>
+            <span className="text-xl font-black text-purple-400 bg-purple-500/10 px-3 py-1 rounded-lg border border-purple-500/20">
+              {progressPercent}%
+            </span>
+          </div>
+          <div className="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-800">
+            <div 
+              className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-cyan-400 h-full rounded-full transition-all duration-700 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-[#0b1224] p-4">
-                <p className="text-sm text-white/50">Rol</p>
-                <p className="mt-1 font-semibold">{profile.role || "APPRENTICE"}</p>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
+            <h2 className="text-xl font-bold text-slate-200 mb-6 flex items-center gap-2 border-b border-slate-800 pb-3">
+              🃏 Identidad del Mago
+            </h2>
+            
+            <div className="flex flex-col md:flex-row items-center gap-8">
+              
+              <div className="flex flex-col items-center gap-3">
+                <UserAvatar 
+                  avatarUrl={form.avatar_url} 
+                  fullName={form.name} 
+                  artisticName={form.artistic_name} 
+                  size={120} 
+                  className="ring-4 ring-purple-500/30"
+                />
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleAvatarUpload} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs bg-purple-950/60 hover:bg-purple-900 text-purple-300 border border-purple-500/30 font-medium px-4 py-2 rounded-xl transition duration-200 disabled:opacity-50"
+                >
+                  {uploading ? 'Cargando...' : 'Cambiar Foto de Mago 📷'}
+                </button>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-[#0b1224] p-4">
-                <p className="text-sm text-white/50">Ubicación</p>
-                <p className="mt-1 font-semibold">{profile.city ? `${profile.city}, ` : ""}{profile.country || "Sin definir"}</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-[#0b1224] p-4">
-                <p className="text-sm text-white/50">Estado</p>
-                <p className="mt-1 font-semibold">{profile.is_approved ? "Activo" : "En revisión"}</p>
-              </div>
-            </div>
 
-            {/* Formulario de perfil artístico */}
-            <form onSubmit={handleSubmit} className="mt-6 rounded-3xl border border-white/10 bg-[#0b1224] p-5">
-              <h2 className="mb-1 text-lg font-semibold">Tu perfil artístico</h2>
-              <p className="mb-5 text-sm text-white/50">
-                Esto es lo que van a ver otros usuarios en tu perfil público y en tus publicaciones.
-              </p>
-
-              <div className="space-y-4">
+              <div className="flex-1 w-full space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Nombre real</label>
-                  <input
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Ej: Juan Pérez"
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Nombre artístico</label>
-                  <input
-                    value={form.artistic_name}
-                    onChange={(e) => setForm({ ...form, artistic_name: e.target.value })}
-                    placeholder="Ej: El Gran Manni"
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Biografía / Presentación</label>
-                  <textarea
-                    value={form.bio}
-                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                    placeholder="Contá tu trayectoria, tu estilo, qué tipo de magia hacés..."
-                    maxLength={1000}
-                    rows={5}
-                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
-                  />
-                  <p className="mt-1 text-right text-xs text-white/30">{form.bio.length}/1000</p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 flex items-center gap-2 text-sm font-medium text-white/70">
-                      <Instagram className="size-4 text-pink-400" />
-                      Instagram
-                    </label>
-                    <input
-                      value={form.instagram}
-                      onChange={(e) => setForm({ ...form, instagram: e.target.value })}
-                      placeholder="https://instagram.com/tu_usuario"
-                      maxLength={160}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 flex items-center gap-2 text-sm font-medium text-white/70">
-                      <Youtube className="size-4 text-red-400" />
-                      YouTube
-                    </label>
-                    <input
-                      value={form.youtube}
-                      onChange={(e) => setForm({ ...form, youtube: e.target.value })}
-                      placeholder="https://youtube.com/@tu_canal"
-                      maxLength={160}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1 flex items-center gap-2 text-sm font-medium text-white/70">
-                    <Phone className="size-4 text-emerald-400" />
-                    Teléfono / WhatsApp de contacto
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Nombre Real / Completo
                   </label>
                   <input
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="Ej: 5491122334455 (con código de país, sin espacios)"
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Ej: David Seth Kotkin"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Estudios mágicos</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                    ✨ Nombre Artístico
+                  </label>
                   <input
-                    value={form.studies}
-                    onChange={(e) => setForm({ ...form, studies: e.target.value })}
-                    placeholder="Ej: Escuela de Magia de Buenos Aires, Card College, etc."
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Profesor / Mentor</label>
-                  <input
-                    value={form.teacher}
-                    onChange={(e) => setForm({ ...form, teacher: e.target.value })}
-                    placeholder="Ej: Juan Tamariz, Dai Vernon, etc."
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                    type="text"
+                    value={form.artistic_name}
+                    onChange={(e) => setForm({ ...form, artistic_name: e.target.value })}
+                    placeholder="Ej: David Copperfield"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
                   />
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="mt-5 w-full rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 font-semibold transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
-              >
-                {saving ? "Guardando..." : "Guardar perfil artístico"}
-              </button>
-            </form>
+            </div>
+          </div>
 
-            <div className="mt-6 rounded-3xl border border-white/10 bg-[#0b1224] p-5">
-              <h2 className="mb-3 text-lg font-semibold">Acciones rápidas</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Link href="/laboratorio" className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10">
-                  <FlaskConical className="size-5 text-amber-300" />
-                  <span>Ver laboratorio</span>
-                </Link>
-                <Link href="/marketplace" className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10">
-                  <Store className="size-5 text-orange-300" />
-                  <span>Ir al marketplace</span>
-                </Link>
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
+            <h2 className="text-xl font-bold text-slate-200 mb-4 flex items-center gap-2 border-b border-slate-800 pb-3">
+              📖 Biografía Mágica
+            </h2>
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                Sobre mí / Presentación
+              </label>
+              <textarea
+                rows={4}
+                value={form.bio}
+                onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                placeholder="Contanos tus especialidades, qué disciplinas te apasionan o qué buscás aprender..."
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200 resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
+            <h2 className="text-xl font-bold text-slate-200 mb-4 flex items-center gap-2 border-b border-slate-800 pb-3">
+              📍 Ubicación y Redes de Contacto
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">País</label>
+                <input
+                  type="text"
+                  value={form.country}
+                  onChange={(e) => setForm({ ...form, country: e.target.value })}
+                  placeholder="Ej: Argentina"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Ciudad</label>
+                <input
+                  type="text"
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  placeholder="Ej: Buenos Aires"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">📞 WhatsApp (Sin el símbolo +)</label>
+                <input
+                  type="text"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="Ej: 5491155554433"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">📸 Instagram (Usuario)</label>
+                <input
+                  type="text"
+                  value={form.instagram}
+                  onChange={(e) => setForm({ ...form, instagram: e.target.value })}
+                  placeholder="Ej: mi_instagram_magico"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">🎥 Canal de YouTube (Enlace completo)</label>
+                <input
+                  type="text"
+                  value={form.youtube}
+                  onChange={(e) => setForm({ ...form, youtube: e.target.value })}
+                  placeholder="Ej: https://youtube.com/@mi_canal_magico"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
+                />
               </div>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <LocationEditor initialCountry={profile.country} initialCity={profile.city} onUpdated={loadProfile} />
-
-            <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-300">
-                  <MapPin className="size-5" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white">Tu comunidad</h3>
-                  <p className="text-sm text-white/50">Comparte tu ubicación para conectar con otros miembros.</p>
-                </div>
+          <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
+            <h2 className="text-xl font-bold text-slate-200 mb-4 flex items-center gap-2 border-b border-slate-800 pb-3">
+              🎓 Formación y Legado
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Estudios Mágicos
+                </label>
+                <input
+                  type="text"
+                  value={form.studies}
+                  onChange={(e) => setForm({ ...form, studies: e.target.value })}
+                  placeholder="Ej: Autodidacta, Escuela Fu-Manchú, etc."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
+                />
               </div>
-              <p className="text-sm text-white/60">
-                Cuando completes tu ciudad y país, podrás encontrar personas cercanas en el laboratorio y en el marketplace.
-              </p>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+                  🎩 Mentor / Profesor Principal
+                </label>
+                <input
+                  type="text"
+                  value={form.teacher}
+                  onChange={(e) => setForm({ ...form, teacher: e.target.value })}
+                  placeholder="Ej: René Lavand"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
+                />
+              </div>
             </div>
           </div>
-        </div>
+
+          <div className="flex justify-end gap-4 mt-8">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="px-6 py-3 bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 font-bold rounded-xl transition duration-200 text-sm"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving || uploading}
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black rounded-xl transition duration-200 text-sm shadow-lg shadow-purple-900/40 disabled:opacity-50"
+            >
+              {saving ? 'Guardando...' : '✨ Guardar Perfil'}
+            </button>
+          </div>
+
+        </form>
       </div>
     </div>
-  )
-}
-
-// ─── Componente interno: selector de avatar ───────────────────────────────────
-function AvatarUploader({
-  profile,
-  onUploaded,
-}: {
-  profile: { id: string; name: string | null; artistic_name: string | null; avatar_url: string | null }
-  onUploaded: () => void
-}) {
-  const [uploading, setUploading] = useState(false)
-  const inputRef = useState<HTMLInputElement | null>(null)
-  const displayName = profile.artistic_name || profile.name || "?"
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append("avatar", file)
-
-      const res = await fetch("/api/avatar", { method: "POST", body: formData })
-      const data = await res.json()
-
-      if (!res.ok) {
-        toast.error(data.error || "Error al subir la foto")
-        return
-      }
-
-      toast.success("Foto de perfil actualizada ✨")
-      onUploaded()
-    } catch {
-      toast.error("Error al subir la foto")
-    } finally {
-      setUploading(false)
-      // Resetear el input para poder subir la misma foto de nuevo
-      e.target.value = ""
-    }
-  }
-
-  return (
-    <label className="group relative cursor-pointer">
-      <UserAvatar
-        name={displayName}
-        avatarUrl={profile.avatar_url}
-        size="lg"
-        className="ring-2 ring-white/10 transition group-hover:ring-amber-500/50"
-      />
-      <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition group-hover:opacity-100">
-        {uploading ? (
-          <div className="size-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-        ) : (
-          <Camera className="size-5 text-white" />
-        )}
-      </div>
-      <input
-        type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp"
-        className="sr-only"
-        onChange={handleFile}
-        disabled={uploading}
-      />
-    </label>
-  )
+  );
 }
