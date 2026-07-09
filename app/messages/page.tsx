@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { ArrowLeft, Send } from "lucide-react"
@@ -14,7 +14,7 @@ type Message = {
   created_at: string
 }
 
-export default function MessagesPage() {
+function MessagesContent() {
   const searchParams = useSearchParams()
   const targetUserId = searchParams.get("with") // El ID del vendedor obtenido de la URL
 
@@ -65,7 +65,7 @@ export default function MessagesPage() {
         setText("")
       }
     } catch {
-      console.error("Error enviando mensaje")
+      console.error("Error sending message")
     }
   }
 
@@ -122,5 +122,17 @@ export default function MessagesPage() {
         </form>
       </footer>
     </div>
+  )
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0f1e] text-white flex flex-col items-center justify-center p-4">
+        <p className="text-white/50 animate-pulse text-sm">Cargando chat...</p>
+      </div>
+    }>
+      <MessagesContent />
+    </Suspense>
   )
 }
