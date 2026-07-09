@@ -185,13 +185,13 @@ export default function CommunityPage() {
 
 {member.studies ? (
   <p className="mt-3 text-xs text-white/50">
-    <span className="text-amber-400">Estudia:</span> {member.studies}
+    <span className="text-amber-400">Formación Mágica:</span> {member.studies}
   </p>
 ) : null}
 
 {member.teacher ? (
   <p className="mt-1 text-xs text-white/50">
-    <span className="text-amber-400">Profesor:</span> {member.teacher}
+    <span className="text-amber-400">Profesor/es:</span> {member.teacher}
   </p>
 ) : null}
 
