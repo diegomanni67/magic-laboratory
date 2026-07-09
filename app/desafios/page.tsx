@@ -19,7 +19,7 @@ type Submission = {
   video_url: string
   created_at: string
   user_id: string
-  users: {
+  users?: {
     id: string
     name: string | null
     artistic_name: string | null
@@ -34,7 +34,7 @@ type Comment = {
   user_id: string
   content: string
   created_at: string
-  users: {
+  users?: {
     name: string | null
     artistic_name: string | null
     avatar_url: string | null
@@ -484,7 +484,7 @@ export default function DesafiosPage() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {submissions.map((submission) => {
                     const embedUrl = getVideoEmbedUrl(submission.video_url)
-                    const displayName = submission.users.artistic_name || submission.users.name || "Mago"
+                    const displayName = submission.users?.artistic_name || submission.users?.name || "Mago"
                     const voteCount = submission.challenge_votes[0]?.count || 0
                     const hasVoted = userVotes.has(submission.id)
                     const isCommentsOpen = visibleComments.has(submission.id)
