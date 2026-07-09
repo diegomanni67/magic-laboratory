@@ -133,7 +133,7 @@ export default function MarketplacePage() {
         setNewCommentText("")
       }
     } catch {
-      console.error("Error publicando comentario")
+      console.error("Error publishing comment")
     }
   }
 
@@ -301,26 +301,50 @@ export default function MarketplacePage() {
                   </div>
                 </div>
 
+                {/* CONTENEDOR DE COMENTARIOS MEJORADO */}
                 {activeCommentsProductId === product.id && (
-                  <div className="border-t border-white/10 bg-[#0b1120] p-4 space-y-3 max-h-60 overflow-y-auto">
+                  <div className="border-t border-white/10 bg-[#0b1120] p-4 flex flex-col space-y-3">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-white/40">Preguntas y Respuestas</h4>
-                    {loadingComments ? (
-                      <p className="text-xs text-white/40">Cargando...</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {(commentsMap[product.id] || []).length === 0 && <p className="text-xs text-white/30">Nadie preguntó nada todavía.</p>}
-                        {(commentsMap[product.id] || []).map((c) => (
-                          <div key={c.id} className="text-xs border-b border-white/5 pb-1.5 last:border-0">
-                            <span className="font-semibold text-amber-400">@{c.users?.artistic_name || "usuario"}: </span>
-                            <span className="text-white/80">{c.content}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    
+                    {/* El scroll se limita únicamente a esta lista de comentarios */}
+                    <div className="max-h-36 overflow-y-auto space-y-2 pr-1">
+                      {loadingComments ? (
+                        <p className="text-xs text-white/40">Cargando...</p>
+                      ) : (
+                        <>
+                          {(commentsMap[product.id] || []).length === 0 && <p className="text-xs text-white/30">Nadie preguntó nada todavía.</p>}
+                          {(commentsMap[product.id] || []).map((c) => (
+                            <div key={c.id} className="text-xs border-b border-white/5 pb-1.5 last:border-0">
+                              <span className="font-semibold text-amber-400">@{c.users?.artistic_name || "usuario"}: </span>
+                              <span className="text-white/80">{c.content}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Caja de texto fija abajo: nunca se desplaza ni se esconde */}
                     {currentUser && (
-                      <div className="flex gap-2 pt-1">
-                        <input value={newCommentText} onChange={(e) => setNewCommentText(e.target.value)} placeholder="Escribí tu consulta..." className="flex-1 rounded-xl bg-white/5 px-3 py-1.5 text-xs outline-none border border-white/10 focus:border-amber-500/30" />
-                        <button onClick={() => handlePostComment(product.id)} className="rounded-xl bg-amber-500 p-2 text-black hover:opacity-90"><Send className="size-3" /></button>
+                      <div className="flex gap-2 pt-2 border-t border-white/5">
+                        <input 
+                          value={newCommentText} 
+                          onChange={(e) => setNewCommentText(e.target.value)} 
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              void handlePostComment(product.id)
+                            }
+                          }}
+                          placeholder="Escribí tu consulta..." 
+                          className="flex-1 rounded-xl bg-white/5 px-3 py-1.5 text-xs outline-none border border-white/10 focus:border-amber-500/30 text-white" 
+                        />
+                        <button 
+                          onClick={() => handlePostComment(product.id)} 
+                          className="rounded-xl bg-amber-500 p-2 text-black hover:opacity-90 flex items-center justify-center shrink-0 size-8"
+                          title="Enviar"
+                        >
+                          <Send className="size-4" />
+                        </button>
                       </div>
                     )}
                   </div>
