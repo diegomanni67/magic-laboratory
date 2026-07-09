@@ -1,407 +1,502 @@
-'use client';
+"use client"
 
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import UserAvatar from '@/components/UserAvatar';
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { toast } from "sonner"
+import { ArrowLeft, Sparkles, Timer, Video, X, Play, ThumbsUp, ThumbsDown, Bookmark, BookmarkCheck } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
-const supabase = createClient();
-
-interface Challenge {
-  id: string;
-  title: string;
-  description: string;
-  end_date: string;
+type Challenge = {
+  id: string
+  title: string
+  description: string
+  start_date: string
+  end_date: string
 }
 
-interface Submission {
-  id: string;
-  challenge_id: string;
-  user_id: string;
-  video_url: string;
-  created_at: string;
-  profiles?: {
-    full_name: string | null;
-    artistic_name: string | null;
-    avatar_url: string | null;
-  } | null;
-  challenge_votes?: { user_id: string }[];
+type Submission = {
+  id: string
+  video_url: string
+  created_at: string
+  user_id: string
+  users: {
+    id: string
+    name: string | null
+    artistic_name: string | null
+  }
+  challenge_votes: { count: number }[]
 }
 
-export default function ChallengesPage() {
-  const [challenge, setChallenge] = useState<Challenge | null>(null);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [videoUrl, setVideoUrl] = useState('');
-  const [user, setUser] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0 });
+export default function DesafiosPage() {
+  const [challenge, setChallenge] = useState<Challenge | null>(null)
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
+  const [showModal, setShowModal] = useState(false)
+  const [videoUrl, setVideoUrl] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+  const [userVotes, setUserVotes] = useState<Set<string>>(new Set())
+  const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [isBookmarked, setIsBookmarked] = useState(false)
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      setUser(authUser);
+      try {
+        const supabase = createClient()
+        
+        // Get current user
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        setUser(currentUser)
 
-      const { data: dbChallenges } = await supabase
-        .from('challenges')
-        .select('*')
-        .order('end_date', { ascending: false })
-        .limit(1);
+        // Load active challenge
+        const challengeRes = await fetch("/api/challenges")
+        const challengeData = await challengeRes.json()
+        setChallenge(challengeData.challenge)
 
-      if (dbChallenges && dbChallenges.length > 0) {
-        const activeChallenge = dbChallenges[0];
-        setChallenge(activeChallenge);
+        // Load submissions if challenge exists
+        if (challengeData.challenge) {
+          const submissionsRes = await fetch(`/api/challenge-submissions?challenge_id=${challengeData.challenge.id}`)
+          const submissionsData = await submissionsRes.json()
+          setSubmissions(submissionsData.submissions || [])
 
-        const { data: dbSubmissions } = await supabase
-          .from('challenge_submissions')
-          .select(`
-            id,
-            challenge_id,
-            user_id,
-            video_url,
-            created_at,
-            profiles:user_id (
-              full_name,
-              artistic_name,
-              avatar_url
-            ),
-            challenge_votes (
-              user_id
-            )
-          `)
-          .eq('challenge_id', activeChallenge.id);
+          // Check if current user has submitted
+          if (currentUser) {
+            const userSubmission = submissionsData.submissions?.find((s: Submission) => s.user_id === currentUser.id)
+            setHasSubmitted(!!userSubmission)
 
-        if (dbSubmissions) {
-          setSubmissions(dbSubmissions as any);
+            // Check if challenge is bookmarked
+            const bookmarkRes = await fetch(`/api/bookmarks?challenge_id=${challengeData.challenge.id}`)
+            const bookmarkData = await bookmarkRes.json()
+            setIsBookmarked(bookmarkData.bookmarked)
+
+            // Load user's votes
+            const votePromises = submissionsData.submissions?.map(async (s: Submission) => {
+              const voteRes = await fetch(`/api/challenge-votes?submission_id=${s.id}`)
+              const voteData = await voteRes.json()
+              return { submissionId: s.id, voted: voteData.voted }
+            }) || []
+            
+            const votes = await Promise.all(votePromises)
+            const votedSet = new Set(votes.filter((v: any) => v.voted).map((v: any) => v.submissionId))
+            setUserVotes(votedSet)
+          }
         }
-
-        if (authUser) {
-          const { data: bookmark } = await supabase
-            .from('bookmarks')
-            .select('*')
-            .eq('user_id', authUser.id)
-            .eq('challenge_id', activeChallenge.id)
-            .maybeSingle();
-
-          if (bookmark) setIsBookmarked(true);
-        }
+      } catch (error) {
+        console.error("Error loading data:", error)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false);
     }
-    loadData();
-  }, []);
+
+    loadData()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!challenge || !videoUrl.trim()) return
+
+    setSubmitting(true)
+    try {
+      const res = await fetch("/api/challenge-submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          challenge_id: challenge.id,
+          video_url: videoUrl.trim()
+        })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (data.error === "Ya te has postulado a este desafío") {
+          toast.error("Ya te has postulado a este desafío anteriormente")
+        } else {
+          toast.error(data.error || "Error al enviar el video")
+        }
+        return
+      }
+
+      toast.success("¡Video enviado correctamente! ✨")
+      setShowModal(false)
+      setVideoUrl("")
+      setHasSubmitted(true)
+
+      // Reload submissions
+      const submissionsRes = await fetch(`/api/challenge-submissions?challenge_id=${challenge.id}`)
+      const submissionsData = await submissionsRes.json()
+      setSubmissions(submissionsData.submissions || [])
+    } catch (error) {
+      toast.error("Error al enviar el video")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleVote = async (submissionId: string) => {
+    if (!user) {
+      toast.error("Debes iniciar sesión para votar")
+      return
+    }
+
+    try {
+      const res = await fetch("/api/challenge-votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submission_id: submissionId })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "Error al votar")
+        return
+      }
+
+      // Update local state
+      if (data.voted) {
+        setUserVotes(new Set([...userVotes, submissionId]))
+        toast.success("¡Voto registrado! ✨")
+      } else {
+        setUserVotes(new Set([...userVotes].filter(id => id !== submissionId)))
+        toast.success("Voto eliminado")
+      }
+
+      // Reload submissions to get updated vote counts
+      if (challenge) {
+        const submissionsRes = await fetch(`/api/challenge-submissions?challenge_id=${challenge.id}`)
+        const submissionsData = await submissionsRes.json()
+        setSubmissions(submissionsData.submissions || [])
+      }
+    } catch (error) {
+      toast.error("Error al votar")
+    }
+  }
+
+  const handleBookmark = async () => {
+    if (!user) {
+      toast.error("Debes iniciar sesión para guardar el desafío")
+      return
+    }
+
+    if (!challenge) return
+
+    try {
+      const res = await fetch("/api/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge_id: challenge.id })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "Error al guardar")
+        return
+      }
+
+      setIsBookmarked(data.bookmarked)
+      if (data.bookmarked) {
+        toast.success("Desafío guardado 📌")
+      } else {
+        toast.success("Desafío eliminado de guardados")
+      }
+    } catch (error) {
+      toast.error("Error al guardar el desafío")
+    }
+  }
+
+  const getVideoEmbedUrl = (url: string) => {
+    // YouTube
+    const youtubeMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/)
+    if (youtubeMatch) {
+      return `https://www.youtube.com/embed/${youtubeMatch[1]}`
+    }
+
+    // Vimeo
+    const vimeoMatch = url.match(/vimeo\.com\/(\d+)/)
+    if (vimeoMatch) {
+      return `https://player.vimeo.com/video/${vimeoMatch[1]}`
+    }
+
+    // Direct video URL
+    if (url.match(/\.(mp4|webm|ogg)$/i)) {
+      return url
+    }
+
+    return null
+  }
+
+  const getTimeRemaining = (endDate: string) => {
+    const total = Date.parse(endDate) - Date.parse(new Date().toISOString())
+    const days = Math.floor(total / (1000 * 60 * 60 * 24))
+    const hours = Math.floor((total / (1000 * 60 * 60)) % 24)
+    const minutes = Math.floor((total / 1000 / 60) % 60)
+
+    return { days, hours, minutes, total }
+  }
+
+  const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, total: 0 })
 
   useEffect(() => {
-    if (!challenge) return;
-
-    const interval = setInterval(() => {
-      const difference = +new Date(challenge.end_date) - +new Date();
-      if (difference <= 0) {
-        clearInterval(interval);
-        return;
-      }
-
-      setCountdown({
-        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((difference / 1000 / 60) % 60),
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [challenge]);
-
-  const handleToggleBookmark = async () => {
-    if (!user || !challenge) return;
-
-    try {
-      if (isBookmarked) {
-        await supabase
-          .from('bookmarks')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('challenge_id', challenge.id);
-        setIsBookmarked(false);
-      } else {
-        await supabase
-          .from('bookmarks')
-          .insert({
-            user_id: user.id,
-            challenge_id: challenge.id,
-          });
-        setIsBookmarked(true);
-      }
-    } catch (err) {
-      console.error('Error toggling bookmark:', err);
+    if (challenge) {
+      const timer = setInterval(() => {
+        setTimeRemaining(getTimeRemaining(challenge.end_date))
+      }, 1000)
+      setTimeRemaining(getTimeRemaining(challenge.end_date))
+      return () => clearInterval(timer)
     }
-  };
-
-  const handleUploadSubmission = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !challenge || !videoUrl) return;
-
-    try {
-      setSubmitting(true);
-      const { error } = await supabase
-        .from('challenge_submissions')
-        .insert({
-          challenge_id: challenge.id,
-          user_id: user.id,
-          video_url: videoUrl,
-        });
-
-      if (error) throw error;
-
-      setShowModal(false);
-      setVideoUrl('');
-      
-      window.location.reload();
-    } catch (err: any) {
-      console.error('Error submitting video:', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleVote = async (submissionId: string, votes: any[]) => {
-    if (!user) return;
-    const alreadyVoted = votes.some((v: any) => v.user_id === user.id);
-
-    try {
-      if (alreadyVoted) {
-        await supabase
-          .from('challenge_votes')
-          .delete()
-          .eq('submission_id', submissionId)
-          .eq('user_id', user.id);
-      } else {
-        await supabase
-          .from('challenge_votes')
-          .insert({
-            submission_id: submissionId,
-            user_id: user.id,
-          });
-      }
-
-      setSubmissions((prev) =>
-        prev.map((sub) => {
-          if (sub.id === submissionId) {
-            const updatedVotes = alreadyVoted
-              ? sub.challenge_votes?.filter((v) => v.user_id !== user.id) || []
-              : [...(sub.challenge_votes || []), { user_id: user.id }];
-            return { ...sub, challenge_votes: updatedVotes };
-          }
-          return sub;
-        })
-      );
-    } catch (err) {
-      console.error('Error processing vote:', err);
-    }
-  };
-
-  const parseVideoEmbed = (url: string) => {
-    if (url.includes('youtube.com/watch')) {
-      const videoId = url.split('v=')[1]?.split('&')[0];
-      return `https://www.youtube.com/embed/${videoId}`;
-    }
-    if (url.includes('youtu.be/')) {
-      const videoId = url.split('youtu.be/')[1];
-      return `https://www.youtube.com/embed/${videoId}`;
-    }
-    return url;
-  };
+  }, [challenge])
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-purple-300">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-medium">Invocando el desafío de la semana...</p>
-        </div>
+      <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center text-white/70">
+        Cargando desafío...
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-purple-950/20 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        
-        {challenge ? (
+    <div className="min-h-screen bg-[#0a0f1e] text-white">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Link href="/" className="mb-6 inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
+          <ArrowLeft className="size-4" />
+          Volver al inicio
+        </Link>
+
+        {!challenge ? (
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <div className="text-center">
+              <div className="mb-4 text-6xl">🔮</div>
+              <h2 className="text-2xl font-semibold text-purple-300 mb-2">
+                Próximo desafío preparándose en el laboratorio...
+              </h2>
+              <p className="text-white/50">Volvé pronto para ver el nuevo desafío semanal</p>
+            </div>
+          </div>
+        ) : (
           <>
-            <div className="bg-slate-900/85 border border-purple-500/20 rounded-2xl p-6 sm:p-8 mb-12 shadow-2xl relative overflow-hidden backdrop-blur-sm">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-              
-              <div className="flex justify-between items-start gap-4 mb-4">
-                <span className="text-xs bg-purple-950 text-purple-300 border border-purple-500/30 font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl">
-                  🏆 Desafío Semanal
-                </span>
-                
-                {user && (
-                  <button
-                    onClick={handleToggleBookmark}
-                    className={`flex items-center gap-2 text-xs border px-4 py-2 rounded-xl transition duration-200 font-bold ${
-                      isBookmarked
-                        ? 'bg-purple-600 border-purple-500 text-white'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    📌 {isBookmarked ? 'Guardado' : 'Guardar Desafío'}
-                  </button>
-                )}
-              </div>
+            {/* Challenge Header */}
+            <div className="mb-12 rounded-3xl border border-purple-500/30 bg-gradient-to-br from-purple-900/20 to-indigo-900/10 p-8 shadow-2xl shadow-purple-900/20">
+              <div className="flex items-start justify-between gap-6">
+                <div className="flex-1">
+                  <div className="mb-4 flex items-center gap-3">
+                    <Sparkles className="size-6 text-purple-400" />
+                    <span className="text-sm font-semibold uppercase tracking-wider text-purple-300">
+                      Desafío Semanal
+                    </span>
+                  </div>
+                  <h1 className="mb-4 text-4xl font-bold bg-gradient-to-r from-purple-300 via-pink-300 to-amber-300 bg-clip-text text-transparent">
+                    {challenge.title}
+                  </h1>
+                  <p className="text-lg text-white/70 mb-6">{challenge.description}</p>
+                  
+                  {/* Countdown */}
+                  {timeRemaining.total > 0 ? (
+                    <div className="flex items-center gap-4 rounded-2xl border border-purple-500/20 bg-purple-500/10 px-6 py-4">
+                      <Timer className="size-5 text-purple-300" />
+                      <div className="flex gap-6">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-purple-300">{timeRemaining.days}</div>
+                          <div className="text-xs text-white/50">días</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-purple-300">{timeRemaining.hours}</div>
+                          <div className="text-xs text-white/50">horas</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-purple-300">{timeRemaining.minutes}</div>
+                          <div className="text-xs text-white/50">minutos</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-6 py-4 text-amber-300">
+                      El desafío ha finalizado
+                    </div>
+                  )}
+                </div>
 
-              <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-3">
-                {challenge.title}
-              </h1>
-              
-              <p className="text-sm sm:text-base text-slate-300 max-w-3xl mb-6">
-                {challenge.description}
-              </p>
+                <div className="flex flex-col gap-3">
+                  {user && (
+                    <button
+                      onClick={handleBookmark}
+                      className={`flex items-center justify-center gap-2 rounded-2xl px-6 py-3 font-semibold transition hover:opacity-90 shadow-lg whitespace-nowrap ${
+                        isBookmarked
+                          ? "bg-purple-600/20 border border-purple-500/50 text-purple-300 hover:bg-purple-600/30"
+                          : "bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-purple-900/30"
+                      }`}
+                    >
+                      {isBookmarked ? (
+                        <>
+                          <BookmarkCheck className="size-5" />
+                          Guardado
+                        </>
+                      ) : (
+                        <>
+                          <Bookmark className="size-5" />
+                          Guardar
+                        </>
+                      )}
+                    </button>
+                  )}
 
-              <div className="flex items-center gap-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800/60 max-w-sm">
-                <span className="text-xl">⏱️</span>
-                <div>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Tiempo restante</p>
-                  <p className="text-sm font-black text-purple-400">
-                    {countdown.days} días, {countdown.hours} horas, {countdown.minutes} minutos
-                  </p>
+                  {user && !hasSubmitted && timeRemaining.total > 0 && (
+                    <button
+                      onClick={() => setShowModal(true)}
+                      className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-semibold transition hover:opacity-90 shadow-lg shadow-purple-900/30 whitespace-nowrap"
+                    >
+                      <Video className="size-5" />
+                      Participar en el Desafío
+                    </button>
+                  )}
                 </div>
               </div>
-
-              {user && (
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="mt-6 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black rounded-xl text-sm transition duration-200 shadow-lg shadow-purple-900/40"
-                >
-                  Participar en el Desafío ✨
-                </button>
-              )}
             </div>
 
+            {/* Submissions Grid */}
             <div>
-              <h2 className="text-xl font-bold text-slate-200 mb-6 flex items-center gap-2">
-                🎬 Participaciones ({submissions.length})
+              <h2 className="mb-6 text-2xl font-semibold flex items-center gap-3">
+                <Play className="size-6 text-purple-400" />
+                Participaciones ({submissions.length})
               </h2>
 
               {submissions.length === 0 ? (
-                <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-12 text-center text-slate-500">
-                  <p className="text-4xl mb-3">🎥</p>
-                  <p className="text-sm font-medium">Nadie se postuló todavía. ¡Sé el primero en subir tu video!</p>
+                <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-12 text-center text-white/40">
+                  <Video className="mx-auto mb-4 size-12" />
+                  <p>Aún no hay participaciones. ¡Sé el primero en mostrar tu magia!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {submissions.map((sub) => {
-                    const creatorName = sub.profiles?.artistic_name || sub.profiles?.full_name || 'Mago Anónimo';
-                    const avatarUrl = sub.profiles?.avatar_url || null;
-                    const votesList = sub.challenge_votes || [];
-                    const hasVoted = user && votesList.some((v) => v.user_id === user.id);
+                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {submissions.map((submission) => {
+                    const embedUrl = getVideoEmbedUrl(submission.video_url)
+                    const displayName = submission.users.artistic_name || submission.users.name || "Mago"
+                    const voteCount = submission.challenge_votes[0]?.count || 0
+                    const hasVoted = userVotes.has(submission.id)
 
                     return (
-                      <div 
-                        key={sub.id} 
-                        className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-lg hover:border-purple-500/30 transition duration-300 flex flex-col"
+                      <div
+                        key={submission.id}
+                        className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden shadow-xl shadow-black/20"
                       >
-                        <div className="p-4 flex items-center gap-3 border-b border-slate-800/60">
-                          <UserAvatar 
-                            avatarUrl={avatarUrl} 
-                            fullName={creatorName} 
-                            size={36} 
-                            className="border-purple-500/20"
-                          />
-                          <div>
-                            <h4 className="text-sm font-bold text-slate-200">{creatorName}</h4>
-                            <p className="text-[10px] text-slate-500">
-                              {new Date(sub.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="aspect-video bg-black relative">
-                          <iframe
-                            src={parseVideoEmbed(sub.video_url)}
-                            className="w-full h-full border-0"
-                            allowFullScreen
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          />
-                        </div>
-
-                        <div className="p-4 flex items-center justify-between bg-slate-900/40 mt-auto">
-                          <span className="text-xs text-slate-400 font-semibold">
-                            ⭐ {votesList.length} votos
-                          </span>
-                          
-                          {user && (
-                            <button
-                              onClick={() => handleVote(sub.id, votesList)}
-                              className={`text-xs px-4 py-2 rounded-lg font-bold transition duration-200 ${
-                                hasVoted
-                                  ? 'bg-purple-950 text-purple-300 border border-purple-500/30'
-                                  : 'bg-purple-600 hover:bg-purple-500 text-white shadow-md'
-                              }`}
-                            >
-                              {hasVoted ? 'Quitár Voto 💔' : 'Votar ✨'}
-                            </button>
+                        {/* Video Embed */}
+                        <div className="aspect-video bg-black">
+                          {embedUrl ? (
+                            embedUrl.startsWith("http") ? (
+                              <iframe
+                                src={embedUrl}
+                                className="h-full w-full"
+                                allowFullScreen
+                                title={`Video de ${displayName}`}
+                              />
+                            ) : (
+                              <video
+                                src={embedUrl}
+                                controls
+                                className="h-full w-full"
+                              />
+                            )
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-white/30">
+                              Video no compatible
+                            </div>
                           )}
                         </div>
+
+                        {/* Card Content */}
+                        <div className="p-5">
+                          <div className="mb-3">
+                            <h3 className="font-semibold text-white">{displayName}</h3>
+                            <p className="text-xs text-white/40">
+                              {new Date(submission.created_at).toLocaleDateString("es-AR")}
+                            </p>
+                          </div>
+
+                          {/* Vote Button */}
+                          <button
+                            onClick={() => handleVote(submission.id)}
+                            disabled={!user}
+                            className={`flex items-center justify-center gap-2 w-full rounded-2xl px-4 py-3 font-medium transition ${
+                              hasVoted
+                                ? "bg-purple-600/20 border border-purple-500/50 text-purple-300 hover:bg-purple-600/30"
+                                : "bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {hasVoted ? (
+                              <>
+                                <ThumbsDown className="size-4" />
+                                Quitar voto
+                              </>
+                            ) : (
+                              <>
+                                <ThumbsUp className="size-4" />
+                                Votar ✨
+                              </>
+                            )}
+                            <span className="ml-auto font-bold">{voteCount}</span>
+                          </button>
+                        </div>
                       </div>
-                    );
+                    )
                   })}
                 </div>
               )}
             </div>
           </>
-        ) : (
-          <div className="text-center py-20 text-slate-400">
-            <span className="text-5xl mb-4 block">🔮</span>
-            <h2 className="text-xl font-bold text-slate-200">Próximo desafío preparándose en el laboratorio...</h2>
-            <p className="text-xs text-slate-500 mt-1">Nuestros magos administradores están ideando la siguiente prueba.</p>
-          </div>
         )}
-
-        {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-md shadow-2xl relative">
-              <h3 className="text-lg font-bold text-white mb-2">🚀 Subir tu Participación</h3>
-              <p className="text-xs text-slate-400 mb-6">Contanos tu técnica y compartí el enlace de tu video de práctica.</p>
-
-              <form onSubmit={handleUploadSubmission} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
-                    Enlace de tu Video (YouTube, Vimeo o URL directo)
-                  </label>
-                  <input
-                    type="url"
-                    required
-                    value={videoUrl}
-                    onChange={(e) => setVideoUrl(e.target.value)}
-                    placeholder="Ej: https://www.youtube.com/watch?v=xxx"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 mt-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-4 py-2.5 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-400 font-bold rounded-xl text-xs transition duration-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-xl text-xs transition duration-200 disabled:opacity-50"
-                  >
-                    {submitting ? 'Subiendo...' : 'Publicar Video ✨'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
       </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-purple-500/30 bg-gradient-to-br from-purple-900/90 to-indigo-900/90 p-6 shadow-2xl shadow-purple-900/50">
+            <div className="mb-6 flex items-center justify-between">
+              <h3 className="text-xl font-semibold">Participar en el Desafío</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                className="rounded-full p-2 text-white/50 hover:bg-white/10 hover:text-white"
+              >
+                <X className="size-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white/70">
+                  URL del Video
+                </label>
+                <input
+                  value={videoUrl}
+                  onChange={(e) => setVideoUrl(e.target.value)}
+                  placeholder="https://youtube.com/watch?v=... o https://vimeo.com/..."
+                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-purple-500/50"
+                  required
+                />
+                <p className="mt-2 text-xs text-white/40">
+                  Acepta enlaces de YouTube, Vimeo o videos directos (mp4, webm)
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 font-medium hover:bg-white/10"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-3 font-medium hover:opacity-90 disabled:opacity-50"
+                >
+                  {submitting ? "Enviando..." : "Enviar Video"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }

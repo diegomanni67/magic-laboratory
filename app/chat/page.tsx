@@ -1,266 +1,307 @@
-'use client';
+"use client"
 
-import React, { useEffect, useState, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import UserAvatar from '@/components/UserAvatar';
+import { useEffect, useState, useRef } from "react"
+import Link from "next/link"
+import { ArrowLeft, Send, Hash, Users } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
-const supabase = createClient();
-
-interface ChatRoom {
-  id: string;
-  name: string;
-  description: string;
+type ChatRoom = {
+  id: string
+  name: string
+  description: string | null
 }
 
-interface Message {
-  id: string;
-  room_id: string;
-  user_id: string;
-  message: string;
-  created_at: string;
-  profiles?: {
-    full_name: string | null;
-    artistic_name: string | null;
-    avatar_url: string | null;
-  } | null;
+type ChatMessage = {
+  id: string
+  message: string
+  created_at: string
+  user_id: string
+  users: {
+    id: string
+    name: string | null
+    artistic_name: string | null
+  }
 }
 
 export default function ChatPage() {
-  const [rooms, setRooms] = useState<ChatRoom[]>([]);
-  const [activeRoom, setActiveRoom] = useState<string>('cartomagia');
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [rooms, setRooms] = useState<ChatRoom[]>([])
+  const [selectedRoom, setSelectedRoom] = useState<ChatRoom | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [newMessage, setNewMessage] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
+  const [sending, setSending] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    async function initChat() {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      setUser(authUser);
+    loadRooms()
+    loadUser()
+  }, [])
 
-      const { data: dbRooms } = await supabase
-        .from('chat_rooms')
-        .select('*');
-      
-      if (dbRooms) setRooms(dbRooms);
-      setLoading(false);
+  useEffect(() => {
+    if (selectedRoom) {
+      loadMessages(selectedRoom.id)
+      setupRealtimeSubscription(selectedRoom.id)
     }
-    initChat();
-  }, []);
+  }, [selectedRoom])
 
   useEffect(() => {
-    async function loadMessages() {
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select(`
-          id,
-          room_id,
-          user_id,
-          message,
-          created_at,
-          profiles:user_id (
-            full_name,
-            artistic_name,
-            avatar_url
-          )
-        `)
-        .eq('room_id', activeRoom)
-        .order('created_at', { ascending: true });
+    scrollToBottom()
+  }, [messages])
 
-      if (data) {
-        setMessages(data as any);
+  const loadUser = async () => {
+    try {
+      const supabase = createClient()
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      setUser(currentUser)
+    } catch (error) {
+      console.error("Error loading user:", error)
+    }
+  }
+
+  const loadRooms = async () => {
+    try {
+      const res = await fetch("/api/chat-rooms")
+      const data = await res.json()
+      setRooms(data.rooms || [])
+      if (data.rooms && data.rooms.length > 0) {
+        setSelectedRoom(data.rooms[0])
       }
+    } catch (error) {
+      console.error("Error loading rooms:", error)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    loadMessages();
+  const loadMessages = async (roomId: string) => {
+    try {
+      const res = await fetch(`/api/chat-messages?room_id=${roomId}`)
+      const data = await res.json()
+      setMessages(data.messages || [])
+    } catch (error) {
+      console.error("Error loading messages:", error)
+    }
+  }
 
+  const setupRealtimeSubscription = (roomId: string) => {
+    const supabase = createClient()
+    
     const channel = supabase
-      .channel(`public:chat_messages:room_id=eq.${activeRoom}`)
+      .channel(`chat_messages:${roomId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'chat_messages',
-          filter: `room_id=eq.${activeRoom}`,
+          filter: `room_id=eq.${roomId}`
         },
-        async (payload: any) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('full_name, artistic_name, avatar_url')
-            .eq('id', payload.new.user_id)
-            .single();
-
-          const messageWithProfile: Message = {
-            ...payload.new,
-            profiles: profile || null,
-          };
-
-          setMessages((prev) => [...prev, messageWithProfile]);
+        (payload) => {
+          setMessages(prev => [...prev, payload.new as ChatMessage])
         }
       )
-      .subscribe();
+      .subscribe()
 
     return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [activeRoom]);
+      supabase.removeChannel(channel)
+    }
+  }
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
 
   const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !user) return;
+    e.preventDefault()
+    if (!newMessage.trim() || !selectedRoom || !user) return
 
-    const messageText = newMessage;
-    setNewMessage('');
-
+    setSending(true)
     try {
-      const { error } = await supabase
-        .from('chat_messages')
-        .insert({
-          room_id: activeRoom,
-          user_id: user.id,
-          message: messageText,
-        });
+      const res = await fetch("/api/chat-messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          room_id: selectedRoom.id,
+          message: newMessage.trim()
+        })
+      })
 
-      if (error) throw error;
-    } catch (err) {
-      console.error('Error enviando mensaje:', err);
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error || "Error al enviar mensaje")
+        return
+      }
+
+      setNewMessage("")
+    } catch (error) {
+      alert("Error al enviar mensaje")
+    } finally {
+      setSending(false)
     }
-  };
+  }
+
+  const getDisplayName = (msg: ChatMessage) => {
+    return msg.users.artistic_name || msg.users.name || "Mago"
+  }
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-purple-300">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="font-medium">Canalizando la señal en vivo...</p>
-        </div>
+      <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center text-white/70">
+        Cargando chat...
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex text-white">
-      
-      <div className="w-64 bg-slate-900 border-r border-slate-800/80 p-4 hidden md:flex flex-col gap-6">
-        <div>
-          <h2 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400 mb-2">
-            🔮 Laboratorio En Vivo
-          </h2>
-          <p className="text-xs text-slate-500">Charlá con otros ilusionistas conectados en tiempo real.</p>
-        </div>
-
-        <div className="flex-1 flex flex-col gap-1 overflow-y-auto">
-          {rooms.map((room) => (
-            <button
-              key={room.id}
-              onClick={() => setActiveRoom(room.id)}
-              className={`w-full text-left px-4 py-3 rounded-xl font-semibold transition text-sm ${
-                activeRoom === room.id
-                  ? 'bg-purple-900/40 border border-purple-500/30 text-purple-200'
-                  : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
-              }`}
-            >
-              {room.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 flex flex-col h-screen">
-        
-        <div className="p-4 bg-slate-900 border-b border-slate-800/80 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-slate-200">
-              {rooms.find((r) => r.id === activeRoom)?.name || 'Cargando sala...'}
-            </h3>
-            <p className="text-xs text-slate-500 hidden sm:block">
-              {rooms.find((r) => r.id === activeRoom)?.description}
-            </p>
+    <div className="min-h-screen bg-[#0a0f1e] text-white flex flex-col">
+      {/* Header */}
+      <header className="border-b border-white/10 bg-[#121826]">
+        <div className="mx-auto max-w-7xl px-4 py-4 flex items-center gap-4">
+          <Link href="/" className="text-white/50 hover:text-white">
+            <ArrowLeft className="size-5" />
+          </Link>
+          <div className="flex items-center gap-3">
+            <Hash className="size-5 text-purple-400" />
+            <h1 className="text-xl font-semibold">Chat del Laboratorio</h1>
           </div>
-          
-          <select 
-            value={activeRoom} 
-            onChange={(e) => setActiveRoom(e.target.value)}
-            className="md:hidden bg-slate-950 text-purple-300 border border-purple-500/20 rounded-xl px-3 py-1.5 text-xs font-semibold"
-          >
-            {rooms.map((room) => (
-              <option key={room.id} value={room.id}>{room.name}</option>
-            ))}
-          </select>
         </div>
+      </header>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/40">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2">
-              <span className="text-4xl">🃏</span>
-              <p className="text-sm">Silencio en la sala... ¡Comenzá vos la charla!</p>
-            </div>
-          ) : (
-            messages.map((msg) => {
-              const creatorName = msg.profiles?.artistic_name || msg.profiles?.full_name || 'Mago Anónimo';
-              const avatarUrl = msg.profiles?.avatar_url || null;
-
-              return (
-                <div 
-                  key={msg.id} 
-                  className="flex items-start gap-3 hover:bg-slate-900/20 p-2 rounded-xl transition duration-150"
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar - Rooms */}
+        <aside className="w-64 border-r border-white/10 bg-[#121826] flex-shrink-0">
+          <div className="p-4">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-white/50">
+              <Users className="size-4" />
+              Canales
+            </h2>
+            <div className="space-y-1">
+              {rooms.map((room) => (
+                <button
+                  key={room.id}
+                  onClick={() => setSelectedRoom(room)}
+                  className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                    selectedRoom?.id === room.id
+                      ? "bg-purple-600/20 text-purple-300"
+                      : "text-white/70 hover:bg-white/5 hover:text-white"
+                  }`}
                 >
-                  <UserAvatar 
-                    avatarUrl={avatarUrl} 
-                    fullName={creatorName} 
-                    size={40} 
-                    className="border-purple-500/20 ring-1 ring-purple-500/10"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-bold text-purple-300">
-                        {creatorName}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-300 mt-1 break-words">{msg.message}</p>
-                  </div>
+                  <Hash className="size-4" />
+                  <span className="font-medium">{room.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Chat Area */}
+        <main className="flex flex-1 flex-col">
+          {/* Room Header */}
+          {selectedRoom && (
+            <div className="border-b border-white/10 bg-[#121826]/50 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <Hash className="size-5 text-purple-400" />
+                <div>
+                  <h2 className="text-lg font-semibold">{selectedRoom.name}</h2>
+                  {selectedRoom.description && (
+                    <p className="text-sm text-white/50">{selectedRoom.description}</p>
+                  )}
                 </div>
-              );
-            })
+              </div>
+            </div>
           )}
-          <div ref={messagesEndRef} />
-        </div>
 
-        <div className="p-4 bg-slate-900 border-t border-slate-800/80">
-          {user ? (
-            <form onSubmit={handleSendMessage} className="flex gap-2">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Escribí tu truco o pregunta al chat en vivo..."
-                className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-200"
-              />
-              <button
-                type="submit"
-                className="px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition duration-200 text-sm shadow-md"
-              >
-                Enviar 🔮
-              </button>
-            </form>
-          ) : (
-            <p className="text-sm text-center text-slate-500 py-2">
-              Debés iniciar sesión para participar de la charla en vivo.
-            </p>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {!selectedRoom ? (
+              <div className="flex h-full items-center justify-center text-white/40">
+                Seleccioná un canal para comenzar
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-white/40">
+                <div className="text-center">
+                  <Hash className="mx-auto mb-2 size-8" />
+                  <p>No hay mensajes en este canal</p>
+                  <p className="text-sm mt-1">¡Sé el primero en saludar!</p>
+                </div>
+              </div>
+            ) : (
+              messages.map((msg) => {
+                const isOwnMessage = msg.user_id === user?.id
+                const avatarClass = isOwnMessage
+                  ? "bg-gradient-to-br from-purple-500 to-pink-500"
+                  : "bg-gradient-to-br from-amber-500 to-orange-500"
+                const messageContainerClass = isOwnMessage
+                  ? "bg-purple-600/30 border border-purple-500/30"
+                  : "bg-white/5 border border-white/10"
+                const alignmentClass = isOwnMessage ? "items-end" : "items-start"
+                const flexDirectionClass = isOwnMessage ? "flex-row-reverse" : ""
+
+                return (
+                  <div
+                    key={msg.id}
+                    className={`flex gap-3 ${flexDirectionClass}`}
+                  >
+                    <div className={`flex size-10 items-center justify-center rounded-full ${avatarClass} text-lg font-bold`}>
+                      {getDisplayName(msg).charAt(0).toUpperCase()}
+                    </div>
+                    <div className={`flex flex-col max-w-[70%] ${alignmentClass}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-sm text-white">
+                          {getDisplayName(msg)}
+                        </span>
+                        <span className="text-xs text-white/40">{formatTime(msg.created_at)}</span>
+                      </div>
+                      <div className={`rounded-2xl px-4 py-2 ${messageContainerClass}`}>
+                        <p className="text-sm text-white/90">{msg.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          {selectedRoom && user && (
+            <div className="border-t border-white/10 bg-[#121826]/50 p-4">
+              <form onSubmit={handleSendMessage} className="flex gap-3">
+                <input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Escribí un mensaje..."
+                  className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-purple-500/50"
+                  disabled={sending}
+                />
+                <button
+                  type="submit"
+                  disabled={sending || !newMessage.trim()}
+                  className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 font-semibold transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Send className="size-4" />
+                  {sending ? "Enviando..." : "Enviar"}
+                </button>
+              </form>
+            </div>
           )}
-        </div>
 
+          {!user && selectedRoom && (
+            <div className="border-t border-white/10 bg-[#121826]/50 p-4 text-center text-white/50">
+              <Link href="/login" className="text-purple-400 hover:text-purple-300">
+                Iniciá sesión
+              </Link>
+              {" "}para enviar mensajes
+            </div>
+          )}
+        </main>
       </div>
-
     </div>
-  );
+  )
 }

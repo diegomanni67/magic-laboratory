@@ -1,152 +1,123 @@
-'use client';
+"use client"
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import UserAvatar from '@/components/UserAvatar';
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { 
+  MessageSquare, 
+  Users, 
+  Calendar, 
+  TrendingUp,
+  Search,
+  Plus,
+  Filter
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 
-const supabase = createClient();
-
-interface CurrentUser {
-  id: string;
-  full_name: string | null;
-  artistic_name: string | null;
-  avatar_url: string | null;
+interface ForumNavbarProps {
+  forumType: 'academy' | 'studio'
+  title: string
+  memberCount: string
+  activeNow: number
 }
 
-export default function ForumNavbar() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const [userProfile, setUserProfile] = useState<CurrentUser | null>(null);
-  const [loading, setLoading] = useState(true);
+export function ForumNavbar({ forumType, title, memberCount, activeNow }: ForumNavbarProps) {
+  const [searchTerm, setSearchTerm] = useState('')
+  const router = useRouter()
 
-  useEffect(() => {
-    async function getSessionAndProfile() {
-      try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-
-        if (authUser) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, full_name, artistic_name, avatar_url')
-            .eq('id', authUser.id)
-            .single();
-
-          if (profile) {
-            setUserProfile(profile);
-          } else {
-            setUserProfile({
-              id: authUser.id,
-              full_name: authUser.user_metadata?.full_name || 'Mago',
-              artistic_name: null,
-              avatar_url: null,
-            });
-          }
-        } else {
-          setUserProfile(null);
+  const getForumColors = () => {
+    return forumType === 'academy' 
+      ? {
+          primary: 'from-[oklch(0.72_0.19_220)] via-[oklch(0.72_0.22_350)] to-[oklch(0.75_0.18_55)]',
+          accent: 'bg-blue-100 text-blue-800 border-blue-200'
         }
-      } catch (err) {
-        console.error('Error cargando usuario en ForumNavbar:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
+      : {
+          primary: 'from-[oklch(0.72_0.22_350)] via-[oklch(0.75_0.18_55)] to-[oklch(0.72_0.19_220)]',
+          accent: 'bg-purple-100 text-purple-800 border-purple-200'
+        }
+  }
 
-    getSessionAndProfile();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      getSessionAndProfile();
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUserProfile(null);
-    router.push('/login');
-  };
-
-  const navLinks = [
-    { name: 'Inicio', path: '/' },
-    { name: 'Comunidad', path: '/community' },
-    { name: 'Desafíos 🏆', path: '/desafios' },
-    { name: 'Chat En Vivo 💬', path: '/chat' },
-  ];
+  const colors = getForumColors()
 
   return (
-    <nav className="bg-slate-950 border-b border-slate-900 px-4 sm:px-6 lg:px-8 py-4 sticky top-0 z-40 shadow-lg">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400">
-            🔮 Magic Laboratory
-          </span>
-        </Link>
-
-        <div className="hidden md:flex items-center gap-6">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.path;
-            return (
-              <Link
-                key={link.name}
-                href={link.path}
-                className={`text-sm font-semibold transition ${
-                  isActive 
-                    ? 'text-purple-300' 
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {link.name}
-              </Link>
-            );
-          })}
-        </div>
-
-        <div className="flex items-center gap-4">
-          {!loading && userProfile ? (
-            <div className="flex items-center gap-3">
-              
-              <Link 
-                href={`/profile/${userProfile.id}`}
-                className="flex items-center gap-2.5 bg-slate-900 hover:bg-slate-850 px-4 py-2 rounded-xl border border-slate-850 hover:border-purple-500/20 transition duration-200 shadow-md group"
-              >
-                <UserAvatar 
-                  avatarUrl={userProfile.avatar_url} 
-                  fullName={userProfile.full_name} 
-                  artisticName={userProfile.artistic_name} 
-                  size={28} 
-                  className="ring-1 ring-purple-500/20 group-hover:ring-purple-500/40"
-                />
-                <span className="text-xs font-bold text-slate-300 group-hover:text-white transition">
-                  {userProfile.artistic_name || userProfile.full_name || 'Mi Perfil'}
-                </span>
-              </Link>
-
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-500/20 rounded-xl text-xs font-bold transition duration-150"
-              >
-                Salir
-              </button>
-
+    <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[oklch(0.72_0.19_220)] to-[oklch(0.65_0.2_250)] shadow-[0_4px_20px_oklch(0.72_0.19_220/0.3)]">
+              <MessageSquare className="size-6 text-[oklch(0.99_0_0)]" />
             </div>
-          ) : (
-            !loading && (
-              <Link
-                href="/login"
-                className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black rounded-xl text-xs transition duration-200 shadow-md"
-              >
-                Ingresar ✨
-              </Link>
-            )
-          )}
-        </div>
+            <div>
+              <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+                {title}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Espacio para estudiantes de niveles A1-A2
+              </p>
+            </div>
+          </div>
 
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar en el foro..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64 rounded-2xl border border-border/50 bg-background pl-10 pr-4 py-2 text-sm transition-all duration-300 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <button className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[oklch(0.72_0.19_220)] via-[oklch(0.72_0.22_350)] to-[oklch(0.75_0.18_55)] px-4 py-2 text-sm font-bold text-[oklch(0.99_0_0)] shadow-[0_4px_20px_oklch(0.72_0.19_220/0.3)] transition-all duration-300 hover:shadow-[0_8px_30px_oklch(0.72_0.19_220/0.4)] hover:scale-[1.02]">
+              <Plus className="size-4" />
+              Crear nuevo post
+            </button>
+          </div>
+        </div>
       </div>
-    </nav>
-  );
+
+      {/* Stats Bar */}
+      <div className="border-b border-border/50 bg-secondary/20">
+        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-blue-100">
+                <Users className="size-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground">{memberCount}</p>
+                <p className="text-xs text-muted-foreground">Miembros</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-green-100">
+                <MessageSquare className="size-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground">0</p>
+                <p className="text-xs text-muted-foreground">Discusiones</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-purple-100">
+                <TrendingUp className="size-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground">{activeNow}</p>
+                <p className="text-xs text-muted-foreground">Activos hoy</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-orange-100">
+                <Calendar className="size-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground">Próximo evento</p>
+                <p className="text-xs text-muted-foreground">En 2 días</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
