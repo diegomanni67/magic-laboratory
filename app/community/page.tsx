@@ -15,6 +15,8 @@ type Member = {
   instagram: string | null
   youtube: string | null
   avatar_url: string | null
+  studies: string | null
+  teacher: string | null
 }
 
 export default function CommunityPage() {
@@ -180,6 +182,18 @@ export default function CommunityPage() {
                       {member.bio}
                     </p>
                   ) : null}
+
+{member.studies ? (
+  <p className="mt-3 text-xs text-white/50">
+    <span className="text-amber-400">Estudia:</span> {member.studies}
+  </p>
+) : null}
+
+{member.teacher ? (
+  <p className="mt-1 text-xs text-white/50">
+    <span className="text-amber-400">Profesor:</span> {member.teacher}
+  </p>
+) : null}
 
                   {(member.instagram || member.youtube) ? (
                     <div className="mt-3 flex items-center gap-2">
