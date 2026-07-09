@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import {
   ArrowLeft,
   BadgeCheck,
+  Camera,
   ExternalLink,
   FlaskConical,
   Instagram,
@@ -34,14 +35,17 @@ type ProfileData = {
   phone: string | null
   studies: string | null
   teacher: string | null
-  avatar: string | null
+  avatar_url: string | null
 }
 
 export default function ProfilePage() {
   const router = useRouter()
+
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(true)
   const [checkingSession, setCheckingSession] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const [form, setForm] = useState({
     name: "",
@@ -53,14 +57,15 @@ export default function ProfilePage() {
     studies: "",
     teacher: "",
   })
-  const [saving, setSaving] = useState(false)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
 
   const loadProfile = async () => {
     setLoading(true)
+
     const res = await fetch("/api/me")
     const data = await res.json()
+
     setProfile(data.profile)
+
     if (data.profile) {
       setForm({
         name: data.profile.name || "",
@@ -73,10 +78,10 @@ export default function ProfilePage() {
         teacher: data.profile.teacher || "",
       })
     }
+
     setLoading(false)
   }
 
-  // Ruta protegida: si no hay sesión activa de Supabase, redirige al login.
   useEffect(() => {
     const checkSession = async () => {
       const supabase = createClient()
@@ -94,58 +99,69 @@ export default function ProfilePage() {
     void checkSession()
   }, [router])
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setSaving(true)
-
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        toast.error(data.error || "No se pudo guardar el perfil")
-        return
-      }
-
-      toast.success("Perfil artístico actualizado")
-      void loadProfile()
-    } catch {
-      toast.error("No se pudo guardar el perfil. Probá de nuevo.")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0]
+
     if (!file) return
 
     setUploadingAvatar(true)
+
     try {
       const formData = new FormData()
-      formData.append('avatar', file)
+      formData.append("avatar", file)
 
       const res = await fetch("/api/avatar", {
         method: "POST",
         body: formData,
       })
+
       const data = await res.json()
 
       if (!res.ok) {
-        toast.error(data.error || "No se pudo subir la foto")
+        toast.error(data.error || "No se pudo subir la imagen")
         return
       }
 
-      toast.success("Foto de perfil actualizada")
-      void loadProfile()
+      toast.success("Avatar actualizado")
+      await loadProfile()
+
     } catch {
-      toast.error("No se pudo subir la foto. Probá de nuevo.")
+      toast.error("Error subiendo avatar")
     } finally {
       setUploadingAvatar(false)
+    }
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+
+    setSaving(true)
+
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        toast.error(data.error || "No se pudo guardar")
+        return
+      }
+
+      toast.success("Perfil actualizado")
+      await loadProfile()
+
+    } catch {
+      toast.error("Error guardando perfil")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -159,26 +175,34 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0f1e] px-6 text-center text-white">
-        <div className="max-w-md rounded-3xl border border-white/10 bg-white/5 p-8">
-          <h1 className="mb-3 text-2xl font-semibold">Todavía no hay perfil disponible</h1>
-          <p className="mb-6 text-white/60">Iniciá sesión para ver tus datos y completar tu perfil artístico.</p>
-          <Link href="/login" className="rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2 font-semibold">
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0f1e] px-6 text-white">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+          <h1 className="mb-3 text-2xl font-semibold">
+            Todavía no hay perfil disponible
+          </h1>
+
+          <Link
+            href="/login"
+            className="rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-2 font-semibold"
+          >
             Iniciar sesión
           </Link>
         </div>
       </div>
     )
-  }
-
-  return (
+  }  return (
     <div className="min-h-screen bg-[#0a0f1e] text-white">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white"
+          >
             <ArrowLeft className="size-4" />
             Volver al inicio
           </Link>
+
           <Link
             href={`/profile/${profile.id}`}
             className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70 hover:bg-white/10"
@@ -188,192 +212,371 @@ export default function ProfilePage() {
           </Link>
         </div>
 
+
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+
           <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl shadow-black/20">
+
             <div className="flex flex-wrap items-start justify-between gap-4">
+
               <div className="flex items-center gap-4">
-                <div className="flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600">
-                  <Sparkles className="size-7" />
+
+                {/* AVATAR CON SUBIDA */}
+                <div className="relative">
+
+                  <div className="flex size-24 items-center justify-center overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600">
+
+                    {profile.avatar_url ? (
+                      <img
+                        src={profile.avatar_url}
+                        alt="Avatar"
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <Sparkles className="size-8" />
+                    )}
+
+                  </div>
+
+
+                  <label
+                    className="absolute bottom-0 right-0 flex size-9 cursor-pointer items-center justify-center rounded-full bg-amber-500 text-black shadow-lg transition hover:scale-110"
+                  >
+
+                    {uploadingAvatar ? (
+                      <span className="text-xs">...</span>
+                    ) : (
+                      <Camera className="size-4" />
+                    )}
+
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                      disabled={uploadingAvatar}
+                    />
+
+                  </label>
+
                 </div>
+
+
                 <div>
-                  <h1 className="text-2xl font-semibold">{profile.artistic_name || profile.name || "Usuario"}</h1>
-                  <p className="text-sm text-white/50">{profile.email}</p>
+                  <h1 className="text-2xl font-semibold">
+                    {profile.artistic_name || profile.name || "Usuario"}
+                  </h1>
+
+                  <p className="text-sm text-white/50">
+                    {profile.email}
+                  </p>
                 </div>
+
               </div>
+
+
+
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm text-emerald-300">
+
                 <BadgeCheck className="size-4" />
-                {profile.is_approved ? "Aprobado" : "Pendiente de aprobación"}
+
+                {profile.is_approved
+                  ? "Aprobado"
+                  : "Pendiente de aprobación"}
+
               </div>
+
+
             </div>
+
+
 
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
+
+
               <div className="rounded-2xl border border-white/10 bg-[#0b1224] p-4">
-                <p className="text-sm text-white/50">Rol</p>
-                <p className="mt-1 font-semibold">{profile.role || "APPRENTICE"}</p>
+                <p className="text-sm text-white/50">
+                  Rol
+                </p>
+
+                <p className="mt-1 font-semibold">
+                  {profile.role || "APPRENTICE"}
+                </p>
               </div>
+
+
+
               <div className="rounded-2xl border border-white/10 bg-[#0b1224] p-4">
-                <p className="text-sm text-white/50">Ubicación</p>
-                <p className="mt-1 font-semibold">{profile.city ? `${profile.city}, ` : ""}{profile.country || "Sin definir"}</p>
+
+                <p className="text-sm text-white/50">
+                  Ubicación
+                </p>
+
+                <p className="mt-1 font-semibold">
+                  {profile.city
+                    ? `${profile.city}, `
+                    : ""}
+                  {profile.country || "Sin definir"}
+                </p>
+
               </div>
+
+
+
               <div className="rounded-2xl border border-white/10 bg-[#0b1224] p-4">
-                <p className="text-sm text-white/50">Estado</p>
-                <p className="mt-1 font-semibold">{profile.is_approved ? "Activo" : "En revisión"}</p>
+
+                <p className="text-sm text-white/50">
+                  Estado
+                </p>
+
+                <p className="mt-1 font-semibold">
+                  {profile.is_approved
+                    ? "Activo"
+                    : "En revisión"}
+                </p>
+
               </div>
+
+
             </div>
 
-            {/* Formulario de perfil artístico */}
-            <form onSubmit={handleSubmit} className="mt-6 rounded-3xl border border-white/10 bg-[#0b1224] p-5">
-              <h2 className="mb-1 text-lg font-semibold">Tu perfil artístico</h2>
+
+            <form
+              onSubmit={handleSubmit}
+              className="mt-6 rounded-3xl border border-white/10 bg-[#0b1224] p-5"
+            >
+
+              <h2 className="mb-1 text-lg font-semibold">
+                Tu perfil artístico
+              </h2>
+
               <p className="mb-5 text-sm text-white/50">
-                Esto es lo que van a ver otros usuarios en tu perfil público y en tus publicaciones.
+                Esto es lo que verán otros usuarios.
               </p>
 
+
               <div className="space-y-4">
+
+
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Nombre real</label>
+                  <label className="mb-1 block text-sm text-white/70">
+                    Nombre real
+                  </label>
+
                   <input
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Ej: Juan Pérez"
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                    onChange={(e)=>setForm({...form,name:e.target.value})}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                   />
                 </div>
 
+
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Nombre artístico</label>
+                  <label className="mb-1 block text-sm text-white/70">
+                    Nombre artístico
+                  </label>
+
                   <input
                     value={form.artistic_name}
-                    onChange={(e) => setForm({ ...form, artistic_name: e.target.value })}
-                    placeholder="Ej: El Gran Manni"
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                    onChange={(e)=>setForm({...form,artistic_name:e.target.value})}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                   />
                 </div>
+
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Biografía / Presentación</label>
+                  <label className="mb-1 block text-sm text-white/70">
+                    Biografía
+                  </label>
+
                   <textarea
                     value={form.bio}
-                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
-                    placeholder="Contá tu trayectoria, tu estilo, qué tipo de magia hacés..."
-                    maxLength={1000}
+                    onChange={(e)=>setForm({...form,bio:e.target.value})}
                     rows={5}
-                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                   />
-                  <p className="mt-1 text-right text-xs text-white/30">{form.bio.length}/1000</p>
-                </div>
+                </div>                <div className="grid gap-4 sm:grid-cols-2">
 
-                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 flex items-center gap-2 text-sm font-medium text-white/70">
+                    <label className="mb-1 flex items-center gap-2 text-sm text-white/70">
                       <Instagram className="size-4 text-pink-400" />
                       Instagram
                     </label>
+
                     <input
                       value={form.instagram}
-                      onChange={(e) => setForm({ ...form, instagram: e.target.value })}
-                      placeholder="https://instagram.com/tu_usuario"
-                      maxLength={160}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                      onChange={(e)=>setForm({...form,instagram:e.target.value})}
+                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                     />
                   </div>
+
+
                   <div>
-                    <label className="mb-1 flex items-center gap-2 text-sm font-medium text-white/70">
+                    <label className="mb-1 flex items-center gap-2 text-sm text-white/70">
                       <Youtube className="size-4 text-red-400" />
                       YouTube
                     </label>
+
                     <input
                       value={form.youtube}
-                      onChange={(e) => setForm({ ...form, youtube: e.target.value })}
-                      placeholder="https://youtube.com/@tu_canal"
-                      maxLength={160}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                      onChange={(e)=>setForm({...form,youtube:e.target.value})}
+                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                     />
                   </div>
+
                 </div>
 
+
                 <div>
-                  <label className="mb-1 flex items-center gap-2 text-sm font-medium text-white/70">
+
+                  <label className="mb-1 flex items-center gap-2 text-sm text-white/70">
                     <Phone className="size-4 text-emerald-400" />
-                    Teléfono / WhatsApp de contacto
+                    WhatsApp
                   </label>
+
                   <input
                     value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    placeholder="Ej: 5491122334455 (con código de país, sin espacios)"
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                    onChange={(e)=>setForm({...form,phone:e.target.value})}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                   />
+
                 </div>
 
+
+
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Estudios mágicos</label>
+
+                  <label className="mb-1 block text-sm text-white/70">
+                    Estudios mágicos
+                  </label>
+
                   <input
                     value={form.studies}
-                    onChange={(e) => setForm({ ...form, studies: e.target.value })}
-                    placeholder="Ej: Escuela de Magia de Buenos Aires, Card College, etc."
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                    onChange={(e)=>setForm({...form,studies:e.target.value})}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                   />
+
                 </div>
 
+
+
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-white/70">Profesor / Mentor</label>
+
+                  <label className="mb-1 block text-sm text-white/70">
+                    Profesor / Mentor
+                  </label>
+
                   <input
                     value={form.teacher}
-                    onChange={(e) => setForm({ ...form, teacher: e.target.value })}
-                    placeholder="Ej: Juan Tamariz, Dai Vernon, etc."
-                    maxLength={160}
-                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 outline-none focus:border-amber-500/50"
+                    onChange={(e)=>setForm({...form,teacher:e.target.value})}
+                    className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3"
                   />
+
                 </div>
+
+
               </div>
+
 
               <button
                 type="submit"
                 disabled={saving}
-                className="mt-5 w-full rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 px-4 py-3 font-semibold transition hover:opacity-90 disabled:opacity-50 sm:w-auto"
+                className="mt-5 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 px-5 py-3 font-semibold"
               >
                 {saving ? "Guardando..." : "Guardar perfil artístico"}
               </button>
+
+
             </form>
 
+
             <div className="mt-6 rounded-3xl border border-white/10 bg-[#0b1224] p-5">
-              <h2 className="mb-3 text-lg font-semibold">Acciones rápidas</h2>
+
+              <h2 className="mb-3 text-lg font-semibold">
+                Acciones rápidas
+              </h2>
+
+
               <div className="grid gap-3 sm:grid-cols-2">
-                <Link href="/laboratorio" className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10">
+
+                <Link
+                  href="/laboratorio"
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
                   <FlaskConical className="size-5 text-amber-300" />
-                  <span>Ver laboratorio</span>
+                  Ver laboratorio
                 </Link>
-                <Link href="/marketplace" className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10">
+
+
+                <Link
+                  href="/marketplace"
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                >
                   <Store className="size-5 text-orange-300" />
-                  <span>Ir al marketplace</span>
+                  Marketplace
                 </Link>
+
               </div>
+
             </div>
+
+
           </div>
+
+
 
           <div className="space-y-6">
-            <LocationEditor initialCountry={profile.country} initialCity={profile.city} onUpdated={loadProfile} />
+
+            <LocationEditor
+              initialCountry={profile.country}
+              initialCity={profile.city}
+              onUpdated={loadProfile}
+            />
+
 
             <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+
               <div className="mb-4 flex items-center gap-3">
+
                 <div className="flex size-10 items-center justify-center rounded-2xl bg-purple-500/20 text-purple-300">
+
                   <MapPin className="size-5" />
+
                 </div>
+
+
                 <div>
-                  <h3 className="font-semibold text-white">Tu comunidad</h3>
-                  <p className="text-sm text-white/50">Comparte tu ubicación para conectar con otros miembros.</p>
+
+                  <h3 className="font-semibold">
+                    Tu comunidad
+                  </h3>
+
+                  <p className="text-sm text-white/50">
+                    Compartí tu ubicación para conectar.
+                  </p>
+
                 </div>
+
               </div>
+
+
               <p className="text-sm text-white/60">
-                Cuando completes tu ciudad y país, podrás encontrar personas cercanas en el laboratorio y en el marketplace.
+                Completá tu ciudad y país para aparecer en la comunidad.
               </p>
+
+
             </div>
+
+
           </div>
+
+
         </div>
+
+
       </div>
+
     </div>
   )
 }
