@@ -42,7 +42,12 @@ export default function ChatPage() {
   useEffect(() => {
     if (selectedRoom) {
       loadMessages(selectedRoom.id)
-      setupRealtimeSubscription(selectedRoom.id)
+      const unsubscribe = setupRealtimeSubscription(selectedRoom.id)
+      
+      // Retornamos la limpieza para evitar duplicar suscripciones al cambiar de canal
+      return () => {
+        unsubscribe()
+      }
     }
   }, [selectedRoom])
 
@@ -98,8 +103,25 @@ export default function ChatPage() {
           table: 'chat_messages',
           filter: `room_id=eq.${roomId}`
         },
-        (payload) => {
-          setMessages(prev => [...prev, payload.new as ChatMessage])
+        async (payload) => {
+          const incomingMsg = payload.new as ChatMessage
+
+          try {
+            // Buscamos los datos relacionales del usuario en tiempo real
+            const { data: userData } = await supabase
+              .from("users")
+              .select("id, name, artistic_name, avatar_url")
+              .eq("id", incomingMsg.user_id)
+              .single()
+
+            if (userData) {
+              incomingMsg.users = userData
+            }
+          } catch (err) {
+            console.error("Error trayendo el perfil en tiempo real:", err)
+          }
+
+          setMessages(prev => [...prev, incomingMsg])
         }
       )
       .subscribe()
@@ -243,19 +265,30 @@ export default function ChatPage() {
                   : "bg-white/5 border border-white/10"
                 const alignmentClass = isOwnMessage ? "items-end" : "items-start"
                 const flexDirectionClass = isOwnMessage ? "flex-row-reverse" : ""
+                const displayName = getDisplayName(msg)
 
                 return (
                   <div
                     key={msg.id}
                     className={`flex gap-3 ${flexDirectionClass}`}
                   >
-                    <div className={`flex size-10 items-center justify-center rounded-full ${avatarClass} text-lg font-bold`}>
-                      {getDisplayName(msg).charAt(0).toUpperCase()}
-                    </div>
+                    {/* Renderizado Condicional del Avatar (Imagen vs Inicial) */}
+                    {msg.users?.avatar_url ? (
+                      <img
+                        src={msg.users.avatar_url}
+                        alt={displayName}
+                        className="size-10 rounded-full object-cover border border-purple-500/20 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className={`flex size-10 items-center justify-center rounded-full ${avatarClass} text-lg font-bold flex-shrink-0`}>
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
                     <div className={`flex flex-col max-w-[70%] ${alignmentClass}`}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-sm text-white">
-                          {getDisplayName(msg)}
+                          {displayName}
                         </span>
                         <span className="text-xs text-white/40">{formatTime(msg.created_at)}</span>
                       </div>
