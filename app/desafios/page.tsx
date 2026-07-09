@@ -19,7 +19,7 @@ type Submission = {
   video_url: string
   created_at: string
   user_id: string
-  users?: {
+  users: {
     id: string
     name: string | null
     artistic_name: string | null
@@ -27,14 +27,13 @@ type Submission = {
   challenge_votes: { count: number }[]
 }
 
-
 type Comment = {
   id: string
   submission_id: string
   user_id: string
   content: string
   created_at: string
-  users?: {
+  users: {
     name: string | null
     artistic_name: string | null
     avatar_url: string | null
@@ -155,7 +154,6 @@ export default function DesafiosPage() {
       setComments(prev => ({ ...prev, [submissionId]: data || [] }))
     } catch (error) {
       console.error("Error cargando comentarios:", error)
-      // Rompe el bucle de "cargando" seteando un array vacío si falla
       setComments(prev => ({ ...prev, [submissionId]: [] }))
     }
   }
@@ -484,7 +482,7 @@ export default function DesafiosPage() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   {submissions.map((submission) => {
                     const embedUrl = getVideoEmbedUrl(submission.video_url)
-                    const displayName = submission.users?.artistic_name || submission.users?.name || "Mago"
+                    const displayName = submission.users.artistic_name || submission.users.name || "Mago"
                     const voteCount = submission.challenge_votes[0]?.count || 0
                     const hasVoted = userVotes.has(submission.id)
                     const isCommentsOpen = visibleComments.has(submission.id)
@@ -558,18 +556,26 @@ export default function DesafiosPage() {
                               <span className="ml-auto font-bold">{voteCount}</span>
                             </button>
 
-                            {/* Toggle Comments Button con contador numérico */}
+                            {/* Toggle Comments Button con Badge Indicador Flotante */}
                             <button
                               onClick={() => toggleComments(submission.id)}
-                              className={`flex items-center justify-center gap-2 px-4 rounded-2xl border transition ${
+                              className={`relative flex items-center justify-center p-3 rounded-2xl border transition ${
                                 isCommentsOpen 
                                   ? "bg-purple-500/20 border-purple-500/50 text-purple-300" 
-                                  : "bg-white/5 border-white/10 hover:bg-white/10 text-white/70 hover:text-white"
+                                  : totalComments > 0
+                                    ? "bg-purple-950/40 border-purple-500/40 text-purple-400 hover:bg-purple-900/30"
+                                    : "bg-white/5 border-white/10 hover:bg-white/10 text-white/70 hover:text-white"
                               }`}
                               title="Comentarios"
                             >
                               <MessageSquare className="size-5 flex-shrink-0" />
-                              <span className="text-xs font-bold">{totalComments}</span>
+                              
+                              {/* Notificación flotante si hay comentarios */}
+                              {totalComments > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 flex items-center justify-center bg-gradient-to-r from-pink-500 to-purple-600 text-white text-[10px] font-black rounded-full px-1 shadow-md animate-pulse">
+                                  {totalComments}
+                                </span>
+                              )}
                             </button>
                           </div>
 
@@ -621,7 +627,7 @@ export default function DesafiosPage() {
                                 <form onSubmit={(e) => handleAddComment(e, submission.id)} className="flex gap-2">
                                   <input
                                     type="text"
-                                    value={commentInputs[submissionId] || ""}
+                                    value={commentInputs[submission.id] || ""}
                                     onChange={(e) => setCommentInputs(prev => ({ ...prev, [submission.id]: e.target.value }))}
                                     placeholder="Escribe un comentario..."
                                     className="flex-1 min-w-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-purple-500/50"

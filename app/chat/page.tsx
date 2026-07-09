@@ -16,7 +16,7 @@ type ChatMessage = {
   message: string
   created_at: string
   user_id: string
-  users: {
+  users?: {
     id: string
     name: string | null
     artistic_name: string | null
@@ -142,7 +142,7 @@ export default function ChatPage() {
   }
 
   const getDisplayName = (msg: ChatMessage) => {
-    return msg.users.artistic_name || msg.users.name || "Mago"
+    return msg.users?.artistic_name || msg.users?.name || "Mago"
   }
 
   const formatTime = (dateString: string) => {
