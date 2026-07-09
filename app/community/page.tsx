@@ -1,203 +1,171 @@
-"use client"
+'use client';
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { AlertCircle, ArrowLeft, Instagram, MapPin, Search, Users, Youtube } from "lucide-react"
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '@/lib/supabase/client';
+import UserAvatar from '@/components/UserAvatar';
 
-type Member = {
-  id: string
-  name: string | null
-  artistic_name: string | null
-  role: string | null
-  country: string | null
-  city: string | null
-  bio: string | null
-  instagram: string | null
-  youtube: string | null
-  avatar_url: string | null
+interface MemberProfile {
+  id: string;
+  full_name: string | null;
+  artistic_name: string | null;
+  bio: string | null;
+  country: string | null;
+  city: string | null;
+  avatar_url: string | null;
+  role?: string;
 }
 
 export default function CommunityPage() {
-  const [members, setMembers] = useState<Member[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [search, setSearch] = useState("")
+  const [members, setMembers] = useState<MemberProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const load = async () => {
+    async function loadCommunity() {
       try {
-        const res = await fetch("/api/community")
-        const data = await res.json()
+        setLoading(true);
+        
+        // Consultar perfiles
+        const { data: profiles, error } = await supabase
+          .from('profiles')
+          .select('id, full_name, artistic_name, bio, country, city, avatar_url')
+          .order('full_name', { ascending: true });
 
-        if (!res.ok) {
-          setError(data.error || "No se pudieron cargar los miembros")
-        } else {
-          setMembers(data.members ?? [])
+        if (profiles) {
+          // Traer roles para complementar
+          const { data: users } = await supabase
+            .from('users')
+            .select('id, role');
+
+          const enriched = profiles.map((p) => {
+            const userMatch = users?.find((u) => u.id === p.id);
+            return {
+              ...p,
+              role: userMatch?.role || 'USER',
+            };
+          });
+
+          setMembers(enriched);
         }
-      } catch {
-        setError("Error de conexión al cargar los miembros")
+      } catch (err) {
+        console.error('Error cargando comunidad:', err);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
+    loadCommunity();
+  }, []);
 
-    void load()
-  }, [])
+  // Filtrar según el término de búsqueda
+  const filteredMembers = members.filter((m) => {
+    const name = (m.artistic_name || m.full_name || '').toLowerCase();
+    const loc = `${m.city || ''} ${m.country || ''}`.toLowerCase();
+    const query = search.toLowerCase();
+    return name.includes(query) || loc.includes(query);
+  });
 
-  const filtered = members.filter((m) => {
-    const q = search.toLowerCase()
-
+  if (loading) {
     return (
-      (m.name ?? "").toLowerCase().includes(q) ||
-      (m.artistic_name ?? "").toLowerCase().includes(q) ||
-      (m.city ?? "").toLowerCase().includes(q) ||
-      (m.country ?? "").toLowerCase().includes(q) ||
-      (m.role ?? "").toLowerCase().includes(q)
-    )
-  })
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-purple-300">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="font-medium">Invocando a los ilusionistas conectados...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white">
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <Link
-          href="/"
-          className="mb-6 inline-flex items-center gap-2 text-sm text-white/50 hover:text-white"
-        >
-          <ArrowLeft className="size-4" />
-          Volver al inicio
-        </Link>
-
-        <div className="mb-8">
-          <p className="text-sm uppercase tracking-[0.3em] text-amber-400">
-            Comunidad
-          </p>
-
-          <h1 className="flex items-center gap-3 text-3xl font-semibold">
-            <Users className="size-7 text-amber-300" />
-            Miembros del Laboratorio
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-purple-950/20 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        
+        {/* Cabecera */}
+        <div className="text-center">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-indigo-400">
+            🔮 Comunidad de Ilusionistas
           </h1>
-
-          <p className="mt-2 text-white/50">
-            {loading
-              ? "Cargando..."
-              : `${members.length} ilusionistas en la comunidad`}
+          <p className="mt-2 text-sm sm:text-base text-slate-400 max-w-xl mx-auto">
+            Conocé, interactuá y compartí conocimientos con los magos registrados en el Laboratorio Mágico.
           </p>
         </div>
 
-        {error ? (
-          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-
-            <div>
-              <p className="font-semibold">Error al cargar miembros</p>
-
-              <p className="mt-1 text-red-300/70">{error}</p>
-
-              {error.includes("SERVICE_ROLE_KEY") && (
-                <p className="mt-2 text-red-300/70">
-                  Agregá{" "}
-                  <code className="rounded bg-red-500/20 px-1">
-                    SUPABASE_SERVICE_ROLE_KEY
-                  </code>{" "}
-                  en las variables de entorno de Vercel y redesplegá.
-                </p>
-              )}
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mb-8 flex max-w-md items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-          <Search className="size-4 shrink-0 text-white/40" />
-
+        {/* Buscador */}
+        <div className="max-w-md mx-auto">
           <input
+            type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, ciudad, rol..."
-            className="w-full bg-transparent text-sm outline-none placeholder:text-white/30"
+            placeholder="🔍 Buscar por nombre, país o ciudad..."
+            className="w-full bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-purple-500 transition duration-250 placeholder-slate-500 shadow-inner"
           />
         </div>
 
-        {loading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-10 text-center text-white/40">
-            Cargando miembros...
-          </div>
-        ) : filtered.length === 0 && !error ? (
-          <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-10 text-center text-white/40">
-            No se encontraron miembros.
+        {filteredMembers.length === 0 ? (
+          <div className="text-center py-20 text-slate-500">
+            <span className="text-4xl mb-3 block">🃏</span>
+            <p className="text-sm">No se encontraron ilusionistas para tu búsqueda.</p>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filtered.map((member) => {
-              const displayName =
-                member.artistic_name || member.name || "Mago"
-
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {filteredMembers.map((member) => {
+              const displayName = member.artistic_name || member.full_name || 'Mago Anónimo';
               return (
-                <Link
-                  key={member.id}
-                  href={`/profile/${member.id}`}
-                  className="group rounded-3xl border border-white/10 bg-white/5 p-5 transition hover:border-amber-500/40 hover:bg-white/10"
+                <div 
+                  key={member.id} 
+                  className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 shadow-xl hover:border-purple-500/30 transition duration-300 flex flex-col justify-between backdrop-blur-sm relative overflow-hidden"
                 >
-                  <div className="mb-4">
-                    {member.avatar_url ? (
-                      <img
-                        src={member.avatar_url}
-                        alt={displayName}
-                        className="size-14 rounded-2xl border border-white/10 object-cover"
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-xl pointer-events-none" />
+
+                  <div className="space-y-4">
+                    
+                    {/* Cabecera de la Tarjeta */}
+                    <div className="flex items-center gap-4">
+                      <UserAvatar 
+                        avatarUrl={member.avatar_url} 
+                        fullName={member.full_name} 
+                        artisticName={member.artistic_name} 
+                        size={56} 
+                        className="ring-2 ring-purple-500/20"
                       />
-                    ) : (
-                      <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-2xl font-bold shadow-lg">
-                        {displayName.charAt(0).toUpperCase()}
+                      <div className="min-w-0">
+                        <h4 className="text-base font-bold text-slate-100 truncate">{displayName}</h4>
+                        <p className="text-[10px] bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-md font-bold uppercase tracking-wider inline-block mt-1">
+                          {member.role || 'USER'}
+                        </p>
                       </div>
+                    </div>
+
+                    {/* Ubicación */}
+                    {(member.city || member.country) && (
+                      <p className="text-xs text-slate-400 font-medium flex items-center gap-1">
+                        📍 {member.city}{member.city && member.country ? ', ' : ''}{member.country}
+                      </p>
                     )}
+
+                    {/* Presentación Corta */}
+                    <p className="text-xs text-slate-400 line-clamp-2 h-8 leading-relaxed">
+                      {member.bio || 'Este ilusionista prefiere mantener el misterio... 🃏'}
+                    </p>
                   </div>
 
-                  <h3 className="font-semibold text-white transition-colors group-hover:text-amber-300">
-                    {displayName}
-                  </h3>
+                  {/* Enlace al perfil */}
+                  <div className="pt-5 border-t border-slate-800/60 mt-5">
+                    <Link
+                      href={`/profile/${member.id}`}
+                      className="w-full text-center block px-4 py-2.5 bg-purple-950/60 hover:bg-purple-900 text-purple-300 border border-purple-500/20 rounded-xl text-xs font-bold transition duration-200"
+                    >
+                      Ver Perfil 🔮
+                    </Link>
+                  </div>
 
-                  {member.artistic_name && member.name ? (
-                    <p className="text-xs text-white/40">{member.name}</p>
-                  ) : null}
-
-                  <p className="mt-1 text-xs font-medium text-amber-400/80">
-                    {member.role || "APPRENTICE"}
-                  </p>
-
-                  {(member.city || member.country) ? (
-                    <div className="mt-2 flex items-center gap-1 text-xs text-white/40">
-                      <MapPin className="size-3 shrink-0" />
-
-                      <span>
-                        {[member.city, member.country]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </span>
-                    </div>
-                  ) : null}
-
-                  {member.bio ? (
-                    <p className="mt-3 line-clamp-2 text-xs text-white/50">
-                      {member.bio}
-                    </p>
-                  ) : null}
-
-                  {(member.instagram || member.youtube) ? (
-                    <div className="mt-3 flex items-center gap-2">
-                      {member.instagram ? (
-                        <Instagram className="size-3.5 text-pink-400" />
-                      ) : null}
-
-                      {member.youtube ? (
-                        <Youtube className="size-3.5 text-red-400" />
-                      ) : null}
-                    </div>
-                  ) : null}
-                </Link>
-              )
+                </div>
+              );
             })}
           </div>
         )}
+
       </div>
     </div>
-  )
+  );
 }

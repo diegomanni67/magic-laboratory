@@ -13,7 +13,7 @@ interface CurrentUser {
   avatar_url: string | null;
 }
 
-export default function ForumNavbar() {
+export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [userProfile, setUserProfile] = useState<CurrentUser | null>(null);
@@ -25,7 +25,7 @@ export default function ForumNavbar() {
         const { data: { user: authUser } } = await supabase.auth.getUser();
 
         if (authUser) {
-          // Buscamos los datos artísticos del usuario en profiles para traer la foto y nombre
+          // Buscamos los datos artísticos del usuario en profiles
           const { data: profile } = await supabase
             .from('profiles')
             .select('id, full_name, artistic_name, avatar_url')
@@ -47,7 +47,7 @@ export default function ForumNavbar() {
           setUserProfile(null);
         }
       } catch (err) {
-        console.error('Error cargando usuario en ForumNavbar:', err);
+        console.error('Error cargando usuario en navbar:', err);
       } finally {
         setLoading(false);
       }
@@ -55,7 +55,7 @@ export default function ForumNavbar() {
 
     getSessionAndProfile();
 
-    // Escuchar cambios de autenticación para actualizar la foto al instante
+    // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       getSessionAndProfile();
     });
