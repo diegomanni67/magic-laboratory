@@ -52,31 +52,10 @@ export default function DesafiosPage() {
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
 
-  // Estados para la sección de comentarios
+  // Estados nuevos para la sección de comentarios
   const [comments, setComments] = useState<Record<string, Comment[]>>({})
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({})
   const [visibleComments, setVisibleComments] = useState<Set<string>>(new Set())
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({})
-
-  // Función para cargar la cantidad de comentarios por publicación
-  const fetchCommentCounts = async () => {
-    try {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from("submission_comments")
-        .select("submission_id")
-
-      if (error) throw error
-
-      const counts: Record<string, number> = {}
-      data?.forEach((c: any) => {
-        counts[c.submission_id] = (counts[c.submission_id] || 0) + 1
-      })
-      setCommentCounts(counts)
-    } catch (error) {
-      console.error("Error al mapear conteo de comentarios:", error)
-    }
-  }
 
   useEffect(() => {
     async function loadData() {
@@ -97,9 +76,6 @@ export default function DesafiosPage() {
           const submissionsRes = await fetch(`/api/challenge-submissions?challenge_id=${challengeData.challenge.id}`)
           const submissionsData = await submissionsRes.json()
           setSubmissions(submissionsData.submissions || [])
-
-          // Cargar contadores de comentarios globales
-          await fetchCommentCounts()
 
           // Check if current user has submitted
           if (currentUser) {
@@ -154,8 +130,6 @@ export default function DesafiosPage() {
       setComments(prev => ({ ...prev, [submissionId]: data || [] }))
     } catch (error) {
       console.error("Error cargando comentarios:", error)
-      // Rompe el bucle de "cargando" seteando un array vacío si falla
-      setComments(prev => ({ ...prev, [submissionId]: [] }))
     }
   }
 
@@ -193,17 +167,9 @@ export default function DesafiosPage() {
 
       setCommentInputs(prev => ({ ...prev, [submissionId]: "" }))
       toast.success("Comentario publicado ✨")
-      
-      // Actualizar contador local al instante
-      setCommentCounts(prev => ({
-        ...prev,
-        [submissionId]: (prev[submissionId] || 0) + 1
-      }))
-
       fetchComments(submissionId)
-    } catch (error: any) {
-      console.error("Error completo de Supabase:", error)
-      toast.error(error.message || "Error al publicar el comentario")
+    } catch (error) {
+      toast.error("Error al publicar el comentario")
     }
   }
 
@@ -487,7 +453,6 @@ export default function DesafiosPage() {
                     const voteCount = submission.challenge_votes[0]?.count || 0
                     const hasVoted = userVotes.has(submission.id)
                     const isCommentsOpen = visibleComments.has(submission.id)
-                    const totalComments = commentCounts[submission.id] || 0
 
                     return (
                       <div
@@ -520,8 +485,8 @@ export default function DesafiosPage() {
                           </div>
 
                           {/* Card Content */}
-                          <div className="p-5 pb-2">
-                            <div className="mb-3">
+                          <div className="p-5pb-2">
+                            <div className="mb-3 p-5 pb-0">
                               <h3 className="font-semibold text-white">{displayName}</h3>
                               <p className="text-xs text-white/40">
                                 {new Date(submission.created_at).toLocaleDateString("es-AR")}
@@ -557,18 +522,17 @@ export default function DesafiosPage() {
                               <span className="ml-auto font-bold">{voteCount}</span>
                             </button>
 
-                            {/* Toggle Comments Button con contador numérico */}
+                            {/* Toggle Comments Button */}
                             <button
                               onClick={() => toggleComments(submission.id)}
-                              className={`flex items-center justify-center gap-2 px-4 rounded-2xl border transition ${
+                              className={`flex items-center justify-center p-3 rounded-2xl border transition ${
                                 isCommentsOpen 
                                   ? "bg-purple-500/20 border-purple-500/50 text-purple-300" 
                                   : "bg-white/5 border-white/10 hover:bg-white/10 text-white/70 hover:text-white"
                               }`}
                               title="Comentarios"
                             >
-                              <MessageSquare className="size-5 flex-shrink-0" />
-                              <span className="text-xs font-bold">{totalComments}</span>
+                              <MessageSquare className="size-5" />
                             </button>
                           </div>
 
@@ -620,7 +584,7 @@ export default function DesafiosPage() {
                                 <form onSubmit={(e) => handleAddComment(e, submission.id)} className="flex gap-2">
                                   <input
                                     type="text"
-                                    value={commentInputs[submissionId] || ""}
+                                    value={commentInputs[submission.id] || ""}
                                     onChange={(e) => setCommentInputs(prev => ({ ...prev, [submission.id]: e.target.value }))}
                                     placeholder="Escribe un comentario..."
                                     className="flex-1 min-w-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-white/30 outline-none focus:border-purple-500/50"
