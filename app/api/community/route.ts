@@ -6,7 +6,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, artistic_name, role, country, city, bio, instagram, youtube, avatar')
+    .select('id, name, artistic_name, role, country, city, bio, instagram, youtube, avatar_url')
     .order('created_at', { ascending: false })
 
   if (error) {
