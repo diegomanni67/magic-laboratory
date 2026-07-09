@@ -27,6 +27,7 @@ type Submission = {
   challenge_votes: { count: number }[]
 }
 
+
 type Comment = {
   id: string
   submission_id: string
