@@ -27,7 +27,9 @@ type ProfileRecord = {
   instagram: string | null
   youtube: string | null
   phone: string | null
-  avatar: string | null
+  avatar_url: string | null
+  studies: string | null
+  teacher: string | null
   is_approved: boolean | null
 }
 
@@ -135,9 +137,17 @@ export default function Page({ params }: PageProps) {
           <div className="-mt-12 px-8 pb-8">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div className="flex items-end gap-4">
-                <div className="flex size-24 items-center justify-center rounded-3xl border-4 border-[#0a0f1e] bg-gradient-to-br from-amber-500 to-orange-600 shadow-xl">
-                  <User className="size-10" />
-                </div>
+                {profile.avatar_url ? (
+  <img
+    src={profile.avatar_url}
+    alt={displayName}
+    className="size-24 rounded-3xl border-4 border-[#0a0f1e] object-cover"
+  />
+) : (
+  <div className="flex size-24 items-center justify-center rounded-3xl border-4 border-[#0a0f1e] bg-gradient-to-br from-amber-500 to-orange-600 shadow-xl">
+    <User className="size-10" />
+  </div>
+)}
                 <div className="pb-1">
                   <h1 className="flex items-center gap-2 text-3xl font-semibold">
                     {displayName}
@@ -197,7 +207,20 @@ export default function Page({ params }: PageProps) {
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-[#0b1224] p-4">
-                <div className="mb-2 flex items-center gap-2 text-purple-300">
+  <div className="mb-2 text-sm font-semibold text-amber-300">
+    Estudios
+  </div>
+
+  <p>{profile.studies || "No especificado"}</p>
+</div>
+
+<div className="rounded-2xl border border-white/10 bg-[#0b1224] p-4">
+  <div className="mb-2 text-sm font-semibold text-amber-300">
+    Profesor
+  </div>
+
+  <p>{profile.teacher || "No especificado"}</p>
+</div>
                   <Sparkles className="size-4" />
                   <span className="text-sm font-semibold">Rol</span>
                 </div>
