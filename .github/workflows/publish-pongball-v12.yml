@@ -1,0 +1,31 @@
+name: Publish Pongball Padel V12 dist
+
+on:
+  push:
+    branches: [pongball-padel-v12-dist]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: pongball-padel-v12-dist
+      - name: Download verified build
+        run: |
+          rm -rf /tmp/pongball-dist pongball-padel-v12
+          mkdir -p /tmp/pongball-dist pongball-padel-v12
+          curl -fL 'https://sdmntprwestus3.oaiusercontent.com/files/00000000-13fc-81fd-a641-2f01d45b03d5/raw?se=2026-09-10T16%3A31%3A38Z&sp=r&sv=2026-02-06&sr=b&scid=309ee2d1-d115-512d-8596-a5a9f0f1b7c1&skoid=68f37fa7-4e08-478b-93f3-c72d563a0ab3&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-09-10T14%3A57%3A59Z&ske=2026-09-11T14%3A57%3A59Z&sks=b&skv=2026-02-06&sig=C61eQGHMVTzENUfKeKFWsF0Ds88GFdCb6MUH21XSbHQ%3D' -o /tmp/pongball-dist.zip
+          unzip -q /tmp/pongball-dist.zip -d pongball-padel-v12
+      - name: Commit compiled site
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add pongball-padel-v12
+          git commit -m 'Update Pongball Padel V12 compiled site' || exit 0
+          git push origin pongball-padel-v12-dist
