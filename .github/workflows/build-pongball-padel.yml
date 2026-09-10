@@ -1,0 +1,75 @@
+name: Build Pongball Padel Web
+
+on:
+  push:
+    branches:
+      - pongball-padel-online-v11
+    paths:
+      - 'pongball-padel-web-chunks/**'
+      - '.github/workflows/build-pongball-padel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reconstruct source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .padel-web bundle.b64
+          mkdir .padel-web
+          cat \
+            pongball-padel-web-chunks/WEB_00 \
+            pongball-padel-web-chunks/WEB_01 \
+            pongball-padel-web-chunks/WEB_02 \
+            pongball-padel-web-chunks/WEB_03 \
+            pongball-padel-web-chunks/WEB_04 \
+            pongball-padel-web-chunks/WEB_05 \
+            pongball-padel-web-chunks/WEB_06A \
+            pongball-padel-web-chunks/WEB_06B \
+            pongball-padel-web-chunks/WEB_07A \
+            pongball-padel-web-chunks/WEB_07B \
+            pongball-padel-web-chunks/WEB_08 \
+            pongball-padel-web-chunks/WEB_09 > bundle.b64
+          base64 -d bundle.b64 | tar -xz -C .padel-web
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: '.padel-web/package.json'
+
+      - name: Install and build
+        working-directory: .padel-web
+        env:
+          VITE_ONLINE_WS: wss://pongball-padel-online-live.onrender.com
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+
+      - name: Publish dist branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/padel-dist
+          mkdir /tmp/padel-dist
+          cp -R .padel-web/dist/. /tmp/padel-dist/
+          cd /tmp/padel-dist
+          git init
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -b pongball-padel-dist
+          git add .
+          git commit -m 'Build Pongball Padel web'
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin pongball-padel-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
