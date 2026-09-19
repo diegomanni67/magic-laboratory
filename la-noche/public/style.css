@@ -79,3 +79,22 @@ button:active,.btn:active{transform:scale(.98)}button:disabled{opacity:.45;curso
 .theme-card.premium-locked:hover{transform:none}
 .theme-card.premium-locked em{background:rgba(255,184,77,.12);color:#ffd59a;border:1px solid rgba(255,184,77,.2)}
 .premium-note{display:block;margin-top:9px;font-size:11px;line-height:1.35;color:#ffd59a}
+
+/* La Juntada visual asset system */
+:root{--cream:#f3e2bf;--rose:#cf716f;--wine:#2b1519;--gold:#d5a764}
+body{background:#0b0809 url('/assets/ambient-pattern.svg') center top/1200px auto repeat-y}
+.brand-real{display:flex;align-items:center;margin-bottom:18px}.brand-real img{width:min(340px,78vw);height:auto;filter:drop-shadow(0 10px 30px rgba(0,0,0,.28))}
+.theme-card{overflow:hidden;transition:transform .28s ease,border-color .28s ease,box-shadow .28s ease,background .28s ease}
+.theme-card:hover{transform:translateY(-4px);border-color:rgba(213,167,100,.38);box-shadow:0 18px 38px rgba(0,0,0,.22)}
+.theme-asset{width:52px;height:52px;display:block;margin:0 0 11px;filter:drop-shadow(0 8px 16px rgba(0,0,0,.25));transition:transform .3s ease}
+.theme-card:hover .theme-asset{transform:scale(1.07) rotate(-2deg)}
+.ui-icon,.mode-asset{width:28px;height:28px;object-fit:contain}.mode-kicker{display:flex;align-items:center;gap:9px}
+.card,.choice-card,.access-plan,.roster-row,.option{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.primary{position:relative;overflow:hidden}.primary:after{content:"";position:absolute;inset:-2px auto -2px -55%;width:36%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.26),transparent);transition:left .7s ease}.primary:hover:after{left:120%}
+.pill,.chip{animation:softIn .35s ease both}
+.prompt-card{animation:cardEnter .38s cubic-bezier(.2,.8,.2,1) both}
+.locked-round .big-num,.mission-done{animation:pulseSoft 1.6s ease-in-out infinite}
+@keyframes cardEnter{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes softIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pulseSoft{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
