@@ -1,6 +1,7 @@
 import express from "express";
 import crypto from "crypto";
 import path from "path";
+import QRCode from "qrcode";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -65,6 +66,26 @@ function snapshot(room, viewer) {
 }
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, rooms: rooms.size }));
+
+app.get("/api/qr/:code", async (req, res) => {
+  const room = getRoom(req.params.code);
+  if (!room) return res.status(404).send("Sala inexistente");
+  try {
+    const joinUrl = `${req.protocol}://${req.get("host")}/?code=${room.code}`;
+    const png = await QRCode.toBuffer(joinUrl, {
+      type: "png",
+      width: 640,
+      margin: 2,
+      errorCorrectionLevel: "M"
+    });
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "no-store");
+    res.send(png);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("No pude generar el QR");
+  }
+});
 
 app.post("/api/rooms", (req, res) => {
   const name = clean(req.body.name, 80);
