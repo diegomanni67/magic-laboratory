@@ -22,6 +22,8 @@ export const THEMES = {
     title: "Picante 18+",
     emoji: "🌶️",
     age18: true,
+    premiumOnly: true,
+    freePreview: false,
     description: "Atracción, citas, intimidad, confesiones y situaciones incómodamente divertidas.",
     tagline: "Solo para adultos y grupos con confianza."
   },
@@ -54,6 +56,8 @@ export const THEMES = {
     title: "Canceladísimos",
     emoji: "🚨",
     age18: true,
+    premiumOnly: true,
+    freePreview: false,
     description: "Opiniones impopulares, dilemas incómodos, confesiones debatibles y elecciones que nadie quiere admitir.",
     tagline: "Decí lo que pensás. Después bancate el escrutinio del grupo."
   },
