@@ -32,3 +32,13 @@ button:active,.btn:active{transform:scale(.98)}button:disabled{opacity:.45;curso
 .kicker{font-size:13px;color:#f4c9dc;font-weight:800}.big-num{font-size:42px;font-weight:950;letter-spacing:-2px}.actions{display:flex;gap:10px;flex-wrap:wrap}.actions>*{flex:1}
 .footer-note{margin-top:24px;text-align:center;color:#746b79;font-size:12px}
 @media(max-width:520px){#app{padding:16px 14px 40px}.grid.two{grid-template-columns:1fr}h1{letter-spacing:-3px}.statement{font-size:24px}.code{font-size:35px;letter-spacing:7px}.options{grid-template-columns:1fr}.card{border-radius:22px}}
+
+.howto{display:none;grid-template-columns:1fr;gap:10px;margin:0 0 18px}.howto.open{display:grid}
+.how-step{display:flex;gap:14px;align-items:flex-start;padding:15px 16px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.035)}
+.how-num{flex:0 0 32px;height:32px;border-radius:50%;display:grid;place-items:center;font-weight:950;background:linear-gradient(135deg,var(--pink),var(--violet))}
+.how-step strong{display:block;font-size:15px;margin:2px 0 4px}.how-step span{display:block;color:var(--muted);font-size:13px;line-height:1.45}
+.invite-actions{margin-top:14px}.mini-demo{margin-top:14px;padding:13px 14px;border-radius:16px;background:rgba(72,215,230,.07);border:1px solid rgba(72,215,230,.18)}
+.mini-demo strong,.mini-demo span{display:block}.mini-demo span{color:var(--muted);font-size:13px;line-height:1.4;margin-top:4px}
+.example-box{margin:16px 0 4px;padding:16px;border-radius:18px;background:linear-gradient(135deg,rgba(255,79,154,.10),rgba(139,92,246,.10));border:1px solid rgba(255,255,255,.1)}
+.example-box span{display:block;color:#f8a8ca;font-size:10px;font-weight:950;letter-spacing:.12em;margin-bottom:7px}.example-box strong{display:block;line-height:1.35}.example-box small{display:block;color:var(--muted);margin-top:7px;line-height:1.4}
+.vote-help{font-size:13px;color:#d9cedf;margin:2px 0 12px}
