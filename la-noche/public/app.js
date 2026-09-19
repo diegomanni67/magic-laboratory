@@ -24,7 +24,20 @@ function home(){
       <div class="eyebrow">⚡ Cero preguntas genéricas</div>
       <h1>Esta vez, <span class="grad">ustedes son el juego.</span></h1>
       <p class="lead">Creá una sala. Tus amigos cargan secretos, verdades y votos. Después nadie sabe qué dijo quién.</p>
-      <button class="ghost" id="howBtn">▶ Cómo se juega</button>
+      <div class="actions hero-actions"><button class="ghost" id="howBtn">▶ Cómo se juega</button><button class="secondary" id="demoBtn">Probar una ronda</button></div>
+    </section>
+    <section class="demo-card" id="demoCard">
+      <div class="kicker">RONDA DE EJEMPLO</div>
+      <div class="section-title">¿Quién escribió esto?</div>
+      <div class="statement demo-statement">“Una vez me bajé del colectivo en la ciudad equivocada y no se lo conté a nadie.”</div>
+      <div class="vote-help">Imaginá que estás jugando con tus amigos. Tocá a quien creés que lo escribió.</div>
+      <div class="options demo-options">
+        <button class="option demo-opt" data-name="Sofi">Sofi</button>
+        <button class="option demo-opt" data-name="Nico">Nico</button>
+        <button class="option demo-opt" data-name="Diego">Diego</button>
+        <button class="option demo-opt" data-name="Mica">Mica</button>
+      </div>
+      <div id="demoResult" class="demo-result"></div>
     </section>
     <section class="howto" id="howto">
       <div class="how-step"><div class="how-num">1</div><div><strong>Uno crea la sala</strong><span>Comparte un link o código. Nadie instala nada.</span></div></div>
@@ -51,6 +64,19 @@ function home(){
   document.querySelector("#createBtn").onclick=createRoom;
   document.querySelector("#joinBtn").onclick=joinRoom;
   document.querySelector("#howBtn").onclick=()=>document.querySelector("#howto").classList.toggle("open");
+  document.querySelector("#demoBtn").onclick=()=>document.querySelector("#demoCard").classList.toggle("open");
+  document.querySelectorAll(".demo-opt").forEach(btn=>btn.onclick=()=>{
+    document.querySelectorAll(".demo-opt").forEach(b=>b.classList.remove("selected","correct"));
+    btn.classList.add("selected");
+    const result=document.querySelector("#demoResult");
+    if(btn.dataset.name==="Nico"){
+      btn.classList.add("correct");
+      result.innerHTML='<strong>✅ Era Nico.</strong><span>Acertaste. En la partida real sumarías puntos.</span>';
+    }else{
+      result.innerHTML='<strong>❌ No era '+esc(btn.dataset.name)+'. Era Nico.</strong><span>Eso mismo pasa en vivo con las respuestas reales del grupo.</span>';
+    }
+    result.classList.add("show");
+  });
 }
 async function createRoom(){
   try{
@@ -90,6 +116,13 @@ function lobby(room){
       <div class="actions invite-actions">
         <button class="secondary" id="copyLink">🔗 Copiar link</button>
         <button class="ghost" id="copyCode">Copiar código</button>
+        <button class="ghost" id="showQr">▦ Mostrar QR</button>
+      </div>
+      <div class="qr-panel" id="qrPanel">
+        <div class="kicker">ESCANEÁ Y ENTRÁ</div>
+        <img class="qr-image" src="/api/qr/${room.code}" alt="QR para entrar a la sala">
+        <div class="qr-code-label">${room.code}</div>
+        <div class="muted tiny">Abrí la cámara del celular, escaneá el QR y entrás directo a esta sala.</div>
       </div>
       <div class="mini-demo"><strong>¿Cómo votan?</strong><span>Cuando empieza una ronda, a cada jugador le aparecen botones con los nombres. Toca uno y listo.</span></div>
       <div class="divider"></div>
@@ -100,6 +133,11 @@ function lobby(room){
   if(room.isHost) document.querySelector("#startCollect").onclick=async()=>{try{await api("/api/rooms/"+room.code+"/start-collecting",{method:"POST"});refresh()}catch(e){toast(e.message)}};
   document.querySelector("#copyLink").onclick=async()=>{const url=location.origin+"?code="+room.code;try{await navigator.clipboard.writeText(url);toast("Link copiado");}catch{prompt("Copiá este link:",url)}};
   document.querySelector("#copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(room.code);toast("Código copiado");}catch{prompt("Copiá este código:",room.code)}};
+  document.querySelector("#showQr").onclick=()=>{
+    const panel=document.querySelector("#qrPanel");
+    panel.classList.toggle("open");
+    document.querySelector("#showQr").textContent=panel.classList.contains("open")?"Ocultar QR":"▦ Mostrar QR";
+  };
   document.querySelector("#leave").onclick=home;
 }
 function collecting(room){
