@@ -74,3 +74,8 @@ button:active,.btn:active{transform:scale(.98)}button:disabled{opacity:.45;curso
 @media(max-width:520px){.access-plans{grid-template-columns:1fr}}
 
 .rank-help{font-size:13px;color:var(--muted);margin:0 0 12px}.rank-chosen,.rank-pool{display:grid;gap:8px}.rank-chosen{margin-bottom:12px}.rank-slot,.rank-pick{width:100%;justify-content:flex-start;background:#21182c;color:white;border:1px solid var(--line)}.rank-slot span{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:999px;background:rgba(72,215,230,.12);color:var(--cyan);font-size:12px}.rank-slot strong{font-weight:850}.rank-pick{background:rgba(255,255,255,.035)}.rank-empty{padding:14px;border-radius:14px;border:1px dashed var(--line);color:var(--muted);font-size:13px}.mission-card .section-title{line-height:1.35}.mission-done{padding:12px 14px;border-radius:14px;background:rgba(163,255,120,.08);border:1px solid rgba(163,255,120,.2);color:var(--lime);font-weight:800;font-size:13px}
+
+.theme-card.premium-locked{opacity:.72;cursor:not-allowed;background:rgba(255,255,255,.025);border-color:rgba(255,255,255,.08)}
+.theme-card.premium-locked:hover{transform:none}
+.theme-card.premium-locked em{background:rgba(255,184,77,.12);color:#ffd59a;border:1px solid rgba(255,184,77,.2)}
+.premium-note{display:block;margin-top:9px;font-size:11px;line-height:1.35;color:#ffd59a}
