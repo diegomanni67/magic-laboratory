@@ -24,6 +24,14 @@ function home(){
       <div class="eyebrow">⚡ Cero preguntas genéricas</div>
       <h1>Esta vez, <span class="grad">ustedes son el juego.</span></h1>
       <p class="lead">Creá una sala. Tus amigos cargan secretos, verdades y votos. Después nadie sabe qué dijo quién.</p>
+      <button class="ghost" id="howBtn">▶ Cómo se juega</button>
+    </section>
+    <section class="howto" id="howto">
+      <div class="how-step"><div class="how-num">1</div><div><strong>Uno crea la sala</strong><span>Comparte un link o código. Nadie instala nada.</span></div></div>
+      <div class="how-step"><div class="how-num">2</div><div><strong>Cada uno entra desde su celular</strong><span>Abren la web en Chrome o Safari, ponen su nombre y responden en secreto.</span></div></div>
+      <div class="how-step"><div class="how-num">3</div><div><strong>La web arma el juego</strong><span>Ejemplo: “Una vez me quedé dormido en un colectivo y terminé en otra ciudad”.</span></div></div>
+      <div class="how-step"><div class="how-num">4</div><div><strong>Todos votan tocando la pantalla</strong><span>¿Quién lo dijo? Tocás “Sofi”, “Nico”, “Diego”… y la respuesta queda registrada al instante.</span></div></div>
+      <div class="how-step"><div class="how-num">5</div><div><strong>Se revela y suma puntos</strong><span>Todos ven quién era, quién acertó y el ranking.</span></div></div>
     </section>
     <div class="grid two">
       <section class="card accent">
@@ -42,6 +50,7 @@ function home(){
     <div class="footer-note">MVP privado · sin cuentas · sin instalar nada</div>`;
   document.querySelector("#createBtn").onclick=createRoom;
   document.querySelector("#joinBtn").onclick=joinRoom;
+  document.querySelector("#howBtn").onclick=()=>document.querySelector("#howto").classList.toggle("open");
 }
 async function createRoom(){
   try{
@@ -77,13 +86,20 @@ function lobby(room){
     <section class="card accent">
       <div class="statusbar"><div><div class="kicker">SALA</div><div class="section-title">${esc(room.name)}</div></div><span class="pill">${room.players.length} jugadores</span></div>
       <div class="code">${room.code}</div>
-      <div class="share">Compartí este código para entrar</div>
+      <div class="share">Compartí el link o este código. Cada persona juega desde su propio celular.</div>
+      <div class="actions invite-actions">
+        <button class="secondary" id="copyLink">🔗 Copiar link</button>
+        <button class="ghost" id="copyCode">Copiar código</button>
+      </div>
+      <div class="mini-demo"><strong>¿Cómo votan?</strong><span>Cuando empieza una ronda, a cada jugador le aparecen botones con los nombres. Toca uno y listo.</span></div>
       <div class="divider"></div>
       <div class="players">${playerChips(room)}</div>
       ${room.isHost?'<div class="divider"></div><button class="primary wide" id="startCollect">Cerrar sala y cargar secretos →</button>':'<div class="divider"></div><div class="center muted">Esperando que el host empiece…</div>'}
     </section>
     <button class="ghost wide" id="leave" style="margin-top:14px">Salir de la sala</button>`;
   if(room.isHost) document.querySelector("#startCollect").onclick=async()=>{try{await api("/api/rooms/"+room.code+"/start-collecting",{method:"POST"});refresh()}catch(e){toast(e.message)}};
+  document.querySelector("#copyLink").onclick=async()=>{const url=location.origin+"?code="+room.code;try{await navigator.clipboard.writeText(url);toast("Link copiado");}catch{prompt("Copiá este link:",url)}};
+  document.querySelector("#copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(room.code);toast("Código copiado");}catch{prompt("Copiá este código:",room.code)}};
   document.querySelector("#leave").onclick=home;
 }
 function collecting(room){
@@ -103,6 +119,7 @@ function collecting(room){
     <section class="card">
       <div class="kicker">TODO ES SECRETO</div><div class="section-title">Dales material 😈</div>
       <p class="muted">No pongas tu nombre. Después todos van a intentar descubrir quién escribió cada cosa.</p>
+      <div class="example-box"><span>EJEMPLO</span><strong>“Una vez fingí estar enfermo para no ir a un cumpleaños.”</strong><small>Más tarde esa frase puede aparecer y todos tendrán que adivinar quién la escribió.</small></div>
       <label>Algo vergonzoso que te haya pasado</label><textarea id="s1" placeholder="Ej: una vez..."></textarea>
       <label>Algo que hiciste y casi nadie sabe</label><textarea id="s2"></textarea>
       <label>Una anécdota que pueda delatarte</label><textarea id="s3"></textarea>
@@ -139,6 +156,7 @@ function playing(room){
       <div class="mode">${r.mode==="who"?"¿QUIÉN FUE?":r.mode==="truth"?"VERDAD O MENTIRA":"MAYORÍA SECRETA"}</div>
       <div class="tiny muted" style="margin-top:8px">${esc(r.prompt)}</div>
       <div class="statement">“${esc(r.statement)}”</div>
+      <div class="vote-help">👇 Tocá una opción para votar. No necesitás instalar nada.</div>
       <div class="options">
         ${opts.map(o=>`<button class="option ${r.ownVote===o.id?'selected':''} ${revealed&&r.correctAnswer===o.id?'correct':''}" data-choice="${o.id}" ${revealed?'disabled':''}>${esc(o.name)}</button>`).join("")}
       </div>
