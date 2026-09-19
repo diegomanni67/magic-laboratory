@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" role="img" aria-labelledby="t">
+<title id="t">La Juntada</title>
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f6dfaa"/><stop offset="1" stop-color="#cf7c71"/></linearGradient></defs>
+<g fill="none" stroke="url(#g)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+<path d="M28 35l18 48M64 35L46 83M26 38h40M32 83h28M37 30l-8-12M55 30l8-12"/>
+<path d="M82 35l18 48M118 35l-18 48M80 38h40M86 83h28M91 30l-8-12M109 30l8-12"/>
+<path d="M63 52l17-12"/>
+</g>
+<text x="142" y="70" font-family="Georgia, 'Times New Roman', serif" font-size="58" font-weight="700" fill="#f4e6c8">La Juntada</text>
+<text x="145" y="96" font-family="Arial, Helvetica, sans-serif" font-size="15" letter-spacing="3.2" fill="#cf7c71">TUS AMIGOS SON EL JUEGO</text>
+</svg>
