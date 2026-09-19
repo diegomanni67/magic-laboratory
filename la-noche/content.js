@@ -1,4 +1,4 @@
-export const CONTENT_VERSION = "0.2.0";
+export const CONTENT_VERSION = "0.3.0";
 
 export const THEMES = {
   clasico: {
@@ -48,6 +48,14 @@ export const THEMES = {
     age18: false,
     description: "Situaciones absurdas, desafíos, votaciones veloces y misiones durante la juntada.",
     tagline: "Para grupos que quieren quilombo, no reflexión."
+  },
+  canceladisimos: {
+    id: "canceladisimos",
+    title: "Canceladísimos",
+    emoji: "🚨",
+    age18: true,
+    description: "Opiniones impopulares, dilemas incómodos, confesiones debatibles y elecciones que nadie quiere admitir.",
+    tagline: "Decí lo que pensás. Después bancate el escrutinio del grupo."
   },
   rompehielo: {
     id: "rompehielo",
@@ -133,6 +141,7 @@ export const THEME_MODES = {
   parejas: ["quien_fue","silla_caliente","duo","todos_contra_uno","ordena_al_grupo"],
   cumple: ["quien_fue","lee_al_grupo","mentiroso","silla_caliente","todos_contra_uno","mision_secreta"],
   caos: ["lee_al_grupo","mentiroso","silla_caliente","ordena_al_grupo","todos_contra_uno","mision_secreta"],
+  canceladisimos: ["quien_fue","lee_al_grupo","mentiroso","silla_caliente","ordena_al_grupo","todos_contra_uno","mision_secreta"],
   rompehielo: ["quien_fue","lee_al_grupo","mentiroso","silla_caliente","duo"]
 };
 
@@ -484,6 +493,71 @@ export const PROMPTS = {
       "Conseguí que alguien improvise un brindis.",
       "Hacé que alguien muestre una foto vieja de su celular.",
       "Conseguí que el grupo vote algo sin mencionar que forma parte de tu misión."
+    ]
+  },
+
+  canceladisimos: {
+    prep_story: [
+      "Contá una opinión impopular tuya que casi nunca decís en voz alta.",
+      "Contá una costumbre social que todo el mundo parece aceptar y a vos te parece ridícula.",
+      "Contá una vez en la que defendiste una opinión y después te arrepentiste.",
+      "Contá algo muy popular que a vos te parece sobrevalorado.",
+      "Contá una opinión tuya que sabés que dividiría al grupo.",
+      "Contá una regla social que romperías si no existiera ninguna consecuencia.",
+      "Contá una pequeña hipocresía propia que estés dispuesto a admitir.",
+      "Contá una postura que tenías hace años y hoy te da vergüenza."
+    ],
+    majority: [
+      "¿Quién tiene más opiniones que no diría delante de desconocidos?",
+      "¿Quién sería más probable que discuta una opinión impopular durante una hora?",
+      "¿Quién tiene más chances de ser malinterpretado por algo que diga?",
+      "¿Quién podría defender mejor una postura con la que ni siquiera está de acuerdo?",
+      "¿Quién es más probable que cambie de opinión después de una buena discusión?",
+      "¿Quién tiene menos filtro cuando entra en confianza?",
+      "¿Quién sería más probable que publique algo y después lo borre?",
+      "¿Quién tiene la opinión más distinta al resto del grupo sobre casi todo?"
+    ],
+    hot_seat: [
+      "¿Es peor ser hipócrita o ser brutalmente sincero?",
+      "¿Preferís que tus amigos te digan siempre la verdad aunque duela o que a veces te protejan?",
+      "¿Separás completamente la obra de la persona que la creó?",
+      "¿Está bien dejar de hablarle a alguien sin explicaciones si ya no querés ese vínculo?",
+      "¿Es peor traicionar una amistad o traicionar tus propios valores para conservarla?",
+      "¿Preferís caer mal diciendo lo que pensás o caer bien callándotelo?",
+      "¿La gente merece siempre una segunda oportunidad?",
+      "¿Está bien revisar el celular de tu pareja si tenés una sospecha muy fuerte?"
+    ],
+    rank: [
+      "Ordenalos de más a menos probable que diga algo incómodo en una cena.",
+      "Ordenalos de más a menos políticamente incorrecto dentro de este grupo.",
+      "Ordenalos de más a menos probable que sostenga una opinión aunque todos estén en contra.",
+      "Ordenalos de más a menos probable que borre un mensaje después de mandarlo.",
+      "Ordenalos de más a menos probable que cambie de opinión durante una discusión.",
+      "Ordenalos de más a menos probable que tenga una opinión secreta muy distinta a lo que muestra."
+    ],
+    duo: [
+      "¿Qué tema cree el otro que genera más discusiones innecesarias?",
+      "¿Qué tolera menos el otro: hipocresía, arrogancia, mentira o victimismo?",
+      "¿El otro prefiere sinceridad total o cuidar las formas?",
+      "¿Qué opinión del otro creés que sorprendería más al grupo?",
+      "¿El otro cambiaría una opinión fuerte para evitar perder una amistad?",
+      "¿Qué le molesta más al otro: que lo contradigan o que no lo escuchen?"
+    ],
+    one_vs_all: [
+      "¿Qué cosa muy popular te parece totalmente sobrevalorada?",
+      "¿Qué comportamiento social te molesta aunque para otros sea normal?",
+      "¿Qué verdad incómoda pensás que la mayoría de la gente evita admitir?",
+      "¿Preferís ser respetado o querido?",
+      "¿Qué es peor: mentir para no lastimar o decir una verdad solo para descargarla?",
+      "¿Qué opinión tuya genera más desacuerdo cuando la decís?"
+    ],
+    missions: [
+      "Conseguí que alguien diga “eso no se puede decir” sin pedírselo directamente.",
+      "Lográ que dos personas del grupo defiendan posiciones opuestas sobre un tema trivial.",
+      "Conseguí que alguien admita que cambió de opinión sobre algo importante.",
+      "Hacé que alguien diga qué cosa popular considera sobrevalorada.",
+      "Conseguí que alguien diga “depende” tres veces durante una discusión.",
+      "Lográ que alguien admita una pequeña hipocresía propia."
     ]
   },
 
