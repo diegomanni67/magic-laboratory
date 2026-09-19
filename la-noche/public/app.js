@@ -9,7 +9,7 @@ async function api(url,o={}){const h={"Content-Type":"application/json",...(o.he
 function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null}
 function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
 async function loadConfig(){if(!state.config)state.config=await api("/api/config")}
-function themeCards(){return state.config.themes.map(t=>`<label class="theme-card"><input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""}><span class="theme-emoji">${t.emoji}</span><strong>${esc(t.title)}</strong><small>${esc(t.description)}</small>${t.age18?'<em>18+</em>':""}</label>`).join("")}
+function themeCards(){return state.config.themes.map(t=>`<label class="theme-card ${t.premiumOnly?"premium-locked":""}"><input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""} ${t.premiumOnly?"disabled":""}><span class="theme-emoji">${t.emoji}</span><strong>${esc(t.title)}</strong><small>${esc(t.description)}</small>${t.premiumOnly?'<em>🔒 PREMIUM +18</em>':t.age18?'<em>18+</em>':""}${t.premiumOnly?'<span class="premium-note">Sin ronda gratis · requiere compra o pase activo</span>':""}</label>`).join("")}
 
 async function home(){
   stopPoll();clearSession();await loadConfig();
