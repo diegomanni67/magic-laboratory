@@ -35,6 +35,9 @@ function requireHost(room,req){const me=auth(room,req);return me&&me.id===room.h
 function themePrompts(themeId){return PROMPTS[themeId]||PROMPTS.clasico}
 function modeInfo(modeId){return MODES[modeId]||{id:modeId,title:modeId,emoji:"🎮",description:""}}
 function playerName(room,pid){return room.players.find(p=>p.id===pid)?.name||"Jugador eliminado"}
+function hasPremiumAccess(req){
+  return process.env.ALLOW_TEST_PREMIUM==="true"&&req.headers["x-test-premium"]==="1";
+}
 
 function uniqueAnswerOptions(room,key,correct,ownerId,max=4){
   const pool=shuffle(room.players.map(p=>({value:room.submissions[p.id]?.[key],sourcePlayerId:p.id})).filter(x=>x.value));
@@ -384,6 +387,7 @@ app.post("/api/rooms",(req,res)=>{
   const themeId=THEMES[req.body.themeId]?req.body.themeId:"clasico";
   const playWhen=req.body.playWhen==="later"?"later":"now",eventDate=playWhen==="later"?clean(req.body.eventDate,40):"";
   if(!name||!hostName)return res.status(400).json({error:"Faltan datos."});
+  if(THEMES[themeId].premiumOnly&&!hasPremiumAccess(req))return res.status(402).json({error:"Esta temática es Premium +18. Necesitás comprar una partida o tener un pase activo para crearla."});
   if(THEMES[themeId].age18&&req.body.ageConfirmed!==true)return res.status(400).json({error:"La versión 18+ requiere confirmar mayoría de edad."});
   if(playWhen==="later"&&!eventDate)return res.status(400).json({error:"Elegí la fecha de la juntada."});
   let code=roomCode();while(rooms.has(code))code=roomCode();
