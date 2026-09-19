@@ -15,6 +15,12 @@ const rooms=new Map();
 const sessions=new Map();
 const IMPLEMENTED_MODES=["quien_fue","lee_al_grupo","mentiroso","silla_caliente","todos_contra_uno"];
 const AUTO_ADVANCE_MS=2800;
+const ACCESS_PLANS=[
+  {id:"single",title:"Una noche",billing:"one_time",unlimited:false,description:"Desbloquea esta partida completa."},
+  {id:"monthly",title:"Pase mensual",billing:"monthly",unlimited:true,description:"Partidas ilimitadas mientras el pase esté activo."},
+  {id:"annual",title:"Pase anual",billing:"annual",unlimited:true,description:"Partidas ilimitadas durante un año."},
+  {id:"lifetime",title:"De por vida",billing:"lifetime",unlimited:true,description:"Partidas ilimitadas para siempre desde la cuenta que lo compra."}
+];
 
 function id(){return crypto.randomUUID()}
 function token(){return crypto.randomBytes(24).toString("hex")}
@@ -227,7 +233,7 @@ function snapshot(room,viewer){
   const finished=room.state==="finished";
   return {
     code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,
-    unlocked:room.unlocked,freeRounds:1,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
+    unlocked:room.unlocked,freeRounds:1,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
     prepPrompts:room.prepPrompts,availableModes:(THEME_MODES[room.themeId]||[]).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
     me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,score:finished?viewer.score:null}:null,
@@ -239,7 +245,7 @@ function snapshot(room,viewer){
 }
 
 app.get("/api/health",(_req,res)=>res.json({ok:true,rooms:rooms.size}));
-app.get("/api/config",(_req,res)=>res.json({themes:Object.values(THEMES),modes:Object.values(MODES),themeModes:THEME_MODES,implementedModes:IMPLEMENTED_MODES}));
+app.get("/api/config",(_req,res)=>res.json({themes:Object.values(THEMES),modes:Object.values(MODES),themeModes:THEME_MODES,implementedModes:IMPLEMENTED_MODES,accessPlans:ACCESS_PLANS}));
 app.get("/api/qr/:code",async(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).send("Sala inexistente");
   try{const url=`${req.protocol}://${req.get("host")}/?code=${room.code}`;const png=await QRCode.toBuffer(url,{type:"png",width:640,margin:2,errorCorrectionLevel:"M"});res.setHeader("Content-Type","image/png");res.setHeader("Cache-Control","no-store");res.send(png)}
@@ -322,7 +328,10 @@ app.post("/api/rooms/:code/vote",(req,res)=>{
 app.post("/api/rooms/:code/unlock-test",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
-  room.unlocked=true;room.state="playing";room.currentRound=Math.min(1,room.rounds.length-1);room.roundPhase="guess";room.advanceAt=null;res.json({ok:true});
+  const accessPlan=ACCESS_PLANS.find(p=>p.id===req.body?.accessPlan)?.id||"single";
+  room.accessPlan=accessPlan;
+  room.unlocked=true;room.state="playing";room.currentRound=Math.min(1,room.rounds.length-1);room.roundPhase="guess";room.advanceAt=null;
+  res.json({ok:true,accessPlan});
 });
 
 app.post("/api/rooms/:code/restart",(req,res)=>{
