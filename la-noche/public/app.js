@@ -256,6 +256,223 @@ async function loadAccess(){
   catch{state.access={active:false}}
   return state.access;
 }
+
+function customPackStorageKey(){
+  const owner=state.access?.accessId||"device";
+  return "lj_custom_packs_"+owner;
+}
+function getCustomPacks(){
+  if(!hasReusableAccess())return [];
+  try{
+    const v=JSON.parse(localStorage.getItem(customPackStorageKey())||"[]");
+    return Array.isArray(v)?v:[];
+  }catch{return []}
+}
+function saveCustomPacks(packs){
+  localStorage.setItem(customPackStorageKey(),JSON.stringify(packs));
+}
+function selectedCustomPack(){
+  const id=localStorage.getItem("lj_selected_pack_id")||"";
+  return getCustomPacks().find(p=>p.id===id)||null;
+}
+function linesToList(v,max=40){
+  return String(v||"").split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,max);
+}
+function listToLines(v){return Array.isArray(v)?v.join("\n"):""}
+function parseDuoLines(v){
+  return linesToList(v,30).map(line=>{
+    const [question,a,b]=line.split("|").map(x=>x?.trim());
+    return {question,a,b};
+  }).filter(x=>x.question&&x.a&&x.b);
+}
+function duoToLines(v){
+  return Array.isArray(v)?v.map(x=>[x.question,x.a,x.b].filter(Boolean).join(" | ")).join("\n"):"";
+}
+function customPackSelectorHtml(){
+  if(!hasReusableAccess()){
+    return `<div class="custom-pack-locked">
+      <div><small>PERSONALIZACIÓN PREMIUM</small><strong>Usá tus propias consignas.</strong><span>Disponible con pase 24 h, mensual, anual, lifetime o ADMIN.</span></div>
+      <button type="button" class="ghost" id="unlockCustomStudio">Ver acceso</button>
+    </div>`;
+  }
+  const packs=getCustomPacks(),selected=selectedCustomPack();
+  return `<div class="custom-pack-select">
+    <div class="custom-pack-select-head">
+      <div><small>PACK PERSONALIZADO</small><strong>${selected?esc(selected.name):"Contenido oficial"}</strong></div>
+      <button type="button" class="ghost small-btn" id="newCustomPack">+ Crear pack</button>
+    </div>
+    <select id="customPackSelect">
+      <option value="">Sin pack · usar contenido oficial</option>
+      ${packs.map(p=>`<option value="${esc(p.id)}" ${selected?.id===p.id?"selected":""}>${esc(p.name)} · ${p.mixMode==="custom_first"?"prioriza lo tuyo":"mezcla"}</option>`).join("")}
+    </select>
+    <div class="custom-pack-select-actions">
+      <span>${selected?"Se usará junto con la temática elegida.":"Podés crear uno para cumpleaños, viajes, grupos de amigos, trabajo, etc."}</span>
+      ${selected?'<button type="button" class="theme-details" id="editSelectedPack">Editar pack →</button>':""}
+    </div>
+  </div>`;
+}
+function closeCustomStudio(){
+  document.querySelector(".custom-studio-overlay")?.remove();
+  document.body.classList.remove("rules-open");
+}
+function openCustomStudio(packId=null){
+  if(!hasReusableAccess()){openAccessPanel();return}
+  const packs=getCustomPacks();
+  const existing=packs.find(p=>p.id===packId)||null;
+  const p=existing||{
+    id:(crypto?.randomUUID?.()||("pack_"+Date.now())),
+    name:"",
+    description:"",
+    mixMode:"mixed",
+    content:{prep_story:[],majority:[],hot_seat:[],one_vs_all:[],rank:[],missions:[],duo:[]}
+  };
+  const c=p.content||{};
+  document.querySelector(".custom-studio-overlay")?.remove();
+  document.body.insertAdjacentHTML("beforeend",`
+    <div class="custom-studio-overlay" role="dialog" aria-modal="true" aria-label="Personalizar La Juntada">
+      <button class="custom-studio-backdrop" data-close-studio aria-label="Cerrar"></button>
+      <article class="custom-studio-sheet">
+        <button class="rules-close" data-close-studio aria-label="Cerrar">×</button>
+        <header class="custom-studio-head">
+          <div class="studio-mark">✎</div>
+          <div>
+            <div class="kicker">ESTUDIO PREMIUM</div>
+            <h2>${existing?"Editá tu pack":"Creá tu propia Juntada"}</h2>
+            <p>Escribí cosas que solo tienen sentido para tu grupo. La Juntada las mezcla con las respuestas secretas y los modos del juego.</p>
+          </div>
+        </header>
+
+        <div class="studio-basics">
+          <div><label>Nombre del pack</label><input id="packName" maxlength="70" value="${esc(p.name)}" placeholder="Cumple de Sofi"></div>
+          <div><label>Cómo usarlo</label><select id="packMixMode">
+            <option value="mixed" ${p.mixMode==="mixed"?"selected":""}>Mezclar con La Juntada</option>
+            <option value="custom_first" ${p.mixMode==="custom_first"?"selected":""}>Priorizar mis consignas</option>
+          </select></div>
+        </div>
+        <label>Descripción opcional</label>
+        <input id="packDescription" maxlength="180" value="${esc(p.description||"")}" placeholder="Para el grupo del viaje a Córdoba">
+
+        <div class="studio-grid">
+          <section class="studio-field">
+            <div><span>¿QUIÉN FUE?</span><small>Una línea = una pregunta que después todos responden con una historia.</small></div>
+            <textarea id="packStories" placeholder="Contá algo que hiciste y nunca confesaste al grupo.\n¿Cuál fue tu peor excusa para cancelar un plan?">${esc(listToLines(c.prep_story))}</textarea>
+          </section>
+          <section class="studio-field">
+            <div><span>LEÉ AL GRUPO</span><small>Preguntas para votar a una persona del grupo.</small></div>
+            <textarea id="packMajority" placeholder="¿Quién llegaría tarde a su propio casamiento?\n¿Quién sobreviviría mejor sin celular?">${esc(listToLines(c.majority))}</textarea>
+          </section>
+          <section class="studio-field">
+            <div><span>SILLA CALIENTE</span><small>Preguntas personales cuya respuesta luego intentarán adivinar.</small></div>
+            <textarea id="packHot" placeholder="¿Qué persona famosa invitarías a cenar?">${esc(listToLines(c.hot_seat))}</textarea>
+          </section>
+          <section class="studio-field">
+            <div><span>TODOS CONTRA UNO</span><small>Consignas para intentar descifrar a una persona.</small></div>
+            <textarea id="packOne" placeholder="Si pudieras desaparecer una semana, ¿a dónde irías?">${esc(listToLines(c.one_vs_all))}</textarea>
+          </section>
+          <section class="studio-field">
+            <div><span>ORDENÁ AL GRUPO</span><small>Una consigna de ranking por línea.</small></div>
+            <textarea id="packRank" placeholder="De más a menos probable que se pierda en un aeropuerto.">${esc(listToLines(c.rank))}</textarea>
+          </section>
+          <section class="studio-field">
+            <div><span>MISIONES SECRETAS</span><small>Objetivos para cumplir durante la juntada.</small></div>
+            <textarea id="packMissions" placeholder="Lográ que alguien diga “esto ya lo hablamos”.\nConseguí que alguien proponga pedir helado.">${esc(listToLines(c.missions))}</textarea>
+          </section>
+          <section class="studio-field studio-duo">
+            <div><span>DÚO IMPOSIBLE</span><small>Formato: pregunta | opción A | opción B</small></div>
+            <textarea id="packDuo" placeholder="¿Qué elegirían para un viaje? | Improvisar todo | Planear todo\n¿Noche ideal? | Salir | Quedarse en casa">${esc(duoToLines(c.duo))}</textarea>
+          </section>
+        </div>
+
+        <div class="studio-preview-note"><span>✦</span><p>Si dejás un modo vacío, ese modo sigue usando el contenido oficial. Tus consignas nunca se muestran completas antes de jugar.</p></div>
+        <footer class="studio-footer">
+          ${existing?'<button type="button" class="danger-btn studio-delete" id="deletePack">Eliminar pack</button>':"<span></span>"}
+          <div>
+            <button type="button" class="ghost" data-close-studio>Cancelar</button>
+            <button type="button" class="primary" id="savePack">Guardar pack</button>
+          </div>
+        </footer>
+      </article>
+    </div>`);
+  document.body.classList.add("rules-open");
+  document.querySelectorAll("[data-close-studio]").forEach(b=>b.onclick=closeCustomStudio);
+  document.querySelector("#savePack").onclick=()=>{
+    const name=document.querySelector("#packName").value.trim();
+    if(!name){toast("Poné un nombre al pack");return}
+    const pack={
+      id:p.id,name,description:document.querySelector("#packDescription").value.trim(),
+      mixMode:document.querySelector("#packMixMode").value==="custom_first"?"custom_first":"mixed",
+      content:{
+        prep_story:linesToList(document.querySelector("#packStories").value),
+        majority:linesToList(document.querySelector("#packMajority").value),
+        hot_seat:linesToList(document.querySelector("#packHot").value),
+        one_vs_all:linesToList(document.querySelector("#packOne").value),
+        rank:linesToList(document.querySelector("#packRank").value),
+        missions:linesToList(document.querySelector("#packMissions").value),
+        duo:parseDuoLines(document.querySelector("#packDuo").value)
+      },
+      updatedAt:Date.now()
+    };
+    const next=getCustomPacks().filter(x=>x.id!==pack.id);next.unshift(pack);saveCustomPacks(next);
+    localStorage.setItem("lj_selected_pack_id",pack.id);
+    closeCustomStudio();
+    const holder=document.querySelector("#customPackHolder");if(holder)holder.innerHTML=customPackSelectorHtml();
+    bindCustomPackControls();
+    const shelf=document.querySelector("#customPackShelf");if(shelf)paintCustomPackShelf();
+    toast("Pack guardado");
+  };
+  document.querySelector("#deletePack")?.addEventListener("click",()=>{
+    if(!confirm("Eliminar este pack personalizado?"))return;
+    saveCustomPacks(getCustomPacks().filter(x=>x.id!==p.id));
+    if(localStorage.getItem("lj_selected_pack_id")===p.id)localStorage.removeItem("lj_selected_pack_id");
+    closeCustomStudio();
+    const holder=document.querySelector("#customPackHolder");if(holder)holder.innerHTML=customPackSelectorHtml();
+    bindCustomPackControls();paintCustomPackShelf();toast("Pack eliminado");
+  });
+}
+function customPackShelfHtml(){
+  if(!hasReusableAccess())return `
+    <div class="custom-studio-locked">
+      <div class="studio-lock-mark">◇</div>
+      <div><strong>Personalización Premium</strong><p>Creá preguntas, rankings y misiones propias. Los invitados siguen entrando sin cuenta.</p></div>
+      <button class="primary" id="studioAccessBtn">Ver pases</button>
+    </div>`;
+  const packs=getCustomPacks();
+  return `
+    <div class="custom-studio-toolbar">
+      <div><strong>${packs.length?"Tus packs":"Todavía no creaste ningún pack"}</strong><span>${packs.length?"Elegí uno o armá otro.":"Empezá con preguntas que solo entiende tu grupo."}</span></div>
+      <button class="primary" id="createCustomPack">+ Nuevo pack</button>
+    </div>
+    ${packs.length?`<div class="custom-pack-shelf">${packs.slice(0,6).map(p=>{
+      const count=Object.values(p.content||{}).reduce((n,v)=>n+(Array.isArray(v)?v.length:0),0);
+      return `<button type="button" class="saved-pack-card" data-pack-id="${esc(p.id)}">
+        <span class="saved-pack-icon">✎</span>
+        <small>${p.mixMode==="custom_first"?"PRIORIZA LO TUYO":"MEZCLA"}</small>
+        <strong>${esc(p.name)}</strong>
+        <p>${esc(p.description||"Pack personalizado")}</p>
+        <b>${count} elementos propios</b>
+        <em>Editar →</em>
+      </button>`;
+    }).join("")}</div>`:""}
+  `;
+}
+function paintCustomPackShelf(){
+  const el=document.querySelector("#customPackShelf");if(!el)return;
+  el.innerHTML=customPackShelfHtml();
+  document.querySelector("#studioAccessBtn")?.addEventListener("click",openAccessPanel);
+  document.querySelector("#createCustomPack")?.addEventListener("click",()=>openCustomStudio());
+  document.querySelectorAll("[data-pack-id]").forEach(b=>b.onclick=()=>openCustomStudio(b.dataset.packId));
+}
+function bindCustomPackControls(){
+  document.querySelector("#unlockCustomStudio")?.addEventListener("click",openAccessPanel);
+  document.querySelector("#newCustomPack")?.addEventListener("click",()=>openCustomStudio());
+  document.querySelector("#editSelectedPack")?.addEventListener("click",()=>openCustomStudio(selectedCustomPack()?.id));
+  document.querySelector("#customPackSelect")?.addEventListener("change",e=>{
+    if(e.target.value)localStorage.setItem("lj_selected_pack_id",e.target.value);
+    else localStorage.removeItem("lj_selected_pack_id");
+    const holder=document.querySelector("#customPackHolder");if(holder)holder.innerHTML=customPackSelectorHtml();
+    bindCustomPackControls();
+  });
+}
 function formatAccessDate(ms){
   if(!ms)return "Sin vencimiento";
   try{return new Intl.DateTimeFormat("es-AR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(ms))}catch{return new Date(ms).toLocaleString()}
