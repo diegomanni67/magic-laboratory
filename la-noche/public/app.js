@@ -240,7 +240,7 @@ function hasReusableAccess(){return !!state.access?.active&&(state.access.role==
 function accessLabel(){
   if(!state.access?.active)return "Mi acceso";
   if(state.access.role==="admin")return "ADMIN · Todo desbloqueado";
-  return state.access.title||"Pase activo";
+  return state.access.plan==="lifetime"?"Premium activo":(state.access.title||"Premium activo");
 }
 async function api(url,o={}){
   const h={"Content-Type":"application/json",...(o.headers||{})};
@@ -308,7 +308,7 @@ function duoToLines(v){
 function customPackSelectorHtml(){
   if(!hasReusableAccess()){
     return `<div class="custom-pack-locked">
-      <div><small>PERSONALIZACIÓN PREMIUM</small><strong>Usá tus propias consignas.</strong><span>Disponible con pase 24 h, mensual, anual, lifetime o ADMIN.</span></div>
+      <div><small>PERSONALIZACIÓN PREMIUM</small><strong>Usá tus propias consignas.</strong><span>Disponible con Premium para siempre o ADMIN.</span></div>
       <button type="button" class="ghost" id="unlockCustomStudio">Ver acceso</button>
     </div>`;
   }
@@ -453,7 +453,7 @@ function customPackShelfHtml(){
     <div class="custom-studio-locked">
       <div class="studio-lock-mark">◇</div>
       <div><strong>Personalización Premium</strong><p>Creá preguntas, rankings y misiones propias. Los invitados siguen entrando sin cuenta.</p></div>
-      <button class="primary" id="studioAccessBtn">Ver pases</button>
+      <button class="primary" id="studioAccessBtn">Desbloquear Premium</button>
     </div>`;
   const packs=getCustomPacks();
   return `
@@ -477,12 +477,12 @@ function customPackShelfHtml(){
 function paintCustomPackShelf(){
   const el=document.querySelector("#customPackShelf");if(!el)return;
   el.innerHTML=customPackShelfHtml();
-  document.querySelector("#studioAccessBtn")?.addEventListener("click",openAccessPanel);
+  document.querySelector("#studioAccessBtn")?.addEventListener("click",startPremiumCheckout);
   document.querySelector("#createCustomPack")?.addEventListener("click",()=>openCustomStudio());
   document.querySelectorAll("[data-pack-id]").forEach(b=>b.onclick=()=>openCustomStudio(b.dataset.packId));
 }
 function bindCustomPackControls(){
-  document.querySelector("#unlockCustomStudio")?.addEventListener("click",openAccessPanel);
+  document.querySelector("#unlockCustomStudio")?.addEventListener("click",startPremiumCheckout);
   document.querySelector("#newCustomPack")?.addEventListener("click",()=>openCustomStudio());
   document.querySelector("#editSelectedPack")?.addEventListener("click",()=>openCustomStudio(selectedCustomPack()?.id));
   document.querySelector("#customPackSelect")?.addEventListener("change",e=>{
@@ -545,11 +545,10 @@ function bindGameSettings(){
 }
 
 function surpriseSetupHtml(){
-  const premium=hasReusableAccess();
   return `<div class="surprise-setup">
     <div class="surprise-choice-head">
       <div><small>TIPO DE JUNTADA</small><strong>¿Es una juntada normal o gira alrededor de alguien?</strong></div>
-      ${premium?'<span class="premium-mini">PREMIUM</span>':'<button type="button" class="theme-details" id="surpriseAccess">Requiere pase →</button>'}
+      <span class="free-mini">INCLUIDO</span>
     </div>
     <div class="surprise-choice-grid">
       <label class="surprise-choice">
@@ -557,8 +556,8 @@ function surpriseSetupHtml(){
         <span class="surprise-choice-icon">●</span>
         <div><strong>Juntada normal</strong><small>Todos preparan y juegan de la misma manera.</small></div>
       </label>
-      <label class="surprise-choice ${premium?"":"is-locked"}">
-        <input type="radio" name="partyKind" value="surprise" ${premium?"":"disabled"}>
+      <label class="surprise-choice">
+        <input type="radio" name="partyKind" value="surprise">
         <span class="surprise-choice-icon">✦</span>
         <div><strong>Armala para alguien</strong><small>El grupo prepara una sorpresa y esa persona entra al final.</small></div>
       </label>
@@ -621,8 +620,8 @@ async function openAccessPanel(){
           <div class="access-key-icon">${role==="admin"?"✦":"◇"}</div>
           <div><div class="kicker">MI ACCESO</div><h2>${active?esc(accessLabel()):"Jugá sin registrarte."}</h2>
           <p>${active
-            ?(role==="admin"?"Acceso de propietario: todas las temáticas y partidas quedan desbloqueadas.":"Este pase queda guardado en este dispositivo. También podés recuperarlo en otro con tu clave.")
-            :"No necesitás una cuenta para entrar como invitado ni para probar una ronda. Solo necesitás un pase cuando quieras desbloquear contenido pago."}</p></div>
+            ?(role==="admin"?"Acceso de propietario: todas las funciones quedan desbloqueadas.":"Premium queda guardado en este dispositivo y también podés recuperarlo en otro con tu clave.")
+            :"La Juntada se juega gratis. Premium solo agrega Canceladísimos, Picante 18+ y la creación de partidas personalizadas."}</p></div>
         </div>
 
         ${active?`
@@ -642,7 +641,7 @@ async function openAccessPanel(){
           </div>`:""}
         `:`
           <div class="access-restore">
-            <div class="kicker">YA TENÉS UN PASE</div>
+            <div class="kicker">YA TENÉS PREMIUM</div>
             <label>Clave de recuperación</label>
             <textarea id="restoreAccessKey" placeholder="Pegá acá tu clave LJ1…"></textarea>
             <button class="secondary wide" id="restoreAccessBtn">Recuperar mi acceso</button>
@@ -664,7 +663,7 @@ async function openAccessPanel(){
     try{await navigator.clipboard.writeText(accessToken());toast("Clave de recuperación copiada")}catch{prompt("Copiá tu clave:",accessToken())}
   });
   document.querySelector("#forgetAccess")?.addEventListener("click",async()=>{
-    if(!confirm("Quitar este pase de este dispositivo? Si no guardaste la clave, después no vas a poder recuperarlo."))return;
+    if(!confirm("Quitar Premium de este dispositivo? Si no guardaste la clave, después no vas a poder recuperarlo."))return;
     saveAccessToken("");state.access={active:false};closeAccessPanel();if(!state.code)await home();toast("Acceso quitado de este dispositivo");
   });
   document.querySelector("#restoreAccessBtn")?.addEventListener("click",async()=>{
@@ -672,7 +671,7 @@ async function openAccessPanel(){
       const key=document.querySelector("#restoreAccessKey").value.trim();
       const d=await api("/api/access/restore",{method:"POST",body:JSON.stringify({accessToken:key}),headers:{"X-La-Juntada-Access":""}});
       saveAccessToken(d.accessToken);state.access=d.access;closeAccessPanel();if(state.code&&state.room?.state==="paywall"&&state.room?.isHost){try{await api("/api/rooms/"+state.code+"/use-access",{method:"POST"});refresh()}catch{}}else if(!state.code)await home();
-      toast("Pase recuperado");
+      toast("Premium recuperado");
     }catch(e){toast(e.message)}
   });
   document.querySelector("#activateAdmin")?.addEventListener("click",async()=>{
@@ -689,6 +688,70 @@ function formatArs(value){
   const n=Number(value);if(!Number.isFinite(n)||n<=0)return "Sin precio";
   try{return new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(n)}
   catch{return "$ "+Math.round(n).toLocaleString("es-AR")}
+}
+
+function premiumPrice(){
+  return Number(state.config?.payments?.prices?.lifetime||5000);
+}
+async function startPremiumCheckout(){
+  if(state.access?.active&&(state.access.role==="admin"||hasReusableAccess())){toast("Ya tenés Premium activo.");return}
+  if(!state.config?.payments?.configured){toast("Mercado Pago todavía no está habilitado.");return}
+  try{
+    const body={plan:"lifetime"};
+    if(state.room?.isHost&&state.code)body.roomCode=state.code;
+    const d=await api("/api/payments/checkout",{method:"POST",body:JSON.stringify(body)});
+    if(!d.checkoutUrl)throw new Error("Mercado Pago no devolvió un checkout.");
+    location.href=d.checkoutUrl;
+  }catch(e){toast(e.message)}
+}
+function closeDonationModal(){
+  document.querySelector(".donation-overlay")?.remove();
+  document.body.classList.remove("rules-open");
+}
+function openDonationModal(){
+  if(!state.config?.payments?.configured){toast("Mercado Pago todavía no está habilitado.");return}
+  document.querySelector(".donation-overlay")?.remove();
+  document.body.insertAdjacentHTML("beforeend",`
+    <div class="donation-overlay" role="dialog" aria-modal="true" aria-label="Apoyar La Juntada">
+      <button class="donation-backdrop" data-close-donation aria-label="Cerrar"></button>
+      <article class="donation-sheet">
+        <button class="rules-close" data-close-donation aria-label="Cerrar">×</button>
+        <div class="donation-heart">♥</div>
+        <div class="kicker">APOYÁ LA JUNTADA</div>
+        <h2>¿La pasaron bien?</h2>
+        <p>La mayor parte de La Juntada es gratis. Si te gustó y querés ayudar a que siga creciendo, podés aportar el monto que quieras.</p>
+        <div class="donation-options">
+          <button type="button" data-donation="1000">$1.000</button>
+          <button type="button" data-donation="2500">$2.500</button>
+          <button type="button" data-donation="5000">$5.000</button>
+        </div>
+        <label class="donation-custom-label">Otro monto</label>
+        <div class="donation-custom"><span>$</span><input id="donationCustom" type="number" min="500" max="500000" step="100" placeholder="3000"></div>
+        <button class="primary wide" id="donationContinue">Aportar con Mercado Pago <span>→</span></button>
+        <small class="donation-note">Es totalmente opcional y no desbloquea funciones.</small>
+      </article>
+    </div>`);
+  document.body.classList.add("rules-open");
+  let amount=2500;
+  const custom=document.querySelector("#donationCustom");
+  const setAmount=n=>{
+    amount=Number(n)||0;
+    document.querySelectorAll("[data-donation]").forEach(b=>b.classList.toggle("selected",Number(b.dataset.donation)===amount));
+  };
+  document.querySelectorAll("[data-close-donation]").forEach(b=>b.onclick=closeDonationModal);
+  document.querySelectorAll("[data-donation]").forEach(b=>b.onclick=()=>{custom.value="";setAmount(b.dataset.donation)});
+  custom?.addEventListener("input",()=>setAmount(custom.value));
+  setAmount(amount);
+  document.querySelector("#donationContinue").onclick=async()=>{
+    const btn=document.querySelector("#donationContinue");
+    try{
+      if(!Number.isFinite(amount)||amount<500){toast("El aporte mínimo es $500.");return}
+      btn.disabled=true;btn.innerHTML='Abriendo Mercado Pago… <span>✦</span>';
+      const d=await api("/api/payments/donate",{method:"POST",body:JSON.stringify({amount})});
+      if(!d.checkoutUrl)throw new Error("Mercado Pago no devolvió un checkout.");
+      location.href=d.checkoutUrl;
+    }catch(e){toast(e.message);btn.disabled=false;btn.innerHTML='Aportar con Mercado Pago <span>→</span>'}
+  };
 }
 function closePaymentAdmin(){document.querySelector(".payment-admin-overlay")?.remove();document.body.classList.remove("rules-open")}
 async function openPaymentAdmin(){
@@ -772,7 +835,7 @@ function paymentReturnView(kind,message){
   document.querySelector("#closePaymentReturn")?.addEventListener("click",()=>{document.querySelector(".payment-return-overlay")?.remove();history.replaceState(null,"",location.pathname)});
 }
 async function handlePaymentReturn(orderId,returnState){
-  if(!orderId||!state.token)return;
+  if(!orderId)return;
   paymentReturnView("checking",returnState==="pending"?"El pago figura pendiente. Lo verificamos automáticamente.":"Estamos confirmando el pago directamente con Mercado Pago.");
   let last=null;
   for(let i=0;i<18;i++){
@@ -784,14 +847,14 @@ async function handlePaymentReturn(orderId,returnState){
       if(last?.status==="approved"){
         if(last.accessToken){saveAccessToken(last.accessToken);await loadAccess()}
         history.replaceState(null,"",location.pathname);
-        paymentReturnView("success","El pase ya está activo y la partida quedó desbloqueada.");
-        await refresh();
-        setTimeout(()=>document.querySelector(".payment-return-overlay")?.remove(),1800);
+        paymentReturnView("success",last.isDonation?"Gracias por apoyar La Juntada ♥":"Premium ya está activo para siempre.");
+        if(state.code)await refresh();else await home();
+        setTimeout(()=>document.querySelector(".payment-return-overlay")?.remove(),2200);
         return;
       }
       if(last?.status==="failed"){
         history.replaceState(null,"",location.pathname);
-        paymentReturnView("failure","Mercado Pago no aprobó esta operación. Podés intentarlo nuevamente sin perder la sala.");
+        paymentReturnView("failure","Mercado Pago no aprobó esta operación. Podés intentarlo nuevamente.");
         return;
       }
     }catch(e){
@@ -799,7 +862,7 @@ async function handlePaymentReturn(orderId,returnState){
     }
     await new Promise(r=>setTimeout(r,2500));
   }
-  paymentReturnView("pending","Todavía no recibimos la confirmación final. Si elegiste un medio de pago diferido, el pase se activará cuando Mercado Pago lo acredite.");
+  paymentReturnView("pending",last?.isDonation?"Todavía no recibimos la confirmación final del aporte.":"Todavía no recibimos la confirmación final. Premium se activará apenas Mercado Pago acredite el pago.");
 }
 function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null;if(window.__homeDemoTimer){clearInterval(window.__homeDemoTimer);window.__homeDemoTimer=null}if(window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}}
 function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
@@ -899,9 +962,9 @@ function openThemeInfo(id){
           <div class="theme-mode-list">${modes}</div>
         </section>
         <div class="theme-content-note"><span>✦</span><p>Estas consignas son la base. La partida además usa las historias, mentiras, votos y respuestas que carga tu propio grupo, por eso dos juntadas nunca terminan siendo iguales.</p></div>
-        ${t.premiumOnly?'<div class="premium-theme-note"><strong>Premium +18</strong><span>'+(hasReusableAccess()?"Incluida en tu pase activo.":"Esta temática requiere un pase activo.")+'</span></div>':""}
+        ${t.premiumOnly?'<div class="premium-theme-note"><strong>Premium</strong><span>'+(hasReusableAccess()?"Ya está incluida en tu Premium.":"Esta temática es uno de los extras Premium.")+'</span></div>':""}
         <footer class="theme-sheet-footer">
-          ${t.premiumOnly&&!hasReusableAccess()?'<button class="primary" type="button" data-theme-premium>Ver opciones Premium</button>':`<button class="primary" type="button" data-choose-theme="${id}">Elegir ${esc(t.title)}</button>`}
+          ${t.premiumOnly&&!hasReusableAccess()?'<button class="primary" type="button" data-theme-premium>Desbloquear Premium · '+esc(formatArs(premiumPrice()))+'</button>':`<button class="primary" type="button" data-choose-theme="${id}">Elegir ${esc(t.title)}</button>`}
         </footer>
       </article>
     </div>`);
@@ -914,7 +977,7 @@ function openThemeInfo(id){
     closeThemeInfo();setTimeout(()=>document.querySelector("#crear")?.scrollIntoView({behavior:"smooth",block:"start"}),230);
   });
   document.querySelector("[data-theme-premium]")?.addEventListener("click",()=>{
-    closeThemeInfo();setTimeout(()=>document.querySelector("#premium")?.scrollIntoView({behavior:"smooth",block:"start"}),230);
+    closeThemeInfo();setTimeout(startPremiumCheckout,230);
   });
 }
 function closeThemeInfo(){
@@ -952,7 +1015,6 @@ async function home(){
       <a href="#tematicas">Temáticas</a>
       <a href="#modos">Modos</a>
       <a href="#como">Cómo funciona</a>
-      <a href="#premium">Premium</a>
     </nav>
     <div class="header-actions">
       <button class="header-access ${state.access?.active?"active":""}" id="openAccess">${esc(accessLabel())}</button>
@@ -1004,7 +1066,7 @@ async function home(){
         <i></i>
         <div><strong>7 modos + misiones</strong><span>se mezclan según la temática</span></div>
         <i></i>
-        <div><strong>1 ronda gratis</strong><span>probás antes de desbloquear</span></div>
+        <div><strong>Partida completa</strong><span>gratis en las temáticas abiertas</span></div>
         <i></i>
         <div><strong>Puntos automáticos</strong><span>nadie ve el ranking hasta el final</span></div>
       </div>
@@ -1096,8 +1158,8 @@ async function home(){
             <div class="after-create-steps">
               <span><i>1</i>Recibís QR, link y código</span>
               <span><i>2</i>Todos responden en secreto</span>
-              <span><i>3</i>Juegan 1 ronda gratis</span>
-              <span><i>4</i>Si quieren seguir, desbloquean el resto</span>
+              <span><i>3</i>Juegan la partida completa</span>
+              <span><i>4</i>El ranking y las respuestas se revelan al final</span>
             </div>
           </div>
         </div>
@@ -1115,60 +1177,37 @@ async function home(){
       </div>
     </section>
 
-    <section id="premium" class="home-section premium-home premium-value reveal-section">
+    <section id="premium" class="home-section premium-home premium-simple reveal-section">
       <div class="premium-value-head">
         <div>
-          <div class="kicker">QUÉ PAGÁS Y QUÉ RECIBÍS</div>
-          <h2>Probala gratis. Pagá solo si quieren seguir.</h2>
-          <p>La primera ronda personalizada es gratis. Después elegís desbloquear esa juntada, usar un pase de 24 horas o tener acceso por más tiempo. Los invitados nunca necesitan cuenta.</p>
+          <div class="kicker">CASI TODO ES GRATIS</div>
+          <h2>Jugá sin pagar. Premium es para ir un poco más allá.</h2>
+          <p>Clásico, Profundo, Parejas, Cumpleaños, Caos, Rompehielo, Armala para alguien, todos los modos y las partidas completas quedan abiertos.</p>
         </div>
-        <div class="premium-big-number"><strong>25</strong><span>rondas máximas<br>por partida completa</span></div>
+        <div class="premium-price-badge"><small>PREMIUM PARA SIEMPRE</small><strong>${esc(formatArs(premiumPrice()))}</strong><span>un solo pago</span></div>
       </div>
-
-      <div class="value-compare">
-        <article class="value-plan free-plan">
-          <div class="plan-label">GRATIS</div>
-          <h3>Probá La Juntada</h3>
-          <strong class="plan-main">1 ronda personalizada</strong>
-          <ul>
-            <li>El grupo responde de verdad</li>
-            <li>Todos votan desde el celular</li>
-            <li>Se calculan puntos reales</li>
-            <li>Ves cómo funciona antes de pagar</li>
-          </ul>
-          <button class="ghost" data-scroll="#crear">Probar gratis</button>
+      <div class="premium-simple-grid">
+        <article class="free-core-card">
+          <span>GRATIS</span>
+          <h3>La Juntada completa</h3>
+          <p>Creá salas, invitá al grupo, respondan en secreto y jueguen todas las rondas sin cortes.</p>
+          <div><b>✓</b> Temáticas abiertas</div>
+          <div><b>✓</b> Armala para alguien</div>
+          <div><b>✓</b> Ranking, premios y revancha</div>
         </article>
-
-        <article class="value-plan paid-plan">
-          <div class="plan-label">PARTIDA COMPLETA</div>
-          <h3>Una Juntada</h3>
-          <strong class="plan-main">Hasta 25 rondas</strong>
-          <ul>
-            <li>Todos los modos disponibles para esa temática</li>
-            <li>Ranking final y respuestas desbloqueadas</li>
-            <li>Misiones secretas cuando el pack las incluye</li>
-            <li>Ideal si quieren pagar entre todo el grupo una sola vez</li>
-          </ul>
-          <button class="secondary" data-scroll="#crear">Crear partida</button>
-        </article>
-
-        <article class="value-plan unlimited-plan">
-          <div class="plan-label">ILIMITADO</div>
-          <h3>24 horas · Mensual · Anual · De por vida</h3>
-          <strong class="plan-main">Todas las partidas que quieras</strong>
-          <ul>
-            <li>Creás nuevas juntadas sin pagar cada juego</li>
-            <li>Temáticas Premium, packs personalizados y “Armala para alguien”</li>
-            <li>Las temáticas +18 quedan dentro de Premium</li>
-            <li>Un solo pase del organizador alcanza para todo el grupo</li>
-          </ul>
-          <button class="primary" data-scroll="#crear">Empezar</button>
+        <article class="premium-core-card">
+          <span>PREMIUM</span>
+          <h3>Tres extras especiales</h3>
+          <p>Desbloquealos para siempre en este dispositivo y recuperalos con tu clave.</p>
+          <div><b>🔥</b> Canceladísimos</div>
+          <div><b>🔞</b> Picante 18+</div>
+          <div><b>✎</b> Partidas personalizadas</div>
+          <button class="primary wide" id="buyPremiumHome">Desbloquear Premium · ${esc(formatArs(premiumPrice()))}</button>
         </article>
       </div>
-
-      <div class="premium-clarity">
-        <span>✦</span>
-        <p><strong>¿De dónde salen las rondas?</strong> Del contenido que cargan ustedes y de las consignas del pack elegido. La cantidad final depende de la temática, los modos disponibles y cuántos jugadores haya.</p>
+      <div class="support-strip">
+        <div><span>♥</span><p><strong>¿Te copa el proyecto?</strong> La donación es opcional y no cambia lo que podés jugar.</p></div>
+        <button class="ghost" id="donateHome">Apoyar La Juntada</button>
       </div>
     </section>
   </main>
@@ -1189,6 +1228,8 @@ async function home(){
   refreshExtras();
   document.querySelector("#createBtn").onclick=createRoom;
   document.querySelector("#openAccess")?.addEventListener("click",openAccessPanel);
+  document.querySelector("#buyPremiumHome")?.addEventListener("click",startPremiumCheckout);
+  document.querySelector("#donateHome")?.addEventListener("click",openDonationModal);
   document.querySelector("#joinBtn").onclick=joinRoom;
   document.querySelectorAll("[data-scroll]").forEach(b=>b.onclick=()=>document.querySelector(b.dataset.scroll)?.scrollIntoView({behavior:"smooth",block:"start"}));
   document.querySelectorAll("[data-rule]").forEach(b=>b.onclick=()=>openRules(b.dataset.rule));
@@ -1566,88 +1607,8 @@ function playing(r){
   bindHostRoster(r);
 }
 function paywall(r){
-  const plans=state.config.accessPlans||[],payCfg=state.config.payments||{};
-  const usable=!!state.access?.active&&(state.access.role==="admin"||["single","day","monthly","annual","lifetime"].includes(state.access.plan));
-  const realReady=!!payCfg.configured;
-  const isAdmin=state.access?.role==="admin";
-  const planPrice=id=>Number(payCfg.prices?.[id]||0);
-  app.innerHTML=`<div class="room-page paywall-page">
-    ${brand()}
-    <section class="card center paywall premium-paywall">
-      <div class="paywall-visual"><span class="paywall-halo"></span><img src="/assets/premium-lock.svg" alt=""></div>
-      <div class="kicker">PRIMERA RONDA COMPLETA</div>
-      <h2>Esto recién empieza.</h2>
-      <p class="lead">Los puntos quedaron sellados. Tu grupo creó <strong>${Math.max(0,r.totalRounds-1)} rondas más</strong> sobre ustedes.</p>
-
-      ${usable?`<div class="existing-access">
-        <div><small>TENÉS UN ACCESO GUARDADO</small><strong>${esc(accessLabel())}</strong><span>${state.access.role==="admin"?"Desbloquea todo.":"Podés usarlo en esta partida si corresponde."}</span></div>
-        ${r.isHost?'<button class="primary" id="useStoredAccess">Usar mi pase</button>':""}
-      </div>`:""}
-
-      <div class="paywall-modes">${r.availableModes.slice(0,6).map(m=>`<span>${assetImg("mode",m.id,"paywall-mode-icon")}<b>${esc(m.title)}</b></span>`).join("")}</div>
-
-      <div class="paywall-explainer">
-        <div><strong>1 ronda gratis</strong><span>Ya la probaron.</span></div>
-        <i>→</i>
-        <div><strong>Elegís un acceso</strong><span>Solo paga el host.</span></div>
-        <i>→</i>
-        <div><strong>Siguen jugando</strong><span>El grupo no vuelve a entrar.</span></div>
-      </div>
-
-      <div class="access-plans payment-plans">${plans.map(p=>{
-        const price=planPrice(p.id);
-        return `<label class="access-plan ${price>0?"priced":"unpriced"}">
-          <input type="radio" name="accessPlan" value="${p.id}" ${p.id==="day"?"checked":""}>
-          <div><strong>${esc(p.title)}</strong><span>${esc(p.description)}</span><b class="plan-price">${price>0?esc(formatArs(price)):"Precio a definir"}</b></div>
-          ${p.id==="day"?'<em>24H</em>':p.unlimited?'<em>ILIMITADO</em>':""}
-        </label>`}).join("")}</div>
-
-      <div class="group-note"><strong>Un solo pase alcanza para todo el grupo</strong><span>Los invitados siguen entrando sin cuenta. Después del pago, el pase queda guardado en el dispositivo del host y puede recuperarse con su clave.</span></div>
-
-      ${r.isHost
-        ?`<div class="paywall-actions">
-            ${realReady?'<button class="primary wide big-action mp-pay-button" id="checkoutPayment">Pagar con Mercado Pago <span>→</span></button>':'<div class="payments-not-ready">Los cobros reales todavía no están habilitados por el administrador.</div>'}
-            <button class="ghost wide" id="openAccessFromPaywall">Ya tengo un pase / recuperar acceso</button>
-            ${isAdmin&&state.config.devPayments?'<button class="ghost wide dev-unlock" id="unlockTest">Simular compra (solo ADMIN)</button>':""}
-           </div>`
-        :'<div class="waiting-host"><span class="waiting-pulse"></span>Esperando que el host desbloquee La Juntada…</div>'}
-    </section>
-    ${hostRoster(r)}
-  </div>`;
-
-  document.querySelector("#openAccessFromPaywall")?.addEventListener("click",openAccessPanel);
-  document.querySelector("#useStoredAccess")?.addEventListener("click",async()=>{
-    try{await api("/api/rooms/"+r.code+"/use-access",{method:"POST"});toast("Pase aplicado");refresh()}catch(e){toast(e.message)}
-  });
-
-  const updateCheckout=()=>{
-    const plan=document.querySelector('input[name="accessPlan"]:checked')?.value||"day",price=planPrice(plan),btn=document.querySelector("#checkoutPayment");
-    if(!btn)return;
-    btn.disabled=!price;
-    btn.innerHTML=price?`Pagar ${esc(formatArs(price))} con Mercado Pago <span>→</span>`:'Este pase todavía no tiene precio';
-  };
-  document.querySelectorAll('input[name="accessPlan"]').forEach(x=>x.addEventListener("change",updateCheckout));
-  updateCheckout();
-
-  document.querySelector("#checkoutPayment")?.addEventListener("click",async()=>{
-    const plan=document.querySelector('input[name="accessPlan"]:checked')?.value||"day",btn=document.querySelector("#checkoutPayment");
-    try{
-      btn.disabled=true;btn.innerHTML='Abriendo Mercado Pago… <span>✦</span>';
-      const d=await api("/api/payments/checkout",{method:"POST",body:JSON.stringify({plan,roomCode:r.code})});
-      if(!d.checkoutUrl)throw new Error("Mercado Pago no devolvió un checkout.");
-      location.href=d.checkoutUrl;
-    }catch(e){toast(e.message);updateCheckout()}
-  });
-
-  document.querySelector("#unlockTest")?.addEventListener("click",async()=>{
-    try{
-      const accessPlan=document.querySelector('input[name="accessPlan"]:checked')?.value||"day";
-      const d=await api("/api/rooms/"+r.code+"/unlock-test",{method:"POST",body:JSON.stringify({accessPlan})});
-      if(d.accessToken){saveAccessToken(d.accessToken);state.access=d.access||await loadAccess()}
-      toast("Simulación ADMIN completada");refresh()
-    }catch(e){toast(e.message)}
-  });
-  bindHostRoster(r);
+  app.innerHTML=`<div class="room-page"><section class="card center"><div class="kicker">CONTINUANDO</div><h2>La partida ahora es gratis completa.</h2><p>Actualizando esta sala…</p></section></div>`;
+  setTimeout(refresh,600);
 }
 function scoreRows(ps){return[...ps].sort((a,b)=>(b.score||0)-(a.score||0)).map((p,i)=>`<div class="score-row"><div class="rank">#${i+1}</div><div class="score-name">${esc(p.name)}</div><div class="score">${p.score||0}</div></div>`).join("")}
 function answersArchive(r){
@@ -1747,6 +1708,10 @@ function finished(r){
         <button class="ghost" id="newJuntada">Crear otra Juntada</button>
       </div>
     </section>
+    <section class="final-support">
+      <div><span>♥</span><p><strong>¿La pasaron bien?</strong><small>La Juntada es gratis. Si querés ayudar a que siga creciendo, podés aportar de forma opcional.</small></p></div>
+      <button class="ghost" id="donateFinal">Apoyar La Juntada</button>
+    </section>
   </div>`;
 
   document.querySelector("#shareFinal").onclick=async()=>{
@@ -1759,6 +1724,7 @@ function finished(r){
   };
   document.querySelector("#jumpAnswers").onclick=()=>document.querySelector("#finalAnswers")?.scrollIntoView({behavior:"smooth",block:"start"});
   document.querySelector("#newJuntada").onclick=async()=>{stopPoll();clearSession();history.replaceState(null,"",location.pathname);await home();window.scrollTo({top:0,behavior:"smooth"})};
+  document.querySelector("#donateFinal")?.addEventListener("click",openDonationModal);
   if(r.isHost)document.querySelector("#restart").onclick=async()=>{try{
     const b=document.querySelector("#restart");b.disabled=true;b.innerHTML='Preparando revancha… <span>✦</span>';
     await api("/api/rooms/"+r.code+"/restart",{method:"POST"});refresh()
@@ -1781,6 +1747,6 @@ function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&w
   }else{
     await home();
     if(q)document.querySelector("#joinCode").value=q;
-    if(paymentOrder)paymentReturnView("failure","No encontramos la sesión del host en este dispositivo. Volvé a entrar a tu sala para verificar el pago.");
+    if(paymentOrder)setTimeout(()=>handlePaymentReturn(paymentOrder,paymentReturn||"checking"),350);
   }
 })();
