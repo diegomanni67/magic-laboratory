@@ -98,3 +98,17 @@ body{background:#0b0809 url('/assets/ambient-pattern.svg') center top/1200px aut
 @keyframes softIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes pulseSoft{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* Visible premium assets */
+.hero-premium{display:grid;grid-template-columns:minmax(0,.86fr) minmax(420px,1.14fr);gap:28px;align-items:center;position:relative;min-height:430px;padding:26px 0 14px}
+.hero-copy{position:relative;z-index:2}.hero-copy h1{max-width:620px}.hero-copy .lead{max-width:560px}
+.hero-points{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}.hero-points span{padding:8px 11px;border-radius:999px;border:1px solid rgba(213,167,100,.18);background:rgba(19,12,14,.62);font-size:11px;color:#d8c7aa;letter-spacing:.02em}
+.hero-visual{position:relative;min-height:405px;isolation:isolate}.hero-people{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 24px 48px rgba(0,0,0,.42));animation:heroFloat 7s ease-in-out infinite}
+.hero-sparks{position:absolute;inset:4% -2% auto;width:104%;opacity:.65;mix-blend-mode:screen;animation:sparkDrift 8s ease-in-out infinite}
+.floating-card{position:absolute;right:-4%;bottom:-6%;width:31%;min-width:150px;transform:rotate(5deg);filter:drop-shadow(0 22px 30px rgba(0,0,0,.4));animation:cardHover 6s ease-in-out infinite}
+.floating-card img{display:block;width:100%}
+@keyframes heroFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes sparkDrift{0%,100%{transform:translateX(0);opacity:.5}50%{transform:translateX(8px);opacity:.82}}
+@keyframes cardHover{0%,100%{transform:rotate(5deg) translateY(0)}50%{transform:rotate(3deg) translateY(-9px)}}
+@media(max-width:860px){.hero-premium{grid-template-columns:1fr;min-height:0}.hero-visual{min-height:330px;margin-top:-12px}.floating-card{right:1%;bottom:-2%;width:27%}}
+@media(max-width:520px){.hero-premium{padding-top:10px}.hero-visual{min-height:250px}.floating-card{width:30%;min-width:105px}.hero-points span{font-size:10px}}
