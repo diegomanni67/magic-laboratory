@@ -1786,3 +1786,105 @@ body.launch-hit .launch-content h1{transform:scale(1.06);letter-spacing:.05em;co
   .paywall-explainer{grid-template-columns:1fr}.paywall-explainer>i{transform:rotate(90deg);justify-self:center}
   .premium-paywall .access-plans{grid-template-columns:1fr}
 }
+
+
+/* =========================================================
+   ACCESS / PASSES WITHOUT MANDATORY ACCOUNTS
+   ========================================================= */
+.header-actions{display:flex;align-items:center;gap:8px}
+.header-access{
+  appearance:none;border:1px solid rgba(235,198,143,.08);background:rgba(255,255,255,.014);
+  color:#8f7d78;padding:9px 11px;border-radius:10px;font-size:8px;font-weight:800;cursor:pointer;
+  transition:border-color .2s,background .2s,color .2s
+}
+.header-access:hover{border-color:rgba(211,144,107,.18);color:#bfa18f}
+.header-access.active{
+  color:#cda06f;border-color:rgba(215,157,91,.15);background:rgba(143,82,50,.045)
+}
+.access-overlay{
+  position:fixed;inset:0;z-index:230;display:grid;place-items:center;padding:22px;
+  animation:rulesFadeIn .2s ease both
+}
+.access-backdrop{position:absolute;inset:0;border:0;background:rgba(5,3,4,.84);backdrop-filter:blur(15px)}
+.access-sheet{
+  position:relative;z-index:2;width:min(650px,100%);max-height:90vh;overflow:auto;
+  padding:27px;border-radius:27px;border:1px solid rgba(235,198,143,.13);
+  background:
+    radial-gradient(circle at 90% 0,rgba(117,42,55,.14),transparent 34%),
+    linear-gradient(180deg,#1a1113,#0c090a 78%);
+  box-shadow:0 50px 120px rgba(0,0,0,.65);
+  animation:rulesSheetIn .3s cubic-bezier(.2,.8,.2,1) both
+}
+.access-sheet-head{display:grid;grid-template-columns:62px 1fr;gap:15px;align-items:start;padding-right:35px}
+.access-key-icon{
+  width:62px;height:62px;border-radius:18px;display:grid;place-items:center;
+  border:1px solid rgba(220,172,105,.13);background:rgba(137,77,48,.045);
+  color:#d6a364;font-size:25px;box-shadow:0 15px 35px rgba(0,0,0,.22)
+}
+.access-sheet h2{
+  margin:5px 0 7px;font-family:Georgia,"Times New Roman",serif;
+  font-size:31px;line-height:1.05;color:#ecd8ba;font-weight:600;letter-spacing:-.9px
+}
+.access-sheet-head p{margin:0;color:#887a78;font-size:10px;line-height:1.55}
+.access-current{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:20px}
+.access-current>div{
+  padding:12px;border-radius:13px;border:1px solid rgba(235,198,143,.07);background:rgba(255,255,255,.016)
+}
+.access-current small,.access-current strong{display:block}
+.access-current small{font-size:6.5px;letter-spacing:.14em;color:#8b615f;margin-bottom:4px}
+.access-current strong{font-size:10px;color:#c9b39d;line-height:1.35}
+.access-current.is-admin>div{border-color:rgba(216,160,93,.11);background:rgba(137,80,47,.032)}
+.access-current.is-admin strong{color:#d5aa78}
+.access-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.access-security-note{
+  margin-top:10px;padding:10px 11px;border-radius:11px;
+  background:rgba(91,118,77,.035);border:1px solid rgba(133,166,111,.08);
+  color:#77806f;font-size:7.8px;line-height:1.45
+}
+.access-restore{margin-top:20px;padding-top:18px;border-top:1px solid rgba(235,198,143,.06)}
+.access-restore label,.owner-access label{display:block;margin:9px 0 6px;color:#8b7773;font-size:8px}
+.access-restore textarea{min-height:92px;width:100%;resize:vertical;font-size:8px;line-height:1.4;word-break:break-all}
+.owner-access{margin-top:12px;border:1px solid rgba(235,198,143,.055);border-radius:12px;background:rgba(255,255,255,.009)}
+.owner-access summary{cursor:pointer;padding:10px 12px;color:#74676a;font-size:8px;font-weight:800;list-style:none}
+.owner-access summary::-webkit-details-marker{display:none}
+.owner-access>div{padding:0 12px 12px}
+.owner-access input{width:100%}
+.existing-access{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin:15px 0;padding:12px 13px;border-radius:14px;text-align:left;
+  border:1px solid rgba(137,169,105,.11);background:rgba(91,126,72,.04)
+}
+.existing-access small,.existing-access strong,.existing-access span{display:block}
+.existing-access small{font-size:6.5px;letter-spacing:.13em;color:#7e906f}
+.existing-access strong{margin-top:2px;color:#b6c59e;font-size:11px}
+.existing-access span{margin-top:2px;color:#727a69;font-size:8px}
+.existing-access .primary{width:auto;min-width:125px}
+.paywall-explainer{
+  display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:8px;align-items:center;
+  margin:17px 0;padding:12px;border-radius:13px;border:1px solid rgba(235,198,143,.055);
+  background:rgba(255,255,255,.012);text-align:left
+}
+.paywall-explainer>div strong,.paywall-explainer>div span{display:block}
+.paywall-explainer>div strong{font-size:8.5px;color:#b8a291}
+.paywall-explainer>div span{font-size:7px;color:#706568;margin-top:2px}
+.paywall-explainer>i{font-style:normal;color:#765458;font-size:12px}
+.premium-paywall .access-plans{grid-template-columns:repeat(5,1fr)}
+.premium-paywall .access-plan{min-height:105px}
+.paywall-actions{display:grid;gap:7px;margin-top:13px}
+.theme-card.premium-owned{border-color:rgba(201,147,89,.14)}
+.theme-card.premium-owned .theme-lock{
+  background:rgba(97,135,79,.82)!important;color:#e1eecf!important;border-color:rgba(168,195,143,.18)!important
+}
+@media(max-width:900px){.premium-paywall .access-plans{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){
+  .header-actions{gap:5px}.header-access{max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .access-overlay{padding:0;align-items:end}
+  .access-sheet{width:100%;max-height:93vh;border-radius:24px 24px 0 0;padding:20px 16px 25px}
+  .access-sheet-head{grid-template-columns:50px 1fr;gap:11px}.access-key-icon{width:50px;height:50px;border-radius:14px}
+  .access-sheet h2{font-size:26px}
+  .access-current{grid-template-columns:1fr}
+  .access-actions{grid-template-columns:1fr}
+  .existing-access{align-items:flex-start;flex-direction:column}.existing-access .primary{width:100%}
+  .paywall-explainer{grid-template-columns:1fr}.paywall-explainer>i{transform:rotate(90deg);justify-self:center}
+  .premium-paywall .access-plans{grid-template-columns:1fr}
+}
