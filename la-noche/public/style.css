@@ -1121,3 +1121,70 @@ body.rules-open{overflow:hidden}
   .form-two{grid-template-columns:1fr}
   .after-create-steps{grid-template-columns:1fr}
 }
+
+
+/* =========================================================
+   SECRET PREP — progress, privacy and reduced uncertainty
+   ========================================================= */
+.prep-quick-facts{display:flex;gap:7px;flex-wrap:wrap;margin-top:13px}
+.prep-quick-facts span{
+  padding:5px 7px;border-radius:8px;border:1px solid rgba(235,198,143,.07);
+  background:rgba(255,255,255,.018);font-size:8px;color:#7e7071
+}
+.prep-quick-facts b{color:#cfa274;font-size:9px}
+
+.prep-progress-card{
+  display:grid;grid-template-columns:1fr minmax(170px,260px) 42px;gap:12px;align-items:center;
+  margin:0 0 14px;padding:12px 13px;border-radius:14px;
+  border:1px solid rgba(235,198,143,.08);
+  background:linear-gradient(90deg,rgba(70,32,39,.15),rgba(255,255,255,.015));
+}
+.prep-progress-copy strong,.prep-progress-copy span{display:block}
+.prep-progress-copy strong{font-size:10px;color:#cfb79f}
+.prep-progress-copy span{font-size:8px;color:#76696b;margin-top:2px}
+.prep-progress-track{height:5px;border-radius:99px;background:rgba(255,255,255,.055);overflow:hidden}
+.prep-progress-track i{
+  display:block;height:100%;width:0;border-radius:inherit;
+  background:linear-gradient(90deg,#964556,#d09b65);
+  transition:width .25s ease;box-shadow:0 0 16px rgba(202,136,91,.22)
+}
+#prepProgressPct{font-family:Georgia,"Times New Roman",serif;color:#c69367;font-size:15px;text-align:right}
+
+.prep-block-head{position:relative}
+.prep-block-head>em{
+  margin-left:auto;min-width:24px;height:24px;padding:0 7px;border-radius:999px;display:grid;place-items:center;
+  font-style:normal;font-size:8px;font-weight:900;color:#9e6f69;
+  background:rgba(139,52,66,.08);border:1px solid rgba(201,102,107,.09)
+}
+.prep-block:focus-within{
+  border-color:rgba(211,139,111,.13);
+  box-shadow:0 0 0 1px rgba(211,139,111,.025) inset;
+}
+.prep-block textarea:focus,.prep-block input:focus,.prep-block select:focus{
+  border-color:rgba(211,139,111,.24);box-shadow:0 0 0 3px rgba(132,48,61,.055)
+}
+
+.privacy-promise{
+  display:flex;gap:11px;align-items:flex-start;margin-top:13px;padding:13px 14px;border-radius:14px;
+  border:1px solid rgba(109,151,103,.10);background:rgba(89,127,79,.035)
+}
+.privacy-promise>span{color:#91ad7f;font-size:13px;line-height:1.2}
+.privacy-promise strong{display:block;font-size:9.5px;color:#b4c3a6}
+.privacy-promise p{margin:3px 0 0;font-size:8.5px;line-height:1.45;color:#788071}
+.seal-button:disabled{opacity:.42;filter:saturate(.45);cursor:not-allowed;transform:none!important;box-shadow:none!important}
+.draft-note{text-align:center;margin-top:8px;font-size:7.5px;color:#665d60}
+.ready-build-stats{
+  display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:15px auto 5px
+}
+.ready-build-stats span{
+  padding:6px 9px;border-radius:9px;border:1px solid rgba(235,198,143,.07);
+  background:rgba(255,255,255,.016);color:#766a6b;font-size:8px
+}
+.ready-build-stats b{color:#cda273;font-size:9px}
+.host-wait-note{margin-top:10px;text-align:center;font-size:8px;line-height:1.45;color:#75696a}
+
+@media(max-width:650px){
+  .prep-progress-card{grid-template-columns:1fr 42px}.prep-progress-track{grid-column:1/-1;grid-row:2}
+  .prep-quick-facts{display:grid;grid-template-columns:1fr 1fr}
+  .prep-quick-facts span:last-child{grid-column:1/-1}
+}
