@@ -4,7 +4,19 @@ function playing(r){
   let interaction="";
 
   if(locked){
-    interaction='<div class="locked-round"><div class="big-num">✓</div><strong>Ronda cerrada</strong><span>Los puntos ya fueron calculados en secreto. El resultado aparece recién al final.</span></div>';
+    const reveal=x.reveal||{},pts=Number(reveal.ownPoints||0);
+    const labels={quien_fue:"ERA",lee_al_grupo:"LA MAYORÍA ELIGIÓ",mentiroso:"RESULTADO",silla_caliente:"RESPUESTA REAL",todos_contra_uno:"RESPUESTA REAL",duo:"EL DÚO",ordena_al_grupo:"RANKING DEL GRUPO"};
+    const resultLabel=labels[x.mode]||"RESULTADO";
+    const scoreLine=pts>0?'<div class="round-own-score positive">+'+pts+' <span>puntos para vos</span></div>':'<div class="round-own-score"><span>Esta ronda no sumaste puntos</span></div>';
+    interaction='<div class="round-reveal">'+
+      '<div class="reveal-burst" aria-hidden="true">'+Array.from({length:10},(_,i)=>'<i style="--i:'+i+'"></i>').join("")+'</div>'+
+      '<div class="reveal-check">✦</div>'+
+      '<small>'+resultLabel+'</small>'+
+      '<strong>'+esc(reveal.answer||"Resuelto")+'</strong>'+
+      scoreLine+
+      '<div class="reveal-secrecy">El puntaje total sigue sellado hasta el final.</div>'+
+      '<div class="next-round-line"><i></i><span>Siguiente ronda…</span></div>'+
+    '</div>';
   }else if(x.mode==="ordena_al_grupo"){
     interaction='<div class="rank-help">Tocá los nombres en el orden que creés correcto. El #1 va primero.</div><div class="rank-chosen" id="rankChosen"></div><div class="rank-pool" id="rankPool"></div><div class="actions" style="margin-top:12px"><button class="ghost" id="rankReset">Reiniciar</button><button class="primary" id="rankSubmit">Enviar ranking</button></div><div class="vote-count">'+(x.ownRank?"Tu ranking está guardado. Podés cambiarlo hasta que cierre la ronda.":"El ranking colectivo se calcula cuando votan todos.")+'</div>';
   }else if(x.skipVote){
@@ -22,8 +34,8 @@ function playing(r){
   app.innerHTML='<div class="room-page live-game-page">'+brand()+
   '<div class="game-theme-atmosphere">'+assetImg("theme",r.themeId,"game-theme-bg")+'</div>'+
   '<div class="game-topbar"><div class="mode-live">'+assetImg("mode",x.mode,"mode-live-icon")+'<div><div class="kicker">'+esc(x.modeTitle)+'</div><small>'+esc(r.theme.title)+' · Ronda '+(r.currentRound+1)+' de '+r.totalRounds+'</small></div></div><div class="vote-orb" style="--vote:'+voteDeg+'deg"><span>'+x.voteCount+'/'+x.eligibleVoters+'</span><small>VOTOS</small></div></div>'+
-  '<section class="card prompt-card live-prompt"><div class="prompt-shimmer"></div><div class="tiny muted prompt-label">'+esc(x.prompt)+'</div><div class="statement">“'+esc(x.statement)+'”</div>'+interaction+'</section>'+
-  mission+
+  '<section class="card prompt-card live-prompt '+(locked?'is-reveal':'')+'"><div class="prompt-shimmer"></div><div class="tiny muted prompt-label">'+esc(x.prompt)+'</div><div class="statement">“'+esc(x.statement)+'”</div>'+interaction+'</section>'+
+  (locked?"":mission)+
   '<section class="card soft hidden-score live-hidden-score"><div class="score-seal">✦</div><div><div class="kicker">PUNTAJE SELLADO</div><div class="section-title">Nadie sabe quién va ganando.</div><div class="muted">Dúos, rankings, misiones y aciertos se suman automáticamente. Todo se abre al final.</div></div></section>'+
   hostRoster(r)+'</div>';
 
