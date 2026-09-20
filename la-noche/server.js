@@ -15,6 +15,7 @@ const rooms=new Map();
 const sessions=new Map();
 const IMPLEMENTED_MODES=["quien_fue","lee_al_grupo","mentiroso","silla_caliente","todos_contra_uno","duo","ordena_al_grupo"];
 const AUTO_ADVANCE_MS=2800;
+const MODE_ROUND_CAPS={quien_fue:6,lee_al_grupo:3,mentiroso:6,silla_caliente:4,todos_contra_uno:3,duo:2,ordena_al_grupo:2};
 const ACCESS_PLANS=[
   {id:"single",title:"Una noche",billing:"one_time",unlimited:false,description:"Desbloquea esta partida completa."},
   {id:"monthly",title:"Pase mensual",billing:"monthly",unlimited:true,description:"Partidas ilimitadas mientras el pase esté activo."},
@@ -34,6 +35,21 @@ function auth(room,req){const pid=sessions.get(bearer(req));return room?.players
 function requireHost(room,req){const me=auth(room,req);return me&&me.id===room.hostPlayerId?me:null}
 function themePrompts(themeId){return PROMPTS[themeId]||PROMPTS.clasico}
 function modeInfo(modeId){return MODES[modeId]||{id:modeId,title:modeId,emoji:"🎮",description:""}}
+function themeStats(themeId){
+  const modeIds=THEME_MODES[themeId]||[];
+  const playable=modeIds.filter(x=>IMPLEMENTED_MODES.includes(x));
+  const maxRounds=Math.min(25,playable.reduce((n,id)=>n+(MODE_ROUND_CAPS[id]||0),0));
+  const tp=PROMPTS[themeId]||{};
+  const promptCount=Object.values(tp).reduce((n,val)=>n+(Array.isArray(val)?val.length:0),0)+(DUO_CHOICES[themeId]?.length||0);
+  return {
+    modeCount:modeIds.length,
+    playableModeCount:playable.length,
+    maxRounds,
+    promptCount,
+    hasMissions:modeIds.includes("mision_secreta"),
+    missionCount:Array.isArray(tp.missions)?tp.missions.length:0
+  };
+}
 function playerName(room,pid){return room.players.find(p=>p.id===pid)?.name||"Jugador eliminado"}
 function hasPremiumAccess(req){
   return process.env.ALLOW_TEST_PREMIUM==="true"&&req.headers["x-test-premium"]==="1";
@@ -371,7 +387,8 @@ function snapshot(room,viewer){
 app.get("/api/health",(_req,res)=>res.json({ok:true,rooms:rooms.size}));
 app.get("/api/config",(_req,res)=>res.json({
   themes:Object.values(THEMES),modes:Object.values(MODES),themeModes:THEME_MODES,
-  implementedModes:IMPLEMENTED_MODES,accessPlans:ACCESS_PLANS
+  implementedModes:IMPLEMENTED_MODES,accessPlans:ACCESS_PLANS,
+  themeStats:Object.fromEntries(Object.keys(THEMES).map(id=>[id,themeStats(id)]))
 }));
 app.get("/api/qr/:code",async(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).send("Sala inexistente");
