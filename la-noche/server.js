@@ -17,10 +17,11 @@ const IMPLEMENTED_MODES=["quien_fue","lee_al_grupo","mentiroso","silla_caliente"
 const AUTO_ADVANCE_MS=4200;
 const MODE_ROUND_CAPS={quien_fue:6,lee_al_grupo:3,mentiroso:6,silla_caliente:4,todos_contra_uno:3,duo:2,ordena_al_grupo:2};
 const ACCESS_PLANS=[
-  {id:"single",title:"Una noche",billing:"one_time",unlimited:false,description:"Desbloquea esta partida completa."},
-  {id:"monthly",title:"Pase mensual",billing:"monthly",unlimited:true,description:"Partidas ilimitadas mientras el pase esté activo."},
-  {id:"annual",title:"Pase anual",billing:"annual",unlimited:true,description:"Partidas ilimitadas durante un año."},
-  {id:"lifetime",title:"De por vida",billing:"lifetime",unlimited:true,description:"Partidas ilimitadas para siempre desde la cuenta que lo compra."}
+  {id:"single",title:"Esta Juntada",billing:"one_time",unlimited:false,description:"Desbloquea únicamente esta partida completa."},
+  {id:"day",title:"Pase 24 horas",billing:"day",unlimited:true,description:"Creá y jugá todas las juntadas que quieras durante 24 horas."},
+  {id:"monthly",title:"Pase mensual",billing:"monthly",unlimited:true,description:"Partidas ilimitadas durante 30 días."},
+  {id:"annual",title:"Pase anual",billing:"annual",unlimited:true,description:"Partidas ilimitadas durante 365 días."},
+  {id:"lifetime",title:"De por vida",billing:"lifetime",unlimited:true,description:"Partidas ilimitadas para siempre."}
 ];
 
 function id(){return crypto.randomUUID()}
@@ -51,8 +52,67 @@ function themeStats(themeId){
   };
 }
 function playerName(room,pid){return room.players.find(p=>p.id===pid)?.name||"Jugador eliminado"}
-function hasPremiumAccess(req){
-  return process.env.ALLOW_TEST_PREMIUM==="true"&&req.headers["x-test-premium"]==="1";
+
+const ACCESS_SIGNING_SECRET=process.env.ACCESS_SIGNING_SECRET||"";
+const ACCESS_HEADER="x-la-juntada-access";
+function b64url(value){return Buffer.from(value).toString("base64url")}
+function accessSignature(body){
+  if(!ACCESS_SIGNING_SECRET)return "";
+  return crypto.createHmac("sha256",ACCESS_SIGNING_SECRET).update(body).digest("base64url");
+}
+function planExpiry(plan,now=Date.now()){
+  if(plan==="day")return now+24*60*60*1000;
+  if(plan==="monthly")return now+30*24*60*60*1000;
+  if(plan==="annual")return now+365*24*60*60*1000;
+  return null;
+}
+function mintAccess({plan="single",role="customer",roomCode=null}={}){
+  if(!ACCESS_SIGNING_SECRET)throw new Error("ACCESS_SIGNING_SECRET no configurado");
+  const now=Date.now(),exp=role==="admin"||plan==="lifetime"?null:planExpiry(plan,now);
+  const payload={v:1,id:crypto.randomBytes(8).toString("hex"),plan,role,roomCode:roomCode||null,iat:now,exp};
+  const body=b64url(JSON.stringify(payload));
+  return "LJ1."+body+"."+accessSignature(body);
+}
+function readAccessToken(raw){
+  try{
+    if(!raw||typeof raw!=="string")return null;
+    const [prefix,body,sig]=raw.trim().split(".");
+    if(prefix!=="LJ1"||!body||!sig||!ACCESS_SIGNING_SECRET)return null;
+    const expected=accessSignature(body);
+    const a=Buffer.from(sig),b=Buffer.from(expected);
+    if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;
+    const payload=JSON.parse(Buffer.from(body,"base64url").toString("utf8"));
+    if(payload.v!==1)return null;
+    if(payload.exp&&Date.now()>payload.exp)return {...payload,expired:true};
+    return {...payload,expired:false};
+  }catch{return null}
+}
+function accessFromReq(req){return readAccessToken(req.headers[ACCESS_HEADER])}
+function accessPublic(a){
+  if(!a)return {active:false};
+  return {
+    active:!a.expired,
+    expired:!!a.expired,
+    plan:a.plan,
+    role:a.role||"customer",
+    roomCode:a.roomCode||null,
+    issuedAt:a.iat||null,
+    expiresAt:a.exp||null,
+    title:a.role==="admin"?"Administrador":(ACCESS_PLANS.find(p=>p.id===a.plan)?.title||a.plan)
+  };
+}
+function accessCanCreatePremium(a){
+  return !!a&&!a.expired&&(a.role==="admin"||["day","monthly","annual","lifetime"].includes(a.plan));
+}
+function accessCanUnlockRoom(a,room){
+  if(!a||a.expired)return false;
+  if(a.role==="admin"||["day","monthly","annual","lifetime"].includes(a.plan))return true;
+  return a.plan==="single"&&a.roomCode===room?.code;
+}
+function hasPremiumAccess(req){return accessCanCreatePremium(accessFromReq(req))}
+function constantTimeTextEqual(a,b){
+  const x=Buffer.from(String(a||"")),y=Buffer.from(String(b||""));
+  return x.length===y.length&&crypto.timingSafeEqual(x,y);
 }
 
 function uniqueAnswerOptions(room,key,correct,ownerId,max=4){
@@ -497,8 +557,29 @@ app.get("/api/health",(_req,res)=>res.json({ok:true,rooms:rooms.size}));
 app.get("/api/config",(_req,res)=>res.json({
   themes:Object.values(THEMES),modes:Object.values(MODES),themeModes:THEME_MODES,
   implementedModes:IMPLEMENTED_MODES,accessPlans:ACCESS_PLANS,
+  devPayments:process.env.ALLOW_TEST_PREMIUM==="true",
   themeStats:Object.fromEntries(Object.keys(THEMES).map(id=>[id,themeStats(id)]))
 }));
+app.get("/api/access/me",(req,res)=>{
+  const a=accessFromReq(req);
+  res.json(accessPublic(a));
+});
+
+app.post("/api/access/restore",(req,res)=>{
+  const raw=clean(req.body?.accessToken,1200);
+  const a=readAccessToken(raw);
+  if(!a||a.expired)return res.status(401).json({error:a?.expired?"Este pase venció.":"La clave de acceso no es válida."});
+  res.json({access:accessPublic(a),accessToken:raw});
+});
+
+app.post("/api/access/admin",(req,res)=>{
+  const configured=process.env.ADMIN_MASTER_CODE||"";
+  const code=clean(req.body?.code,160);
+  if(!configured||!constantTimeTextEqual(code,configured))return res.status(403).json({error:"Código de administrador incorrecto."});
+  const accessToken=mintAccess({plan:"lifetime",role:"admin"});
+  res.json({access:accessPublic(readAccessToken(accessToken)),accessToken});
+});
+
 app.get("/api/qr/:code",async(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).send("Sala inexistente");
   try{
@@ -517,10 +598,11 @@ app.post("/api/rooms",(req,res)=>{
   if(THEMES[themeId].age18&&req.body.ageConfirmed!==true)return res.status(400).json({error:"La versión 18+ requiere confirmar mayoría de edad."});
   if(playWhen==="later"&&!eventDate)return res.status(400).json({error:"Elegí la fecha de la juntada."});
   let code=roomCode();while(rooms.has(code))code=roomCode();
-  const hostId=id(),sessionToken=token(),tp=themePrompts(themeId);
+  const hostId=id(),sessionToken=token(),tp=themePrompts(themeId),access=accessFromReq(req);
+  const inheritedAccess=accessCanCreatePremium(access);
   const room={
     code,name,themeId,playWhen,eventDate,state:playWhen==="later"?"collecting":"lobby",
-    hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:false,accessPlan:null,
+    hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:inheritedAccess,accessPlan:inheritedAccess?(access.role==="admin"?"admin":access.plan):null,
     players:[{id:hostId,name:hostName,ready:false,score:0}],submissions:{},missions:{},rounds:[],
     prepPrompts:{
       storyPrompts:pick(tp.prep_story,3),
@@ -645,13 +727,26 @@ app.post("/api/rooms/:code/mission/complete",(req,res)=>{
   res.json({ok:true});
 });
 
+app.post("/api/rooms/:code/use-access",(req,res)=>{
+  const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
+  if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
+  const access=accessFromReq(req);
+  if(!accessCanUnlockRoom(access,room))return res.status(402).json({error:"Este pase no desbloquea esta partida."});
+  room.accessPlan=access.role==="admin"?"admin":access.plan;room.unlocked=true;
+  if(room.state==="paywall"){room.state="playing";room.currentRound=Math.min(1,room.rounds.length-1);room.roundPhase="guess";room.advanceAt=null}
+  res.json({ok:true,accessPlan:room.accessPlan,access:accessPublic(access)});
+});
+
 app.post("/api/rooms/:code/unlock-test",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
+  if(process.env.ALLOW_TEST_PREMIUM!=="true")return res.status(404).json({error:"Checkout de prueba desactivado."});
   const accessPlan=ACCESS_PLANS.find(p=>p.id===req.body?.accessPlan)?.id||"single";
+  const accessToken=mintAccess({plan:accessPlan,roomCode:accessPlan==="single"?room.code:null});
+  const access=readAccessToken(accessToken);
   room.accessPlan=accessPlan;room.unlocked=true;room.state="playing";
   room.currentRound=Math.min(1,room.rounds.length-1);room.roundPhase="guess";room.advanceAt=null;
-  res.json({ok:true,accessPlan});
+  res.json({ok:true,accessPlan,access:accessPublic(access),accessToken});
 });
 
 app.post("/api/rooms/:code/restart",(req,res)=>{
