@@ -100,6 +100,19 @@ const ACCESS_PLANS=[
   {id:"lifetime",title:"De por vida",billing:"lifetime",unlimited:true,description:"Partidas ilimitadas para siempre."}
 ];
 
+const SURPRISE_QUICK_QUESTIONS=[
+  {id:"plan",question:"Si hoy pudieras elegir el plan perfecto, ¿con cuál te quedás?",options:[
+    {id:"salir",label:"Salir sin plan"},{id:"cena",label:"Cena larga"},{id:"casa",label:"Casa y película"},{id:"nuevo",label:"Probar algo nuevo"}
+  ]},
+  {id:"viaje",question:"En un viaje sos más de…",options:[
+    {id:"planear",label:"Planear todo"},{id:"improvisar",label:"Improvisar"},{id:"comer",label:"Buscar dónde comer"},{id:"dormir",label:"Dormir hasta tarde"}
+  ]},
+  {id:"regalo",question:"Si mañana te regalan una de estas cosas, ¿qué elegís?",options:[
+    {id:"viaje",label:"Un viaje"},{id:"entradas",label:"Entradas para algo"},{id:"objeto",label:"Algo que querías hace tiempo"},{id:"sorpresa",label:"Una experiencia sorpresa"}
+  ]}
+];
+
+
 function id(){return crypto.randomUUID()}
 function token(){return crypto.randomBytes(24).toString("hex")}
 function clean(v,max=180){return String(v??"").trim().replace(/\s+/g," ").slice(0,max)}
@@ -338,10 +351,53 @@ function buildRounds(room){
     }
   }
 
+  if(room.surprise?.enabled){
+    const honoree=room.players.find(p=>p.id===room.surprise.honoreePlayerId);
+    const contributors=room.players.filter(p=>!p.isHonoree);
+    const memories=[];
+    for(const p of contributors){
+      const memory=room.submissions[p.id]?.surpriseMemory;
+      if(memory)memories.push({p,memory});
+    }
+    pick(memories,Math.min(4,memories.length)).forEach(x=>add({
+      mode:"quien_fue",
+      prompt:`Sorpresa para ${room.surprise.honoreeName} · ¿Quién escribió esto?`,
+      statement:x.memory,correct:x.p.id,authorId:x.p.id,skipVoteFor:x.p.id,surpriseRound:true,
+      options:contributors.map(p=>({id:p.id,label:p.name,sourcePlayerId:p.id}))
+    }));
+    if(honoree&&Array.isArray(room.surprise.honoreeAnswers)){
+      const qs=room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS;
+      qs.forEach((q,i)=>{
+        const correct=room.surprise.honoreeAnswers[i];
+        if(!correct)return;
+        add({
+          mode:"silla_caliente",
+          prompt:`Sorpresa · ¿Qué eligió ${honoree.name}?`,
+          statement:q.question,correct,protagonistId:honoree.id,skipVoteFor:honoree.id,surpriseRound:true,
+          options:q.options.map(o=>({id:o.id,label:o.label}))
+        });
+      });
+    }
+  }
+
   const mixed=shuffle(rounds);
   const firstWho=mixed.findIndex(r=>r.mode==="quien_fue");
   if(firstWho>0){const [r]=mixed.splice(firstWho,1);mixed.unshift(r)}
-  return mixed.slice(0,room.roundLimit||15).map((r,i)=>({...r,position:i}));
+  const limit=room.roundLimit||15;
+  if(room.surprise?.enabled){
+    const special=mixed.filter(r=>r.surpriseRound);
+    const regular=mixed.filter(r=>!r.surpriseRound);
+    const guaranteed=shuffle(special).slice(0,Math.min(special.length,Math.max(3,Math.floor(limit/3))));
+    const rest=shuffle([...regular,...special.filter(r=>!guaranteed.includes(r))]);
+    const final=[];
+    let gi=0,ri=0;
+    while(final.length<limit&&(gi<guaranteed.length||ri<rest.length)){
+      if(gi<guaranteed.length)final.push(guaranteed[gi++]);
+      if(final.length<limit&&ri<rest.length)final.push(rest[ri++]);
+    }
+    return final.slice(0,limit).map((r,i)=>({...r,position:i}));
+  }
+  return mixed.slice(0,limit).map((r,i)=>({...r,position:i}));
 }
 function eligibleVoters(room,round){
   if(round.mode==="duo"||round.mode==="ordena_al_grupo")return [...room.players];
@@ -452,7 +508,9 @@ function recalculateScores(room){
 }
 function removePlayerFromRoom(room,pid){
   if(pid===room.hostPlayerId)return false;
+  const removed=room.players.find(p=>p.id===pid);
   room.players=room.players.filter(p=>p.id!==pid);
+  if(removed?.isHonoree&&room.surprise){room.surprise.honoreePlayerId=null;delete room.surprise.honoreeAnswers}
   delete room.submissions[pid];
   delete room.missions[pid];
   for(const s of Object.values(room.submissions)){
@@ -493,6 +551,13 @@ function endArchive(room){
       hotSeat:{prompt:room.prepPrompts.hotSeatPrompt,answer:s.hotSeatAnswer||""},
       oneVsAll:{prompt:room.prepPrompts.oneVsAllPrompt,answer:s.oneVsAllAnswer||""},
       majority:(room.prepPrompts.majorityPrompts||[]).map((prompt,i)=>({prompt,answer:s.majority?.[i]?playerName(room,s.majority[i]):"Sin voto"})),
+      isHonoree:!!p.isHonoree,
+      surpriseMemory:s.surpriseMemory||"",
+      surpriseQuick:p.isHonoree&&room.surprise?.honoreeAnswers
+        ?(room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS).map((q,i)=>({
+          question:q.question,
+          answer:q.options.find(o=>o.id===room.surprise.honoreeAnswers[i])?.label||""
+        })):[],
       mission:mission?{text:mission.text,status:mission.status,points:mission.points}:null
     };
   });
@@ -658,10 +723,19 @@ function snapshot(room,viewer){
     unlocked:room.unlocked,freeRounds:1,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
     customPack:room.customPack?{id:room.customPack.id,name:room.customPack.name,mixMode:room.customPack.mixMode}:null,
     roundLimit:room.roundLimit||15,disabledModes:room.disabledModes||[],
+    surprise:room.surprise?.enabled?{
+      enabled:true,
+      honoreeName:room.surprise.honoreeName,
+      honoreeJoined:!!room.surprise.honoreePlayerId,
+      honoreePlayerId:room.surprise.honoreePlayerId||null,
+      isHonoree:!!viewer?.isHonoree,
+      inviteKey:viewer?.id===room.hostPlayerId?room.surprise.joinKey:null,
+      quickQuestions:viewer?.isHonoree&&!viewer.ready?(room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS):null
+    }:null,
     prepPrompts:room.prepPrompts,availableModes:(THEME_MODES[room.themeId]||[]).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
-    me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,score:finished?viewer.score:null}:null,
-    players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,score:finished?p.score:null,isHost:p.id===room.hostPlayerId})),
+    me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,isHonoree:!!viewer.isHonoree,score:finished?viewer.score:null}:null,
+    players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,isHonoree:!!p.isHonoree,score:finished?p.score:null,isHost:p.id===room.hostPlayerId})),
     round:raw&&room.state==="playing"?roundSnapshot(room,raw,viewer):null,
     mission:viewer?room.missions[viewer.id]||null:null,
     answers:finished?endArchive(room):null,
@@ -760,6 +834,10 @@ app.post("/api/rooms",(req,res)=>{
   const themeId=THEMES[req.body.themeId]?req.body.themeId:"clasico";
   const customPack=sanitizeCustomPack(req.body.customPack);
   if(customPack&&!hasPremiumAccess(req))return res.status(402).json({error:"La personalización es Premium. Necesitás un pase activo."});
+  const surpriseEnabled=req.body.surpriseMode===true;
+  const honoreeName=surpriseEnabled?clean(req.body.honoreeName,40):"";
+  if(surpriseEnabled&&!hasPremiumAccess(req))return res.status(402).json({error:"Armala para alguien es Premium. Necesitás un pase activo."});
+  if(surpriseEnabled&&!honoreeName)return res.status(400).json({error:"Decinos para quién es la sorpresa."});
   const roundLimit=[8,15,25].includes(Number(req.body.roundLimit))?Number(req.body.roundLimit):15;
   const disabledModes=Array.isArray(req.body.disabledModes)?req.body.disabledModes.filter(x=>MODES[x]).slice(0,12):[];
   const playWhen=req.body.playWhen==="later"?"later":"now",eventDate=playWhen==="later"?clean(req.body.eventDate,40):"";
@@ -775,6 +853,9 @@ app.post("/api/rooms",(req,res)=>{
     hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:inheritedAccess,accessPlan:inheritedAccess?(access.role==="admin"?"admin":access.plan):null,
     players:[{id:hostId,name:hostName,ready:false,score:0}],submissions:{},missions:{},rounds:[],
     customPack,
+    surprise:surpriseEnabled?{
+      enabled:true,honoreeName,honoreePlayerId:null,joinKey:token(),quickQuestions:SURPRISE_QUICK_QUESTIONS
+    }:null,
     roundLimit,
     disabledModes,
     prepPrompts:{
@@ -791,13 +872,20 @@ app.post("/api/rooms",(req,res)=>{
 app.post("/api/rooms/:code/join",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(room.state==="finished")return res.status(409).json({error:"Esta partida ya terminó."});
-  const name=clean(req.body.name,40);if(!name)return res.status(400).json({error:"Escribí tu nombre."});
+  const suppliedHonoreeKey=clean(req.body.honoreeKey,120);
+  const isHonoree=!!(room.surprise?.enabled&&suppliedHonoreeKey&&constantTimeTextEqual(suppliedHonoreeKey,room.surprise.joinKey));
+  if(isHonoree&&room.surprise.honoreePlayerId)return res.status(409).json({error:room.surprise.honoreeName+" ya entró a la sala."});
+  if(isHonoree&&["starting","playing","paywall","finished"].includes(room.state))return res.status(409).json({error:"La sorpresa ya empezó."});
+  const name=isHonoree?room.surprise.honoreeName:clean(req.body.name,40);
+  if(!name)return res.status(400).json({error:"Escribí tu nombre."});
   if(room.players.some(p=>p.name.toLowerCase()===name.toLowerCase()))return res.status(409).json({error:"Ese nombre ya está en la sala."});
   const alreadyPlaying=["starting","playing","paywall"].includes(room.state);
-  const p={id:id(),name,ready:alreadyPlaying,score:0},t=token();
-  room.players.push(p);sessions.set(sessionKey(t),p.id);persistSession(t,room.code,p.id);
+  const p={id:id(),name,ready:isHonoree?false:alreadyPlaying,score:0,isHonoree},t=token();
+  room.players.push(p);
+  if(isHonoree)room.surprise.honoreePlayerId=p.id;
+  sessions.set(sessionKey(t),p.id);persistSession(t,room.code,p.id);
   if(alreadyPlaying&&room.state==="playing"&&room.roundPhase==="guess")finalizeRound(room);
-  res.json({code:room.code,sessionToken:t,lateJoin:alreadyPlaying});
+  res.json({code:room.code,sessionToken:t,lateJoin:alreadyPlaying,isHonoree});
 });
 
 app.get("/api/rooms/:code",(req,res)=>{
@@ -817,16 +905,34 @@ app.post("/api/rooms/:code/submissions",(req,res)=>{
   if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!me)return res.status(401).json({error:"Volvé a entrar a la sala."});
   if(room.state!=="collecting")return res.status(409).json({error:"La preparación ya cerró."});
+  if(me.isHonoree)return res.status(409).json({error:"Tu preparación sorpresa usa solo las 3 preguntas rápidas."});
   const stories=Array.isArray(req.body.stories)?req.body.stories.map(x=>clean(x,280)):[],
         truth=clean(req.body.truth,280),lie=clean(req.body.lie,280),
         majority=Array.isArray(req.body.majority)?req.body.majority:[],
-        hotSeatAnswer=clean(req.body.hotSeatAnswer,160),oneVsAllAnswer=clean(req.body.oneVsAllAnswer,160);
+        hotSeatAnswer=clean(req.body.hotSeatAnswer,160),oneVsAllAnswer=clean(req.body.oneVsAllAnswer,160),
+        surpriseMemory=room.surprise?.enabled?clean(req.body.surpriseMemory,320):"";
   const valid=new Set(room.players.map(p=>p.id));
-  if(stories.length!==3||stories.some(x=>!x)||!truth||!lie||majority.length!==3||majority.some(x=>!valid.has(x))||!hotSeatAnswer||!oneVsAllAnswer){
+  if(stories.length!==3||stories.some(x=>!x)||!truth||!lie||majority.length!==3||majority.some(x=>!valid.has(x))||!hotSeatAnswer||!oneVsAllAnswer||(room.surprise?.enabled&&!surpriseMemory)){
     return res.status(400).json({error:"Completá todo antes de enviar."});
   }
-  room.submissions[me.id]={stories,truth,lie,majority,hotSeatAnswer,oneVsAllAnswer};
+  room.submissions[me.id]={stories,truth,lie,majority,hotSeatAnswer,oneVsAllAnswer,surpriseMemory};
   me.ready=true;res.json({ok:true});
+});
+
+app.post("/api/rooms/:code/surprise-honoree",(req,res)=>{
+  const room=getRoom(req.params.code),me=auth(room,req);
+  if(!room)return res.status(404).json({error:"Sala inexistente."});
+  if(!me||!me.isHonoree||room.surprise?.honoreePlayerId!==me.id)return res.status(403).json({error:"Este acceso es solo para la persona sorpresa."});
+  if(room.state!=="collecting")return res.status(409).json({error:"La preparación ya cerró."});
+  const answers=Array.isArray(req.body.answers)?req.body.answers.map(x=>clean(x,80)):[];
+  const qs=room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS;
+  if(answers.length!==qs.length)return res.status(400).json({error:"Respondé las 3 preguntas."});
+  for(let i=0;i<qs.length;i++){
+    if(!qs[i].options.some(o=>o.id===answers[i]))return res.status(400).json({error:"Respuesta inválida."});
+  }
+  room.surprise.honoreeAnswers=answers;
+  me.ready=true;
+  res.json({ok:true});
 });
 
 app.delete("/api/rooms/:code/players/:playerId",(req,res)=>{
@@ -841,6 +947,7 @@ app.post("/api/rooms/:code/start-game",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
   if(room.players.length<3)return res.status(409).json({error:"Necesitan ser al menos 3."});
+  if(room.surprise?.enabled&&!room.surprise.honoreePlayerId)return res.status(409).json({error:"Todavía falta que entre "+room.surprise.honoreeName+" con su link sorpresa."});
   if(room.players.some(p=>!p.ready))return res.status(409).json({error:"Todavía falta gente por responder."});
   room.players.forEach(p=>p.score=0);
   room.rounds=buildRounds(room);assignMissions(room);
@@ -925,7 +1032,9 @@ app.post("/api/rooms/:code/unlock-test",(req,res)=>{
 app.post("/api/rooms/:code/restart",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
+  room.players=room.players.filter(p=>!p.isHonoree);
   room.players.forEach(p=>{p.ready=false;p.score=0});
+  if(room.surprise){room.surprise.honoreePlayerId=null;delete room.surprise.honoreeAnswers;room.surprise.joinKey=token()}
   room.submissions={};room.missions={};room.rounds=[];
   const tp=themePrompts(room.themeId);
   room.prepPrompts={
