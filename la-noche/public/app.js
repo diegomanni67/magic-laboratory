@@ -18,7 +18,19 @@ function themeCards(){return state.config.themes.map(t=>`<label class="theme-car
 async function home(){
   stopPoll();clearSession();await loadConfig();
   app.innerHTML=brand()+`
-  <section class="hero"><div class="eyebrow">🎮 TUS AMIGOS SON EL JUEGO</div><h1>Cada juntada<br><span class="grad">se convierte en un juego.</span></h1><p class="lead">Todos aportan historias y respuestas en secreto. Nadie puede verlas antes. El sistema arma minijuegos, calcula los puntos automáticamente y revela todo recién al final.</p></section>
+  <section class="hero hero-premium">
+    <div class="hero-copy">
+      <div class="eyebrow">TUS AMIGOS SON EL JUEGO</div>
+      <h1>Cada juntada<br><span class="grad">se convierte en un juego.</span></h1>
+      <p class="lead">Historias, secretos, votaciones y desafíos creados por el propio grupo. Para una previa, un viaje, un cumpleaños o cualquier plan.</p>
+      <div class="hero-points"><span>Sin descargas</span><span>Desde cualquier celular</span><span>Listo en minutos</span></div>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+      <img class="hero-people" src="/assets/hero-juntada.svg" alt="">
+      <img class="hero-sparks" src="/assets/gold-sparks.svg" alt="">
+      <div class="floating-card"><img src="/assets/card-fan.svg" alt=""></div>
+    </div>
+  </section>
   <section class="card"><div class="kicker">1 · CUÁNDO</div><div class="section-title">¿Cuándo van a jugar?</div>
     <div class="choice-grid">
       <label class="choice-card"><input type="radio" name="when" value="now" checked><strong>⚡ Jugar ahora</strong><span>Están juntos. Entran, responden y arrancan.</span></label>
