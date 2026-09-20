@@ -67,27 +67,34 @@ function playing(r){
 
 function answersArchive(r){
   if(!r.answers)return "";
-  const people=r.answers.map((a,i)=>`<details class="answer-person" ${i===0?"open":""}>
-    <summary>
-      <span class="answer-avatar">${esc(a.name).slice(0,1).toUpperCase()}</span>
-      <div><strong>${esc(a.name)}</strong><small>Ver todo lo que respondió</small></div>
-      <i>+</i>
-    </summary>
-    <div class="answer-body">
-      <div class="answer-group-title">HISTORIAS</div>
-      ${a.stories.map(s=>`<div class="answer-item"><small>${esc(s.prompt)}</small><strong>${esc(s.answer)}</strong></div>`).join("")}
-      <div class="answer-split">
-        <div class="answer-item truth-item"><small>SU VERDAD</small><strong>${esc(a.truth)}</strong></div>
-        <div class="answer-item lie-item"><small>SU MENTIRA</small><strong>${esc(a.lie)}</strong></div>
+  const people=r.answers.map((a,i)=>{
+    const surpriseBlock=a.isHonoree
+      ?`<div class="answer-group-title">SUS 3 RESPUESTAS SORPRESA</div>
+        ${(a.surpriseQuick||[]).map(x=>`<div class="answer-item honoree-answer"><small>${esc(x.question)}</small><strong>${esc(x.answer)}</strong></div>`).join("")}`
+      :`${r.surprise?.enabled&&a.surpriseMemory?`<div class="answer-group-title">RECUERDO PARA ${esc(r.surprise.honoreeName).toUpperCase()}</div><div class="answer-item surprise-memory-answer"><small>LO QUE ESCRIBIÓ</small><strong>${esc(a.surpriseMemory)}</strong></div>`:""}
+        <div class="answer-group-title">HISTORIAS</div>
+        ${a.stories.map(s=>`<div class="answer-item"><small>${esc(s.prompt)}</small><strong>${esc(s.answer)}</strong></div>`).join("")}
+        <div class="answer-split">
+          <div class="answer-item truth-item"><small>SU VERDAD</small><strong>${esc(a.truth)}</strong></div>
+          <div class="answer-item lie-item"><small>SU MENTIRA</small><strong>${esc(a.lie)}</strong></div>
+        </div>
+        <div class="answer-group-title">RESPUESTAS PERSONALES</div>
+        <div class="answer-item"><small>${esc(a.hotSeat.prompt)}</small><strong>${esc(a.hotSeat.answer)}</strong></div>
+        <div class="answer-item"><small>${esc(a.oneVsAll.prompt)}</small><strong>${esc(a.oneVsAll.answer)}</strong></div>
+        <div class="answer-group-title">VOTOS SECRETOS</div>
+        ${a.majority.map(m=>`<div class="answer-item"><small>${esc(m.prompt)}</small><strong>${esc(m.answer)}</strong></div>`).join("")}`;
+    return `<details class="answer-person ${a.isHonoree?"honoree-archive":""}" ${i===0?"open":""}>
+      <summary>
+        <span class="answer-avatar">${a.isHonoree?"✦":esc(a.name).slice(0,1).toUpperCase()}</span>
+        <div><strong>${esc(a.name)}</strong><small>${a.isHonoree?"Persona sorpresa · ver sus respuestas":"Ver todo lo que respondió"}</small></div>
+        <i>+</i>
+      </summary>
+      <div class="answer-body">
+        ${surpriseBlock}
+        ${a.mission?`<div class="answer-group-title">MISIÓN</div><div class="answer-item mission-answer"><small>${a.mission.status==="completed"?"✓ CUMPLIDA":"NO CUMPLIDA"}</small><strong>${esc(a.mission.text)}</strong><b>${a.mission.status==="completed"?"+"+a.mission.points+" puntos":""}</b></div>`:""}
       </div>
-      <div class="answer-group-title">RESPUESTAS PERSONALES</div>
-      <div class="answer-item"><small>${esc(a.hotSeat.prompt)}</small><strong>${esc(a.hotSeat.answer)}</strong></div>
-      <div class="answer-item"><small>${esc(a.oneVsAll.prompt)}</small><strong>${esc(a.oneVsAll.answer)}</strong></div>
-      <div class="answer-group-title">VOTOS SECRETOS</div>
-      ${a.majority.map(m=>`<div class="answer-item"><small>${esc(m.prompt)}</small><strong>${esc(m.answer)}</strong></div>`).join("")}
-      ${a.mission?`<div class="answer-group-title">MISIÓN</div><div class="answer-item mission-answer"><small>${a.mission.status==="completed"?"✓ CUMPLIDA":"NO CUMPLIDA"}</small><strong>${esc(a.mission.text)}</strong><b>${a.mission.status==="completed"?"+"+a.mission.points+" puntos":""}</b></div>`:""}
-    </div>
-  </details>`).join("");
+    </details>`;
+  }).join("");
 
   const rounds=(r.roundAnswers||[]).map((x,i)=>`<div class="round-archive-row">
     <span>${String(i+1).padStart(2,"0")}</span>
