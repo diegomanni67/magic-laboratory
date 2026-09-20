@@ -2746,3 +2746,10 @@ body.launch-hit .launch-content h1{transform:scale(1.06);letter-spacing:.05em;co
   .wizard-actions button{min-width:0;flex:1}
   .wizard-names{grid-template-columns:1fr!important}
 }
+
+
+/* Layering for the new app flows */
+.theme-overlay,.rules-overlay{z-index:275!important}
+.access-overlay{z-index:280!important}
+.custom-studio-overlay{z-index:285!important}
+.payment-admin-overlay{z-index:295!important}
