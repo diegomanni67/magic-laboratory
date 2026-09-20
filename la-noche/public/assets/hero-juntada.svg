@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720">
+<defs>
+ <radialGradient id="bg" cx=".55" cy=".45" r=".72"><stop stop-color="#4a2025"/><stop offset=".55" stop-color="#1d1013"/><stop offset="1" stop-color="#090708"/></radialGradient>
+ <linearGradient id="skin1" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d59a74"/><stop offset="1" stop-color="#8e513f"/></linearGradient>
+ <linearGradient id="skin2" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e1ae8d"/><stop offset="1" stop-color="#9b5e4d"/></linearGradient>
+ <linearGradient id="shirt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27191d"/><stop offset="1" stop-color="#0f0b0d"/></linearGradient>
+ <linearGradient id="rose" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dc7e79"/><stop offset="1" stop-color="#7e3440"/></linearGradient>
+ <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2d69b"/><stop offset="1" stop-color="#bb7a3f"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="18"/></filter>
+</defs>
+<rect width="1200" height="720" rx="54" fill="url(#bg)"/>
+<circle cx="935" cy="170" r="120" fill="#a84b58" opacity=".16" filter="url(#glow)"/>
+<circle cx="230" cy="100" r="105" fill="#d9a554" opacity=".13" filter="url(#glow)"/>
+<g opacity=".75"><circle cx="1050" cy="95" r="7" fill="#f4cf8c"/><circle cx="1110" cy="142" r="5" fill="#d77a73"/><circle cx="972" cy="74" r="4" fill="#f4cf8c"/><circle cx="143" cy="124" r="5" fill="#e4a36e"/></g>
+<!-- table -->
+<ellipse cx="610" cy="592" rx="465" ry="86" fill="#160d10"/>
+<ellipse cx="610" cy="575" rx="435" ry="56" fill="#2b171b" stroke="#6e393d" stroke-width="3"/>
+<!-- candle -->
+<rect x="589" y="472" width="48" height="88" rx="12" fill="#7d4c31" opacity=".55"/>
+<ellipse cx="613" cy="472" rx="25" ry="11" fill="#f0c37b" opacity=".5"/>
+<path d="M613 463c-13-17 4-30 2-45 15 15 16 30-2 45z" fill="url(#gold)"/>
+<circle cx="613" cy="457" r="46" fill="#f3b85e" opacity=".17" filter="url(#glow)"/>
+<!-- glasses -->
+<g fill="none" stroke="#d6a36b" stroke-width="4" opacity=".85">
+ <path d="M308 515h60c-2 36-12 54-30 54s-28-18-30-54z"/><path d="M338 569v26M320 596h36"/>
+ <path d="M861 506h56c-2 34-11 51-28 51s-26-17-28-51z"/><path d="M889 557v31M872 589h34"/>
+</g>
+<!-- left man -->
+<g>
+ <path d="M190 525c10-114 55-178 136-180 74-2 117 57 127 178z" fill="url(#shirt)"/>
+ <ellipse cx="317" cy="274" rx="77" ry="91" fill="url(#skin1)"/>
+ <path d="M245 280c-3-83 33-136 102-127 45 6 73 41 74 93-29-9-48-25-64-49-22 38-57 64-112 83z" fill="#1a1114"/>
+ <path d="M297 304c14 13 34 13 49-1" fill="none" stroke="#5a2b29" stroke-width="7" stroke-linecap="round"/>
+ <circle cx="287" cy="271" r="5" fill="#2c1717"/><circle cx="345" cy="271" r="5" fill="#2c1717"/>
+ <path d="M274 229c18-9 34-10 48-4M337 228c17-6 31-4 44 5" fill="none" stroke="#281315" stroke-width="7" stroke-linecap="round"/>
+</g>
+<!-- center woman -->
+<g>
+ <path d="M420 548c7-133 64-207 164-208 97-1 151 78 157 208z" fill="url(#rose)"/>
+ <ellipse cx="579" cy="252" rx="82" ry="96" fill="url(#skin2)"/>
+ <path d="M500 266c-10-83 23-144 92-148 75-4 112 60 99 145-30-9-53-34-63-73-20 44-61 67-128 76z" fill="#261518"/>
+ <path d="M548 283c9 18 22 27 39 27 18 0 31-9 40-27" fill="none" stroke="#713838" stroke-width="8" stroke-linecap="round"/>
+ <path d="M532 237c15-8 29-9 43-3M603 235c16-5 31-2 43 5" fill="none" stroke="#3a1b1f" stroke-width="7" stroke-linecap="round"/>
+ <path d="M526 365c-20 42-38 78-49 112" fill="none" stroke="#d7a579" stroke-width="23" stroke-linecap="round"/>
+ <path d="M677 362c17 43 32 82 39 115" fill="none" stroke="#c88e6d" stroke-width="22" stroke-linecap="round"/>
+</g>
+<!-- back man -->
+<g opacity=".96">
+ <path d="M648 366c6-102 48-155 116-156 67-1 111 53 116 156z" fill="#20161a"/>
+ <ellipse cx="763" cy="164" rx="63" ry="76" fill="url(#skin1)"/>
+ <path d="M704 175c-7-70 25-112 77-108 51 4 75 41 72 95-24-4-45-23-57-48-22 35-48 53-92 61z" fill="#171013"/>
+ <path d="M740 190c13 12 28 13 42 1" fill="none" stroke="#663333" stroke-width="6" stroke-linecap="round"/>
+</g>
+<!-- right woman -->
+<g>
+ <path d="M782 533c10-116 55-179 133-180 81-1 126 63 133 180z" fill="#1b1417"/>
+ <ellipse cx="912" cy="280" rx="74" ry="89" fill="url(#skin2)"/>
+ <path d="M845 292c-9-77 22-131 83-134 64-3 97 49 91 125-27-6-49-25-64-56-18 35-52 57-110 65z" fill="#432229"/>
+ <path d="M885 306c16 14 34 14 51 0" fill="none" stroke="#713838" stroke-width="7" stroke-linecap="round"/>
+</g>
+<!-- card hand -->
+<g transform="translate(1010 380) rotate(8)">
+ <rect width="104" height="148" rx="14" fill="#120d0f" stroke="#c08d55" stroke-width="4"/>
+ <path d="M24 32h56M24 48h44M24 64h52" stroke="#d57c74" stroke-width="5" stroke-linecap="round"/>
+ <circle cx="52" cy="106" r="20" fill="none" stroke="#d6aa6b" stroke-width="4"/>
+ <path d="M44 106l6 7 14-17" fill="none" stroke="#d6aa6b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<!-- ambient strokes -->
+<path d="M1044 214c37-23 70-30 101-22M1061 238c28-12 52-13 73-4" fill="none" stroke="#d6a66c" stroke-width="4" stroke-linecap="round" opacity=".5"/>
+</svg>
