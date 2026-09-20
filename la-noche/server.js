@@ -352,6 +352,86 @@ function roundPointsForViewer(room,r,viewer){
   return r.votes[viewer.id]===r.correct?100:0;
 }
 
+function finalAnalytics(room){
+  const per=Object.fromEntries(room.players.map(p=>[p.id,{detective:0,groupReader:0,liarFooled:0,hardToRead:0,duoSync:0,mission:0}]));
+  let totalVotes=0,directHits=0,directAttempts=0,totalPoints=room.players.reduce((n,p)=>n+(p.score||0),0);
+  const played=room.rounds.filter(r=>r.scored);
+
+  for(const r of played){
+    totalVotes+=Object.keys(r.votes||{}).length;
+
+    if(r.mode==="quien_fue"){
+      for(const p of eligibleVoters(room,r)){
+        const v=r.votes[p.id];if(v===undefined)continue;
+        directAttempts++;if(v===r.correct){directHits++;if(per[p.id])per[p.id].detective++}
+        else if(per[r.authorId])per[r.authorId].hardToRead++;
+      }
+    }else if(r.mode==="lee_al_grupo"){
+      for(const p of eligibleVoters(room,r)){
+        const v=r.votes[p.id];if(v===undefined)continue;
+        directAttempts++;if(v===r.correct){directHits++;if(per[p.id])per[p.id].groupReader++}
+      }
+    }else if(r.mode==="mentiroso"){
+      for(const p of eligibleVoters(room,r)){
+        const v=r.votes[p.id];if(v===undefined)continue;
+        directAttempts++;if(v===r.correct)directHits++;
+        else if(r.correct==="false"&&per[r.authorId])per[r.authorId].liarFooled++;
+      }
+    }else if(r.mode==="silla_caliente"||r.mode==="todos_contra_uno"){
+      for(const p of eligibleVoters(room,r)){
+        const v=r.votes[p.id];if(v===undefined)continue;
+        directAttempts++;if(v===r.correct)directHits++;
+        else if(per[r.protagonistId])per[r.protagonistId].hardToRead++;
+      }
+    }else if(r.mode==="duo"){
+      const actual=r.correct||duoActual(room,r),pair=new Set(r.duoIds||[]);
+      for(const p of room.players){
+        const v=r.votes[p.id];if(v===undefined)continue;
+        directAttempts++;
+        if(pair.has(p.id)){
+          if(actual==="same"){directHits++;if(per[p.id])per[p.id].duoSync++}
+        }else if(v===actual)directHits++;
+      }
+    }
+  }
+
+  for(const p of room.players){
+    const m=room.missions[p.id];
+    if(m?.status==="completed"&&per[p.id])per[p.id].mission=1;
+  }
+
+  function award(metric,title,icon,description,valueLabel){
+    const values=room.players.map(p=>({p,value:per[p.id]?.[metric]||0}));
+    const max=Math.max(0,...values.map(x=>x.value));
+    if(max<=0)return null;
+    const winners=values.filter(x=>x.value===max).map(x=>x.p.name);
+    return {id:metric,title,icon,players:winners,value:max,label:valueLabel(max,winners.length),description};
+  }
+
+  const awards=[
+    award("detective","Mejor detective","⌕","El que más veces descubrió de quién era una historia.",v=>v+" acierto"+(v===1?"":"s")+" en ¿Quién fue?"),
+    award("liarFooled","Mejor mentiroso","◐","El que consiguió que más personas compraran una mentira.",v=>v+" persona"+(v===1?"":"s")+" engañada"+(v===1?"":"s")),
+    award("groupReader","Leyó al grupo","◎","El que mejor anticipó lo que había elegido la mayoría.",v=>v+" mayoría"+(v===1?"":"s")+" acertada"+(v===1?"":"s")),
+    award("hardToRead","Más difícil de descifrar","◇","El que más hizo fallar al resto cuando la ronda hablaba de él.",v=>v+" voto"+(v===1?"":"s")+" errado"+(v===1?"":"s")+" contra él"),
+    award("duoSync","Modo telepatía","∞","Integrante de dúo que más veces coincidió con su pareja.",v=>v+" coincidencia"+(v===1?"":"s")),
+    award("mission","Misión cumplida","✦","Completó su objetivo secreto durante la juntada.",v=>v+" misión cumplida")
+  ].filter(Boolean);
+
+  const ranking=[...room.players].sort((a,b)=>(b.score||0)-(a.score||0));
+  return {
+    roundsPlayed:played.length,
+    modesPlayed:new Set(played.map(r=>r.mode)).size,
+    totalVotes,
+    directHits,
+    directAttempts,
+    accuracy:directAttempts?Math.round(directHits/directAttempts*100):0,
+    missionsCompleted:room.players.filter(p=>room.missions[p.id]?.status==="completed").length,
+    totalPoints,
+    winnerMargin:ranking.length>1?Math.max(0,(ranking[0].score||0)-(ranking[1].score||0)):0,
+    awards
+  };
+}
+
 function roundArchive(room){
   return room.rounds.map(r=>({mode:r.mode,modeTitle:modeInfo(r.mode).title,prompt:r.prompt,statement:r.statement,answer:answerForRound(room,r)}));
 }
@@ -408,7 +488,8 @@ function snapshot(room,viewer){
     round:raw&&room.state==="playing"?roundSnapshot(room,raw,viewer):null,
     mission:viewer?room.missions[viewer.id]||null:null,
     answers:finished?endArchive(room):null,
-    roundAnswers:finished?roundArchive(room):null
+    roundAnswers:finished?roundArchive(room):null,
+    finale:finished?finalAnalytics(room):null
   };
 }
 
@@ -578,6 +659,13 @@ app.post("/api/rooms/:code/restart",(req,res)=>{
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
   room.players.forEach(p=>{p.ready=false;p.score=0});
   room.submissions={};room.missions={};room.rounds=[];
+  const tp=themePrompts(room.themeId);
+  room.prepPrompts={
+    storyPrompts:pick(tp.prep_story,3),
+    majorityPrompts:pick(tp.majority,3),
+    hotSeatPrompt:pick(tp.hot_seat,1)[0]||"",
+    oneVsAllPrompt:pick(tp.one_vs_all,1)[0]||""
+  };
   room.state="collecting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=null;room.unlocked=false;
   res.json({ok:true});
 });
