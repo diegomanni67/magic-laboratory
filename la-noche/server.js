@@ -206,14 +206,15 @@ function uniqueAnswerOptions(room,key,correct,ownerId,max=4){
 }
 function assignMissions(room){
   room.missions={};
-  if(!(THEME_MODES[room.themeId]||[]).includes("mision_secreta"))return;
+  if((room.disabledModes||[]).includes("mision_secreta")||!(THEME_MODES[room.themeId]||[]).includes("mision_secreta"))return;
   const bank=packBank(room,"missions",themePrompts(room.themeId).missions||[]);
   if(!bank.length)return;
   const shuffled=shuffle(bank);
   room.players.forEach((p,i)=>{room.missions[p.id]={text:shuffled[i%shuffled.length],status:"active",points:250}});
 }
 function buildRounds(room){
-  const allowed=(THEME_MODES[room.themeId]||THEME_MODES.clasico).filter(x=>IMPLEMENTED_MODES.includes(x));
+  const disabled=new Set(room.disabledModes||[]);
+  const allowed=(THEME_MODES[room.themeId]||THEME_MODES.clasico).filter(x=>IMPLEMENTED_MODES.includes(x)&&!disabled.has(x));
   const rounds=[];
   const add=r=>rounds.push({id:id(),votes:{},scored:false,...r});
 
@@ -309,7 +310,7 @@ function buildRounds(room){
   const mixed=shuffle(rounds);
   const firstWho=mixed.findIndex(r=>r.mode==="quien_fue");
   if(firstWho>0){const [r]=mixed.splice(firstWho,1);mixed.unshift(r)}
-  return mixed.slice(0,25).map((r,i)=>({...r,position:i}));
+  return mixed.slice(0,room.roundLimit||15).map((r,i)=>({...r,position:i}));
 }
 function eligibleVoters(room,round){
   if(round.mode==="duo"||round.mode==="ordena_al_grupo")return [...room.players];
@@ -625,6 +626,7 @@ function snapshot(room,viewer){
     code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,startAt:room.startAt||null,advanceAt:room.advanceAt||null,
     unlocked:room.unlocked,freeRounds:1,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
     customPack:room.customPack?{id:room.customPack.id,name:room.customPack.name,mixMode:room.customPack.mixMode}:null,
+    roundLimit:room.roundLimit||15,disabledModes:room.disabledModes||[],
     prepPrompts:room.prepPrompts,availableModes:(THEME_MODES[room.themeId]||[]).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
     me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,score:finished?viewer.score:null}:null,
@@ -695,6 +697,8 @@ app.post("/api/rooms",(req,res)=>{
   const themeId=THEMES[req.body.themeId]?req.body.themeId:"clasico";
   const customPack=sanitizeCustomPack(req.body.customPack);
   if(customPack&&!hasPremiumAccess(req))return res.status(402).json({error:"La personalización es Premium. Necesitás un pase activo."});
+  const roundLimit=[8,15,25].includes(Number(req.body.roundLimit))?Number(req.body.roundLimit):15;
+  const disabledModes=Array.isArray(req.body.disabledModes)?req.body.disabledModes.filter(x=>MODES[x]).slice(0,12):[];
   const playWhen=req.body.playWhen==="later"?"later":"now",eventDate=playWhen==="later"?clean(req.body.eventDate,40):"";
   if(!name||!hostName)return res.status(400).json({error:"Faltan datos."});
   if(THEMES[themeId].premiumOnly&&!hasPremiumAccess(req))return res.status(402).json({error:"Esta temática es Premium +18. Necesitás comprar una partida o tener un pase activo para crearla."});
@@ -708,6 +712,8 @@ app.post("/api/rooms",(req,res)=>{
     hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:inheritedAccess,accessPlan:inheritedAccess?(access.role==="admin"?"admin":access.plan):null,
     players:[{id:hostId,name:hostName,ready:false,score:0}],submissions:{},missions:{},rounds:[],
     customPack,
+    roundLimit,
+    disabledModes,
     prepPrompts:{
       storyPrompts:pick(customPack?packBank({customPack},"prep_story",tp.prep_story):tp.prep_story,3),
       majorityPrompts:pick(customPack?packBank({customPack},"majority",tp.majority):tp.majority,3),
