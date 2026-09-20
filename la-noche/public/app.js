@@ -218,13 +218,13 @@ async function home(){
           <div><strong>Sin descargas ni cuentas para invitados</strong><small>Entrás desde cualquier celular con un código.</small></div>
         </div>
       </div>
-      <div class="hero-visual hero-photo-visual reveal-scale">
+      <div class="hero-visual reveal-scale" aria-hidden="true">
         <div class="hero-halo"></div>
-        <div class="hero-photo-frame">
-          <img class="hero-premium-art" src="/assets/hero-juntada-premium.webp?v=20260920a" alt="Grupo de amigos jugando La Juntada desde sus celulares">
-          <div class="hero-photo-vignette"></div>
-          <div class="hero-photo-status"><span class="live-dot"></span><div><small>UNA JUNTADA REAL</small><strong>Todos participan desde su celular</strong></div></div>
-        </div>
+        <img class="hero-people" src="/assets/hero-juntada.svg?v=20260920-restored" alt="">
+        <img class="hero-sparks" src="/assets/gold-sparks.svg?v=20260920-restored" alt="">
+        <div class="floating-question fq-one"><span>¿QUIÉN FUE?</span><strong>“Me bajé en la ciudad equivocada.”</strong></div>
+        <div class="floating-phone fp-one"><span class="phone-notch"></span><small>TU VOTO</small><strong>SOFI</strong><i>✓</i></div>
+        <div class="floating-phone fp-two"><span class="phone-notch"></span><small>7/9</small><strong>VOTARON</strong><i>●</i></div>
       </div>
     </section>
 
