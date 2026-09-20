@@ -212,7 +212,7 @@ async function joinRoom(){try{const c=document.querySelector("#joinCode").value.
 async function refresh(){if(!state.code)return;try{const r=await api("/api/rooms/"+state.code);state.room=r;const k=JSON.stringify(r);if(k!==state.lastKey){state.lastKey=k;renderRoom()}}catch(e){if(/inexistente|Sesión/.test(e.message)){home();toast(e.message)}}}
 
 function chips(r){return r.players.map(p=>`<span class="chip ${p.ready?"ready":""}"><span class="dot"></span>${esc(p.name)}${p.id===r.me?.id?" · vos":""}${p.isHost?" · host":""}</span>`).join("")}
-function roomHeader(r){return `<div class="statusbar"><div><div class="kicker">${r.theme.emoji} ${esc(r.theme.title)}</div><div class="section-title">${esc(r.name)}</div></div><span class="pill">${r.players.length} jugadores</span></div>`}
+function roomHeader(r){return `<div class="room-header"><div class="room-title-wrap">${assetImg("theme",r.themeId,"room-theme-art")}<div><div class="kicker">${esc(r.theme.title)}</div><div class="room-title">${esc(r.name)}</div></div></div><div class="room-meta"><span class="pill">${r.players.length} jugadores</span><span class="room-code-mini">${r.code}</span></div></div>`}
 function hostRoster(r){
   if(!r.isHost)return "";
   return `<section class="card soft host-roster" style="margin-top:14px"><div class="statusbar"><div><div class="kicker">ADMINISTRAR GRUPO</div><div class="section-title">Jugadores</div></div><button class="ghost small-btn" id="copyInvite">+ Invitar</button></div>
@@ -228,7 +228,31 @@ function bindHostRoster(r){
 }
 
 function lobby(r){
-  app.innerHTML=brand()+`<section class="card accent">${roomHeader(r)}<div class="code">${r.code}</div><div class="share">Compartí este link o QR. La sala sigue aceptando gente.</div><div class="actions invite-actions"><button class="secondary" id="copyLink">🔗 Link</button><button class="ghost" id="copyCode">Código</button><button class="ghost" id="showQr">▦ QR</button></div><div class="qr-panel" id="qrPanel"><img class="qr-image" src="/api/qr/${r.code}"><div class="qr-code-label">${r.code}</div></div><div class="divider"></div><div class="players">${chips(r)}</div>${r.isHost?'<div class="divider"></div><button class="primary wide" id="startCollect">Empezar preparación →</button>':'<div class="divider"></div><div class="center muted">Esperando al host…</div>'}</section>${hostRoster(r)}`;
+  const ready=r.players.filter(p=>p.ready).length;
+  app.innerHTML=`<div class="room-page lobby-page">
+    ${brand()}
+    <div class="room-atmosphere">${assetImg("theme",r.themeId,"room-watermark")}</div>
+    <section class="card lobby-main">
+      ${roomHeader(r)}
+      <div class="lobby-code-zone">
+        <div class="code-orbit"><i></i><i></i><i></i><div class="code">${r.code}</div></div>
+        <div class="share">Que entren con este código, link o QR. Podés sumar gente incluso después.</div>
+        <div class="actions invite-actions">
+          <button class="secondary" id="copyLink">Copiar link</button>
+          <button class="ghost" id="copyCode">Copiar código</button>
+          <button class="ghost" id="showQr">Mostrar QR</button>
+        </div>
+        <div class="qr-panel" id="qrPanel"><img class="qr-image" src="/api/qr/${r.code}"><div class="qr-code-label">${r.code}</div></div>
+      </div>
+      <div class="lobby-status">
+        <div><span class="live-dot"></span><strong>${r.players.length} conectados</strong></div>
+        <small>${ready} ya prepararon respuestas</small>
+      </div>
+      <div class="players animated-players">${chips(r)}</div>
+      ${r.isHost?'<button class="primary wide lobby-start" id="startCollect">Empezar preparación <span>→</span></button>':'<div class="waiting-host"><span class="waiting-pulse"></span>Esperando al host…</div>'}
+    </section>
+    ${hostRoster(r)}
+  </div>`;
   if(r.isHost)document.querySelector("#startCollect").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/start-collecting",{method:"POST"});refresh()}catch(e){toast(e.message)}};
   document.querySelector("#copyLink").onclick=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link copiado")}catch{prompt("Copiá:",u)}};
   document.querySelector("#copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(r.code);toast("Código copiado")}catch{}};
@@ -236,20 +260,66 @@ function lobby(r){
   bindHostRoster(r);
 }
 function collecting(r){
+  const readyCount=r.players.filter(p=>p.ready).length;
+  const pct=Math.round((readyCount/Math.max(1,r.players.length))*100);
   if(r.me?.ready){
-    app.innerHTML=brand()+`<section class="card center">${roomHeader(r)}<div class="big-num">✓</div><div class="section-title">Tus respuestas quedaron selladas.</div><p class="muted">${r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leer tus respuestas.":"Esperando al resto. Nadie puede leer tus respuestas."}</p><div class="players">${chips(r)}</div>${r.isHost?'<div class="divider"></div><button class="primary wide" id="startGame" '+(r.players.length<3||r.players.some(p=>!p.ready)?"disabled":"")+'>Armar y empezar la partida</button>':""}</section>${hostRoster(r)}`;
+    app.innerHTML=`<div class="room-page prep-ready-page">
+      ${brand()}
+      <section class="card prep-ready-card">
+        ${roomHeader(r)}
+        <div class="sealed-visual"><img src="/assets/premium-lock.svg" alt=""><span></span></div>
+        <div class="kicker">RESPUESTAS SELLADAS</div>
+        <h2>Tus respuestas ya están adentro.</h2>
+        <p class="muted">${r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":"Esperando al resto. Nadie puede leer las respuestas antes del final."}</p>
+        <div class="ready-meter"><div><i style="width:${pct}%"></i></div><span>${readyCount}/${r.players.length} listos</span></div>
+        <div class="players animated-players">${chips(r)}</div>
+        ${r.isHost?'<button class="primary wide lobby-start" id="startGame" '+(r.players.length<3||r.players.some(p=>!p.ready)?"disabled":"")+'>Armar y empezar la partida <span>→</span></button>':""}
+      </section>
+      ${hostRoster(r)}
+    </div>`;
     if(r.isHost&&document.querySelector("#startGame"))document.querySelector("#startGame").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/start-game",{method:"POST"});refresh()}catch(e){toast(e.message)}};
     bindHostRoster(r);return;
   }
+
   const opts=r.players.map(p=>`<option value="${p.id}">${esc(p.name)}${p.id===r.me?.id?" (vos)":""}</option>`).join("");
-  app.innerHTML=brand()+`<section class="card">${roomHeader(r)}<div class="kicker">PREPARACIÓN SECRETA</div><p class="muted">Ni siquiera el host puede leer esto. Tus respuestas quedan selladas hasta que termine toda la partida.</p>
-  ${r.prepPrompts.storyPrompts.map((q,i)=>`<label>${esc(q)}</label><textarea id="story${i}" placeholder="Escribí algo concreto y reconocible…"></textarea>`).join("")}
-  <div class="divider"></div><label>Una verdad sorprendente sobre vos</label><textarea id="truth"></textarea><label>Una mentira creíble sobre vos</label><textarea id="lie"></textarea>
-  <div class="divider"></div><div class="section-title">Leé al grupo</div>${r.prepPrompts.majorityPrompts.map((q,i)=>`<label>${esc(q)}</label><select id="maj${i}"><option value="">Elegí a alguien…</option>${opts}</select>`).join("")}
-  <div class="divider"></div><div class="section-title">Silla Caliente</div><label>${esc(r.prepPrompts.hotSeatPrompt)}</label><input id="hotSeat" placeholder="Tu respuesta corta">
-  <div class="divider"></div><div class="section-title">Todos contra uno</div><label>${esc(r.prepPrompts.oneVsAllPrompt)}</label><input id="oneVsAll" placeholder="Tu respuesta corta">
-  <button class="primary wide" id="submitPrep" style="margin-top:18px">Sellar mis respuestas</button></section>${hostRoster(r)}`;
-  document.querySelector("#submitPrep").onclick=async()=>{try{const body={stories:[document.querySelector("#story0").value,document.querySelector("#story1").value,document.querySelector("#story2").value],truth:document.querySelector("#truth").value,lie:document.querySelector("#lie").value,majority:[document.querySelector("#maj0").value,document.querySelector("#maj1").value,document.querySelector("#maj2").value],hotSeatAnswer:document.querySelector("#hotSeat").value,oneVsAllAnswer:document.querySelector("#oneVsAll").value};await api("/api/rooms/"+r.code+"/submissions",{method:"POST",body:JSON.stringify(body)});refresh()}catch(e){toast(e.message)}};
+  app.innerHTML=`<div class="room-page prep-page">
+    ${brand()}
+    <section class="card prep-card">
+      ${roomHeader(r)}
+      <div class="prep-hero">
+        <div><div class="kicker">PREPARACIÓN SECRETA</div><h2>Esto después se convierte en el juego.</h2><p>Respondé sin pensar demasiado. Ni el host puede abrir tus respuestas.</p></div>
+        <div class="secret-orb"><span>SECRETO</span><i></i></div>
+      </div>
+
+      <div class="prep-block">
+        <div class="prep-block-head"><span>01</span><div><strong>Tus historias</strong><small>Material para ¿Quién fue?</small></div></div>
+        ${r.prepPrompts.storyPrompts.map((q,i)=>`<label>${esc(q)}</label><textarea id="story${i}" placeholder="Algo concreto, corto y reconocible…"></textarea>`).join("")}
+      </div>
+
+      <div class="prep-block">
+        <div class="prep-block-head"><span>02</span><div><strong>Verdad o mentira</strong><small>Una real, una inventada.</small></div></div>
+        <label>Una verdad sorprendente sobre vos</label><textarea id="truth"></textarea>
+        <label>Una mentira creíble sobre vos</label><textarea id="lie"></textarea>
+      </div>
+
+      <div class="prep-block">
+        <div class="prep-block-head"><span>03</span><div><strong>Leé al grupo</strong><small>Votá sin que nadie vea.</small></div></div>
+        ${r.prepPrompts.majorityPrompts.map((q,i)=>`<label>${esc(q)}</label><select id="maj${i}"><option value="">Elegí a alguien…</option>${opts}</select>`).join("")}
+      </div>
+
+      <div class="prep-two">
+        <div class="prep-block compact"><div class="prep-block-head"><span>04</span><div><strong>Silla Caliente</strong></div></div><label>${esc(r.prepPrompts.hotSeatPrompt)}</label><input id="hotSeat" placeholder="Tu respuesta corta"></div>
+        <div class="prep-block compact"><div class="prep-block-head"><span>05</span><div><strong>Todos contra uno</strong></div></div><label>${esc(r.prepPrompts.oneVsAllPrompt)}</label><input id="oneVsAll" placeholder="Tu respuesta corta"></div>
+      </div>
+      <button class="primary wide big-action seal-button" id="submitPrep">Sellar mis respuestas <span>✦</span></button>
+    </section>
+    ${hostRoster(r)}
+  </div>`;
+
+  document.querySelector("#submitPrep").onclick=async()=>{try{
+    const body={stories:[document.querySelector("#story0").value,document.querySelector("#story1").value,document.querySelector("#story2").value],truth:document.querySelector("#truth").value,lie:document.querySelector("#lie").value,majority:[document.querySelector("#maj0").value,document.querySelector("#maj1").value,document.querySelector("#maj2").value],hotSeatAnswer:document.querySelector("#hotSeat").value,oneVsAllAnswer:document.querySelector("#oneVsAll").value};
+    await api("/api/rooms/"+r.code+"/submissions",{method:"POST",body:JSON.stringify(body)});refresh()
+  }catch(e){toast(e.message)}};
   bindHostRoster(r);
 }
 function playing(r){
@@ -267,10 +337,20 @@ function playing(r){
 }
 function paywall(r){
   const plans=state.config.accessPlans||[];
-  app.innerHTML=brand()+`<section class="card center paywall"><div class="big-num">🔥</div><div class="section-title">La primera ronda terminó.</div><p class="lead" style="margin-left:auto;margin-right:auto">Los puntos quedaron guardados. Tu grupo generó <strong>${Math.max(0,r.totalRounds-1)} rondas más</strong>.</p>
-  <div class="access-plans">${plans.map((p,i)=>`<label class="access-plan"><input type="radio" name="accessPlan" value="${p.id}" ${i===1?"checked":""}><div><strong>${esc(p.title)}</strong><span>${esc(p.description)}</span></div>${p.unlimited?'<em>ILIMITADO</em>':""}</label>`).join("")}</div>
-  <div class="group-note"><strong>💸 También sirve para comprar entre amigos</strong><span>Una sola cuenta compra el pase. Esa persona puede crear las partidas y todos los invitados juegan gratis.</span></div>
-  <div class="divider"></div>${r.isHost?'<button class="primary wide" id="unlockTest">Probar el plan seleccionado →</button><div class="tiny muted" style="margin-top:10px">Todavía no cobra: estamos probando la lógica antes de conectar Mercado Pago y cuentas.</div>':'<div class="muted">Esperando que el host desbloquee La Juntada…</div>'}</section>${hostRoster(r)}`;
+  app.innerHTML=`<div class="room-page paywall-page">
+    ${brand()}
+    <section class="card center paywall premium-paywall">
+      <div class="paywall-visual"><span class="paywall-halo"></span><img src="/assets/premium-lock.svg" alt=""></div>
+      <div class="kicker">PRIMERA RONDA COMPLETA</div>
+      <h2>Esto recién empieza.</h2>
+      <p class="lead">Los puntos quedaron sellados. Tu grupo creó <strong>${Math.max(0,r.totalRounds-1)} rondas más</strong> sobre ustedes.</p>
+      <div class="paywall-modes">${r.availableModes.slice(0,6).map(m=>`<span>${assetImg("mode",m.id,"paywall-mode-icon")}<b>${esc(m.title)}</b></span>`).join("")}</div>
+      <div class="access-plans">${plans.map((p,i)=>`<label class="access-plan"><input type="radio" name="accessPlan" value="${p.id}" ${i===1?"checked":""}><div><strong>${esc(p.title)}</strong><span>${esc(p.description)}</span></div>${p.unlimited?'<em>ILIMITADO</em>':""}</label>`).join("")}</div>
+      <div class="group-note"><strong>Compren entre amigos si quieren</strong><span>Una cuenta compra el pase y desde esa cuenta pueden crear todas las partidas incluidas en el plan. Los invitados nunca pagan.</span></div>
+      ${r.isHost?'<button class="primary wide big-action" id="unlockTest">Probar el plan seleccionado <span>→</span></button><div class="tiny muted paywall-dev">Modo desarrollo: todavía no realiza cobros reales.</div>':'<div class="waiting-host"><span class="waiting-pulse"></span>Esperando que el host desbloquee La Juntada…</div>'}
+    </section>
+    ${hostRoster(r)}
+  </div>`;
   if(r.isHost)document.querySelector("#unlockTest").onclick=async()=>{try{const accessPlan=document.querySelector('input[name="accessPlan"]:checked')?.value||"single";await api("/api/rooms/"+r.code+"/unlock-test",{method:"POST",body:JSON.stringify({accessPlan})});refresh()}catch(e){toast(e.message)}};
   bindHostRoster(r);
 }
@@ -289,7 +369,21 @@ function answersArchive(r){
 }
 function finished(r){
   const s=[...r.players].sort((a,b)=>(b.score||0)-(a.score||0));
-  app.innerHTML=brand()+`<section class="hero center"><div class="eyebrow">🏆 FIN DE LA JUNTADA</div><h1><span class="grad">${esc(s[0]?.name||"")}</span><br>ganó.</h1><p class="lead" style="margin-left:auto;margin-right:auto">Ahora sí se abren el ranking y todas las respuestas.</p></section><section class="card"><div class="section-title">Ranking final</div><div class="score-list">${scoreRows(r.players)}</div>${r.isHost?'<div class="divider"></div><button class="primary wide" id="restart">Preparar otra partida</button>':""}</section>${answersArchive(r)}`;
+  const top=s.slice(0,3);
+  app.innerHTML=`<div class="room-page finished-page">
+    ${brand()}
+    <section class="finish-hero">
+      <div class="confetti-field" aria-hidden="true">${Array.from({length:18},(_,i)=>`<i style="--i:${i}"></i>`).join("")}</div>
+      <div class="kicker">FIN DE LA JUNTADA</div>
+      <h1><span class="grad">${esc(s[0]?.name||"")}</span><br>se la llevó.</h1>
+      <p>Ahora sí: ranking, puntos y respuestas desbloqueadas.</p>
+    </section>
+    <section class="podium">
+      ${top.map((p,i)=>`<div class="podium-person place-${i+1}"><span class="podium-medal">${i===0?"✦":i===1?"II":"III"}</span><strong>${esc(p.name)}</strong><b>${p.score||0}</b><small>puntos</small><i></i></div>`).join("")}
+    </section>
+    <section class="card final-ranking"><div class="kicker">RANKING COMPLETO</div><div class="score-list">${scoreRows(r.players)}</div>${r.isHost?'<button class="primary wide big-action" id="restart">Preparar otra partida <span>→</span></button>':""}</section>
+    ${answersArchive(r)}
+  </div>`;
   if(r.isHost)document.querySelector("#restart").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/restart",{method:"POST"});refresh()}catch(e){toast(e.message)}}
 }
 function renderRoom(){const r=state.room;if(!r)return;if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r)}
