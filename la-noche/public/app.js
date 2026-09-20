@@ -271,6 +271,23 @@ function getCustomPacks(){
 function saveCustomPacks(packs){
   localStorage.setItem(customPackStorageKey(),JSON.stringify(packs));
 }
+
+async function syncCustomPacks(){
+  if(!hasReusableAccess())return getCustomPacks();
+  const local=getCustomPacks();
+  try{
+    const d=await api("/api/custom-packs/sync",{method:"POST",body:JSON.stringify({packs:local})});
+    const remote=Array.isArray(d.packs)?d.packs:[];
+    const merged=new Map();
+    [...local,...remote].forEach(p=>{
+      const prev=merged.get(p.id);
+      if(!prev||(p.updatedAt||0)>=(prev.updatedAt||0))merged.set(p.id,p);
+    });
+    const packs=[...merged.values()].sort((x,y)=>(y.updatedAt||0)-(x.updatedAt||0));
+    saveCustomPacks(packs);
+    return packs;
+  }catch{return local}
+}
 function selectedCustomPack(){
   const id=localStorage.getItem("lj_selected_pack_id")||"";
   return getCustomPacks().find(p=>p.id===id)||null;
@@ -413,6 +430,7 @@ function openCustomStudio(packId=null){
       updatedAt:Date.now()
     };
     const next=getCustomPacks().filter(x=>x.id!==pack.id);next.unshift(pack);saveCustomPacks(next);
+    syncCustomPacks();
     localStorage.setItem("lj_selected_pack_id",pack.id);
     closeCustomStudio();
     const holder=document.querySelector("#customPackHolder");if(holder)holder.innerHTML=customPackSelectorHtml();
@@ -423,6 +441,7 @@ function openCustomStudio(packId=null){
   document.querySelector("#deletePack")?.addEventListener("click",()=>{
     if(!confirm("Eliminar este pack personalizado?"))return;
     saveCustomPacks(getCustomPacks().filter(x=>x.id!==p.id));
+    api("/api/custom-packs/"+encodeURIComponent(p.id),{method:"DELETE"}).catch(()=>{});
     if(localStorage.getItem("lj_selected_pack_id")===p.id)localStorage.removeItem("lj_selected_pack_id");
     closeCustomStudio();
     const holder=document.querySelector("#customPackHolder");if(holder)holder.innerHTML=customPackSelectorHtml();
@@ -745,7 +764,7 @@ function homeAtmosphere(){
 }
 
 async function home(){
-  stopPoll();clearSession();await loadConfig();await loadAccess();
+  stopPoll();clearSession();await loadConfig();await loadAccess();await syncCustomPacks();
   app.innerHTML=homeAtmosphere()+`
   <header class="site-header">
     ${brand()}
