@@ -634,10 +634,24 @@ function chips(r){return r.players.map(p=>`<span class="chip ${p.ready?"ready":"
 function roomHeader(r){return `<div class="room-header"><div class="room-title-wrap">${assetImg("theme",r.themeId,"room-theme-art")}<div><div class="kicker">${esc(r.theme.title)}</div><div class="room-title">${esc(r.name)}</div></div></div><div class="room-meta"><span class="pill">${r.players.length} jugadores</span><span class="room-code-mini">${r.code}</span></div></div>`}
 function hostRoster(r){
   if(!r.isHost)return "";
-  return `<section class="card soft host-roster" style="margin-top:14px"><div class="statusbar"><div><div class="kicker">ADMINISTRAR GRUPO</div><div class="section-title">Jugadores</div></div><button class="ghost small-btn" id="copyInvite">+ Invitar</button></div>
-  <p class="muted tiny">Podés sumar gente con el mismo link en cualquier momento. Si eliminás a alguien, sus respuestas y votos desaparecen del juego.</p>
-  <div class="roster-list">${r.players.map(p=>`<div class="roster-row"><div><strong>${esc(p.name)}</strong><small>${p.isHost?"Host":p.ready?"Listo":"Falta responder"}</small></div>${p.isHost?"":`<button class="danger-btn remove-player" data-id="${p.id}" data-name="${esc(p.name)}">Quitar</button>`}</div>`).join("")}</div>
-  <div class="qr-panel" id="hostQr"><img class="qr-image" src="/api/qr/${r.code}"><div class="qr-code-label">${r.code}</div></div><button class="ghost wide" id="toggleHostQr" style="margin-top:10px">Mostrar QR para sumar gente</button></section>`;
+  const ready=r.players.filter(p=>p.ready).length,pending=r.players.length-ready;
+  return `<section class="card soft host-roster host-control-room">
+    <div class="host-control-head">
+      <div><div class="kicker">CONTROL DEL HOST</div><div class="section-title">Tu grupo</div></div>
+      <button class="ghost small-btn" id="copyInvite">+ Invitar</button>
+    </div>
+    <div class="host-control-stats">
+      <span><b>${r.players.length}</b> jugadores</span>
+      <span><b>${ready}</b> listos</span>
+      <span><b>${pending}</b> pendientes</span>
+    </div>
+    <div class="roster-list">${r.players.map(p=>`<div class="roster-row ${p.ready?"is-ready":"is-pending"}"><div class="roster-avatar">${esc(p.name).slice(0,1).toUpperCase()}</div><div class="roster-name"><strong>${esc(p.name)}</strong><small>${p.isHost?"Host":p.ready?"Listo para jugar":"Todavía no terminó"}</small></div><span class="roster-state">${p.isHost?"HOST":p.ready?"✓":"…"}</span>${p.isHost?"":`<button class="danger-btn remove-player" data-id="${p.id}" data-name="${esc(p.name)}">Quitar</button>`}</div>`).join("")}</div>
+    <div class="host-control-foot">
+      <p>Podés sumar gente con el mismo link en cualquier momento. Si quitás a alguien, sus respuestas y votos salen del juego.</p>
+      <button class="ghost wide" id="toggleHostQr">Mostrar QR para sumar gente</button>
+      <div class="qr-panel" id="hostQr"><img class="qr-image" src="/api/qr/${r.code}"><div class="qr-code-label">${r.code}</div></div>
+    </div>
+  </section>`;
 }
 function bindHostRoster(r){
   if(!r.isHost)return;
@@ -648,35 +662,97 @@ function bindHostRoster(r){
 
 function lobby(r){
   const ready=r.players.filter(p=>p.ready).length;
+  const stats=state.config?.themeStats?.[r.themeId]||{};
+  const need=Math.max(0,3-r.players.length);
+  const modeChips=(r.availableModes||[]).slice(0,6).map(m=>`<span>${assetImg("mode",m.id,"lobby-mode-icon")}<b>${esc(m.title)}</b></span>`).join("");
   app.innerHTML=`<div class="room-page lobby-page">
     ${brand()}
     <div class="room-atmosphere">${assetImg("theme",r.themeId,"room-watermark")}</div>
-    <section class="card lobby-main">
+    <section class="card lobby-main game-lobby">
       ${roomHeader(r)}
-      <div class="lobby-code-zone">
-        <div class="code-orbit"><i></i><i></i><i></i><div class="code">${r.code}</div></div>
-        <div class="share">Que entren con este código, link o QR. Podés sumar gente incluso después.</div>
-        <div class="actions invite-actions">
-          <button class="secondary" id="copyLink">Copiar link</button>
-          <button class="ghost" id="copyCode">Copiar código</button>
-          <button class="ghost" id="showQr">Mostrar QR</button>
+      <div class="lobby-stage">
+        <div class="lobby-invite-panel">
+          <div class="kicker">SALA ABIERTA</div>
+          <h2>Que entren todos.</h2>
+          <p>Usen el código, el link o el QR. Cuando haya al menos 3 personas, pueden empezar a cargar respuestas.</p>
+          <div class="code-orbit"><i></i><i></i><i></i><div class="code">${r.code}</div></div>
+          <div class="actions invite-actions">
+            <button class="secondary" id="copyLink">Copiar link</button>
+            <button class="ghost" id="copyCode">Copiar código</button>
+            <button class="ghost" id="showQr">Mostrar QR</button>
+          </div>
+          <div class="qr-panel" id="qrPanel"><img class="qr-image" src="/api/qr/${r.code}"><div class="qr-code-label">${r.code}</div></div>
         </div>
-        <div class="qr-panel" id="qrPanel"><img class="qr-image" src="/api/qr/${r.code}"><div class="qr-code-label">${r.code}</div></div>
+        <div class="lobby-preview">
+          <div class="lobby-theme-card">
+            ${assetImg("theme",r.themeId,"lobby-theme-img")}
+            <div class="lobby-theme-overlay">
+              <small>ESTÁN ARMANDO</small>
+              <strong>${esc(r.theme.title)}</strong>
+              <span>${stats.maxRounds||"—"} rondas máx. · ${stats.modeCount||r.availableModes?.length||"—"} modos</span>
+            </div>
+          </div>
+          <div class="lobby-mode-strip">${modeChips}</div>
+        </div>
       </div>
-      <div class="lobby-status">
-        <div><span class="live-dot"></span><strong>${r.players.length} conectados</strong></div>
-        <small>${ready} ya prepararon respuestas</small>
+
+      <div class="lobby-people-head">
+        <div><span class="live-dot"></span><strong>${r.players.length} ${r.players.length===1?"persona":"personas"} en la sala</strong></div>
+        <small>${need?("Faltan "+need+" para poder empezar"):"Ya pueden empezar la preparación"}</small>
       </div>
-      <div class="players animated-players">${chips(r)}</div>
-      ${r.isHost?'<button class="primary wide lobby-start" id="startCollect">Empezar preparación <span>→</span></button>':'<div class="waiting-host"><span class="waiting-pulse"></span>Esperando al host…</div>'}
+      <div class="lobby-player-grid">${r.players.map((p,i)=>`
+        <div class="lobby-player-card" style="--delay:${i*45}ms">
+          <div class="player-bubble">${esc(p.name).slice(0,1).toUpperCase()}</div>
+          <strong>${esc(p.name)}</strong>
+          <small>${p.isHost?"HOST":"CONECTADO"}</small>
+          <i></i>
+        </div>`).join("")}
+        <button class="lobby-add-card" id="inviteCard"><span>+</span><strong>Sumar a alguien</strong><small>Copiar invitación</small></button>
+      </div>
+
+      <div class="lobby-bottom">
+        <div class="lobby-next">
+          <span>PRÓXIMO PASO</span>
+          <strong>Cada persona responde 10 cosas en secreto.</strong>
+          <small>Eso construye las rondas personalizadas de esta juntada.</small>
+        </div>
+        ${r.isHost?`<button class="primary lobby-start" id="startCollect" ${r.players.length<3?"disabled":""}>Empezar preparación <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia cuando estén todos.</div>'}
+      </div>
     </section>
     ${hostRoster(r)}
   </div>`;
   if(r.isHost)document.querySelector("#startCollect").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/start-collecting",{method:"POST"});refresh()}catch(e){toast(e.message)}};
-  document.querySelector("#copyLink").onclick=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link copiado")}catch{prompt("Copiá:",u)}};
+  const copyInvite=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link copiado")}catch{prompt("Copiá:",u)}};
+  document.querySelector("#copyLink").onclick=copyInvite;
+  document.querySelector("#inviteCard").onclick=copyInvite;
   document.querySelector("#copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(r.code);toast("Código copiado")}catch{}};
   document.querySelector("#showQr").onclick=()=>document.querySelector("#qrPanel").classList.toggle("open");
   bindHostRoster(r);
+}
+
+function starting(r){
+  const end=r.startAt||Date.now()+3500;
+  app.innerHTML=`<div class="launch-page">
+    <div class="launch-bg">${assetImg("theme",r.themeId,"launch-theme")}</div>
+    <div class="launch-vignette"></div>
+    <div class="launch-content">
+      ${brand()}
+      <div class="kicker">TODO LISTO</div>
+      <div class="launch-count" id="launchCount">3</div>
+      <h1 id="launchTitle">Prepárense.</h1>
+      <p>${r.players.length} jugadores · ${r.totalRounds} rondas armadas · ${esc(r.theme.title)}</p>
+      <div class="launch-player-row">${r.players.map((p,i)=>`<span style="--i:${i}">${esc(p.name).slice(0,1).toUpperCase()}</span>`).join("")}</div>
+    </div>
+  </div>`;
+  if(window.__launchTimer)clearInterval(window.__launchTimer);
+  const paint=()=>{
+    const ms=end-Date.now(),n=Math.max(0,Math.ceil(ms/1000));
+    const count=document.querySelector("#launchCount"),title=document.querySelector("#launchTitle");
+    if(!count)return;
+    if(ms<=700){count.textContent="✦";title.textContent="LA JUNTADA";document.body.classList.add("launch-hit")}
+    else{count.textContent=String(Math.min(3,n));title.textContent=n<=1?"Ahora sí.":n===2?"Todos con el celular.":"Prepárense."}
+  };
+  paint();window.__launchTimer=setInterval(paint,120);
 }
 function collecting(r){
   const readyCount=r.players.filter(p=>p.ready).length;
@@ -703,7 +779,7 @@ function collecting(r){
       </section>
       ${hostRoster(r)}
     </div>`;
-    if(r.isHost&&document.querySelector("#startGame"))document.querySelector("#startGame").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/start-game",{method:"POST"});refresh()}catch(e){toast(e.message)}};
+    if(r.isHost&&document.querySelector("#startGame"))document.querySelector("#startGame").onclick=async()=>{try{const btn=document.querySelector("#startGame");btn.disabled=true;btn.innerHTML='Armando la partida… <span>✦</span>';await api("/api/rooms/"+r.code+"/start-game",{method:"POST"});refresh()}catch(e){toast(e.message);refresh()}};
     bindHostRoster(r);return;
   }
 
@@ -847,5 +923,5 @@ function finished(r){
   </div>`;
   if(r.isHost)document.querySelector("#restart").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/restart",{method:"POST"});refresh()}catch(e){toast(e.message)}}
 }
-function renderRoom(){const r=state.room;if(!r)return;if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r)}
+function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r)}
 (async()=>{await loadConfig();const q=new URLSearchParams(location.search).get("code"),c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");if(c&&t){state.code=c;state.token=t;startPoll()}else{await home();if(q)document.querySelector("#joinCode").value=q}})();
