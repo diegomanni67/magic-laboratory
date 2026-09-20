@@ -123,6 +123,7 @@ function accessPublic(a){
   return {
     active:!a.expired,
     expired:!!a.expired,
+    accessId:a.id||null,
     plan:a.plan,
     role:a.role||"customer",
     roomCode:a.roomCode||null,
