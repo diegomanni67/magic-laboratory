@@ -1624,10 +1624,15 @@ function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&w
 (async()=>{
   await loadConfig();await loadAccess();
   const params=new URLSearchParams(location.search),q=params.get("code"),honoree=params.get("honoree"),c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");
-  if(c&&t){state.code=c;state.token=t;startPoll()}
-  else{
+  if(q&&honoree){
+    clearSession();
+    await home();
+    document.querySelector("#joinCode").value=q;
+    prepareHonoreeInviteUI(q,honoree);
+  }else if(c&&t){
+    state.code=c;state.token=t;startPoll()
+  }else{
     await home();
     if(q)document.querySelector("#joinCode").value=q;
-    if(q&&honoree)prepareHonoreeInviteUI(q,honoree);
   }
 })();
