@@ -85,7 +85,7 @@ export const MODES = {
     title: "Leé al grupo",
     emoji: "📊",
     description: "Durante la preparación todos votan. En vivo hay que predecir cuál fue la respuesta de la mayoría.",
-    minPlayers: 4,
+    minPlayers: 3,
     scoring: "100 puntos por anticipar la opción ganadora."
   },
   mentiroso: {
@@ -110,7 +110,7 @@ export const MODES = {
     emoji: "🤝",
     description: "Dos personas responden sobre la otra. Si se conocen, coinciden.",
     minPlayers: 4,
-    scoring: "100 para cada integrante del dúo por coincidencia. El resto puede apostar 50 a si coinciden o no."
+    scoring: "100 para cada integrante del dúo si coinciden. El resto gana 75 por predecir correctamente si coinciden o no."
   },
   ordena_al_grupo: {
     id: "ordena_al_grupo",
@@ -125,16 +125,16 @@ export const MODES = {
     title: "Todos contra uno",
     emoji: "🎯",
     description: "Una persona tiene una respuesta secreta. Todos los demás intentan leerle la cabeza.",
-    minPlayers: 4,
-    scoring: "100 por descubrirla. La persona protagonista gana 30 por cada jugador que falla."
+    minPlayers: 3,
+    scoring: "100 por descubrirla. La persona protagonista gana 30 por cada jugador que falla, máximo 120."
   },
   mision_secreta: {
     id: "mision_secreta",
     title: "Misión secreta",
     emoji: "💣",
     description: "El juego te da una misión para completar durante la juntada sin que el resto lo note.",
-    minPlayers: 4,
-    scoring: "200 a 400 puntos según dificultad, con confirmación de otro jugador."
+    minPlayers: 3,
+    scoring: "250 puntos por completar la misión."
   }
 };
 
