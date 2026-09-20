@@ -473,6 +473,57 @@ function bindCustomPackControls(){
     bindCustomPackControls();
   });
 }
+
+function gameSettingsHtml(){
+  const themeId=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
+  const modeIds=state.config.themeModes?.[themeId]||[];
+  const modeCards=modeIds.map(mid=>{
+    const m=state.config.modes.find(x=>x.id===mid);if(!m)return "";
+    return `<label class="game-mode-toggle">
+      <input type="checkbox" data-mode-toggle="${mid}" checked>
+      <span class="mode-toggle-box">${assetImg("mode",mid,"setting-mode-icon")}</span>
+      <div><strong>${esc(m.title)}</strong><small>${mid==="mision_secreta"?"Puede durar toda la juntada.":"Incluido en la mezcla de rondas."}</small></div>
+      <i></i>
+    </label>`;
+  }).join("");
+  return `
+    <details class="game-settings">
+      <summary>
+        <div><small>CONFIGURACIÓN DE PARTIDA</small><strong>15 rondas · todos los modos</strong></div>
+        <span>Ajustar</span>
+      </summary>
+      <div class="game-settings-body">
+        <div class="setting-block">
+          <div class="setting-head"><strong>Duración</strong><span>Podés cambiarla sin afectar las respuestas.</span></div>
+          <div class="length-options">
+            <label><input type="radio" name="roundLimit" value="8"><div><b>Corta</b><small>8 rondas</small></div></label>
+            <label><input type="radio" name="roundLimit" value="15" checked><div><b>Normal</b><small>15 rondas</small></div></label>
+            <label><input type="radio" name="roundLimit" value="25"><div><b>Larga</b><small>Hasta 25 rondas</small></div></label>
+          </div>
+        </div>
+        <div class="setting-block">
+          <div class="setting-head"><strong>Modos incluidos</strong><span>Desactivá los que no quieran jugar hoy.</span></div>
+          <div class="settings-mode-grid">${modeCards}</div>
+        </div>
+      </div>
+    </details>`;
+}
+function paintGameSettings(){
+  const holder=document.querySelector("#gameSettingsHolder");if(!holder)return;
+  holder.innerHTML=gameSettingsHtml();bindGameSettings();
+}
+function bindGameSettings(){
+  const details=document.querySelector(".game-settings");if(!details)return;
+  const refresh=()=>{
+    const limit=document.querySelector('input[name="roundLimit"]:checked')?.value||"15";
+    const total=document.querySelectorAll("[data-mode-toggle]").length;
+    const enabled=[...document.querySelectorAll("[data-mode-toggle]")].filter(x=>x.checked).length;
+    const label=details.querySelector("summary strong");
+    if(label)label.textContent=limit+" rondas · "+enabled+"/"+total+" modos";
+  };
+  document.querySelectorAll('input[name="roundLimit"],[data-mode-toggle]').forEach(x=>x.addEventListener("change",refresh));
+  refresh();
+}
 function formatAccessDate(ms){
   if(!ms)return "Sin vencimiento";
   try{return new Intl.DateTimeFormat("es-AR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(ms))}catch{return new Date(ms).toLocaleString()}
@@ -829,6 +880,8 @@ async function home(){
 
           <div id="customPackHolder" class="custom-pack-holder">${customPackSelectorHtml()}</div>
 
+          <div id="gameSettingsHolder" class="game-settings-holder">${gameSettingsHtml()}</div>
+
           <div class="create-divider"></div>
           <div class="create-step-head"><span>03</span><div><strong>Creá el acceso del grupo</strong><small>No hace falta que los invitados tengan cuenta.</small></div></div>
           <div class="form-two">
@@ -929,6 +982,7 @@ async function home(){
     const theme=state.config.themes.find(t=>t.id===themeId);
     document.querySelector("#ageWrap")?.classList.toggle("show",!!theme?.age18);
     paintSelectedTheme();
+    paintGameSettings();
   };
   document.querySelectorAll('input[name="when"],input[name="theme"]').forEach(x=>x.onchange=refreshExtras);
   refreshExtras();
@@ -940,6 +994,7 @@ async function home(){
   document.querySelectorAll("[data-theme-info]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();openThemeInfo(b.dataset.themeInfo)});
   paintCustomPackShelf();
   bindCustomPackControls();
+  bindGameSettings();
   initHomeMotion();
   if(location.hash.startsWith("#reglas="))openRules(location.hash.split("=")[1]);
 }
@@ -980,7 +1035,9 @@ async function createRoom(){try{
     playWhen:document.querySelector('input[name="when"]:checked').value,
     eventDate:document.querySelector("#eventDate").value,
     ageConfirmed:document.querySelector("#ageConfirmed").checked,
-    customPack:pack||null
+    customPack:pack||null,
+    roundLimit:Number(document.querySelector('input[name="roundLimit"]:checked')?.value||15),
+    disabledModes:[...document.querySelectorAll("[data-mode-toggle]")].filter(x=>!x.checked).map(x=>x.dataset.modeToggle)
   })});
   saveSession(d.code,d.sessionToken);startPoll()
 }catch(e){toast(e.message)}}
