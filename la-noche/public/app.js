@@ -681,6 +681,7 @@ function lobby(r){
 function collecting(r){
   const readyCount=r.players.filter(p=>p.ready).length;
   const pct=Math.round((readyCount/Math.max(1,r.players.length))*100);
+  const themeStats=state.config?.themeStats?.[r.themeId]||{};
   if(r.me?.ready){
     app.innerHTML=`<div class="room-page prep-ready-page">
       ${brand()}
@@ -690,9 +691,15 @@ function collecting(r){
         <div class="kicker">RESPUESTAS SELLADAS</div>
         <h2>Tus respuestas ya están adentro.</h2>
         <p class="muted">${r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":"Esperando al resto. Nadie puede leer las respuestas antes del final."}</p>
+        <div class="ready-build-stats">
+          <span><b>${themeStats.maxRounds||"—"}</b> rondas máximas</span>
+          <span><b>${r.availableModes?.length||"—"}</b> modos posibles</span>
+          <span><b>100%</b> respuestas privadas</span>
+        </div>
         <div class="ready-meter"><div><i style="width:${pct}%"></i></div><span>${readyCount}/${r.players.length} listos</span></div>
         <div class="players animated-players">${chips(r)}</div>
         ${r.isHost?'<button class="primary wide lobby-start" id="startGame" '+(r.players.length<3||r.players.some(p=>!p.ready)?"disabled":"")+'>Armar y empezar la partida <span>→</span></button>':""}
+        ${r.isHost&&r.players.some(p=>!p.ready)?'<div class="host-wait-note">La partida se habilita cuando todos hayan sellado sus respuestas. Podés sumar o quitar jugadores mientras preparan.</div>':""}
       </section>
       ${hostRoster(r)}
     </div>`;
@@ -706,38 +713,73 @@ function collecting(r){
     <section class="card prep-card">
       ${roomHeader(r)}
       <div class="prep-hero">
-        <div><div class="kicker">PREPARACIÓN SECRETA</div><h2>Esto después se convierte en el juego.</h2><p>Respondé sin pensar demasiado. Ni el host puede abrir tus respuestas.</p></div>
+        <div>
+          <div class="kicker">PREPARACIÓN SECRETA</div>
+          <h2>Diez respuestas. Después juega el sistema.</h2>
+          <p>Te lleva unos minutos. Tus respuestas alimentan distintos modos y nadie —ni siquiera el host— puede abrirlas antes del final.</p>
+          <div class="prep-quick-facts">
+            <span><b>10</b> respuestas</span>
+            <span><b>3–5 min</b> aprox.</span>
+            <span><b>Hasta ${themeStats.maxRounds||"—"}</b> rondas por partida</span>
+          </div>
+        </div>
         <div class="secret-orb"><span>SECRETO</span><i></i></div>
       </div>
 
-      <div class="prep-block">
-        <div class="prep-block-head"><span>01</span><div><strong>Tus historias</strong><small>Material para ¿Quién fue?</small></div></div>
-        ${r.prepPrompts.storyPrompts.map((q,i)=>`<label>${esc(q)}</label><textarea id="story${i}" placeholder="Algo concreto, corto y reconocible…"></textarea>`).join("")}
+      <div class="prep-progress-card">
+        <div class="prep-progress-copy"><strong id="prepProgressLabel">0 de 10 listas</strong><span id="prepProgressHint">Completá todo para sellar tus respuestas.</span></div>
+        <div class="prep-progress-track"><i id="prepProgressBar"></i></div>
+        <b id="prepProgressPct">0%</b>
       </div>
 
       <div class="prep-block">
-        <div class="prep-block-head"><span>02</span><div><strong>Verdad o mentira</strong><small>Una real, una inventada.</small></div></div>
-        <label>Una verdad sorprendente sobre vos</label><textarea id="truth"></textarea>
-        <label>Una mentira creíble sobre vos</label><textarea id="lie"></textarea>
+        <div class="prep-block-head"><span>01</span><div><strong>Tus historias</strong><small>3 respuestas · alimentan ¿Quién fue?</small></div><em>3</em></div>
+        ${r.prepPrompts.storyPrompts.map((q,i)=>`<label>${esc(q)}</label><textarea id="story${i}" data-prep-field placeholder="Algo concreto, corto y reconocible…"></textarea>`).join("")}
       </div>
 
       <div class="prep-block">
-        <div class="prep-block-head"><span>03</span><div><strong>Leé al grupo</strong><small>Votá sin que nadie vea.</small></div></div>
-        ${r.prepPrompts.majorityPrompts.map((q,i)=>`<label>${esc(q)}</label><select id="maj${i}"><option value="">Elegí a alguien…</option>${opts}</select>`).join("")}
+        <div class="prep-block-head"><span>02</span><div><strong>Verdad o mentira</strong><small>2 respuestas · alimentan El Mentiroso</small></div><em>2</em></div>
+        <label>Una verdad sorprendente sobre vos</label><textarea id="truth" data-prep-field placeholder="Algo real que pueda generar dudas…"></textarea>
+        <label>Una mentira creíble sobre vos</label><textarea id="lie" data-prep-field placeholder="Tiene que sonar perfectamente posible…"></textarea>
+      </div>
+
+      <div class="prep-block">
+        <div class="prep-block-head"><span>03</span><div><strong>Leé al grupo</strong><small>3 votos secretos · construyen la mayoría real</small></div><em>3</em></div>
+        ${r.prepPrompts.majorityPrompts.map((q,i)=>`<label>${esc(q)}</label><select id="maj${i}" data-prep-field><option value="">Elegí a alguien…</option>${opts}</select>`).join("")}
       </div>
 
       <div class="prep-two">
-        <div class="prep-block compact"><div class="prep-block-head"><span>04</span><div><strong>Silla Caliente</strong></div></div><label>${esc(r.prepPrompts.hotSeatPrompt)}</label><input id="hotSeat" placeholder="Tu respuesta corta"></div>
-        <div class="prep-block compact"><div class="prep-block-head"><span>05</span><div><strong>Todos contra uno</strong></div></div><label>${esc(r.prepPrompts.oneVsAllPrompt)}</label><input id="oneVsAll" placeholder="Tu respuesta corta"></div>
+        <div class="prep-block compact"><div class="prep-block-head"><span>04</span><div><strong>Silla Caliente</strong><small>1 respuesta personal</small></div><em>1</em></div><label>${esc(r.prepPrompts.hotSeatPrompt)}</label><input id="hotSeat" data-prep-field placeholder="Tu respuesta corta"></div>
+        <div class="prep-block compact"><div class="prep-block-head"><span>05</span><div><strong>Todos contra uno</strong><small>1 respuesta para que intenten leerte</small></div><em>1</em></div><label>${esc(r.prepPrompts.oneVsAllPrompt)}</label><input id="oneVsAll" data-prep-field placeholder="Tu respuesta corta"></div>
       </div>
-      <button class="primary wide big-action seal-button" id="submitPrep">Sellar mis respuestas <span>✦</span></button>
+
+      <div class="privacy-promise"><span>◉</span><div><strong>Queda sellado.</strong><p>Durante la partida nadie ve tus respuestas completas ni el ranking acumulado. Todo se revela recién al terminar.</p></div></div>
+      <button class="primary wide big-action seal-button" id="submitPrep" disabled>Completar las 10 respuestas <span>✦</span></button>
+      <div class="draft-note" id="draftNote">Tus respuestas se guardan en este dispositivo mientras completás el formulario.</div>
     </section>
     ${hostRoster(r)}
   </div>`;
 
+  const fields=[...document.querySelectorAll("[data-prep-field]")];
+  const draftKey="lj_prep_"+r.code+"_"+(r.me?.id||"me");
+  try{
+    const draft=JSON.parse(localStorage.getItem(draftKey)||"{}");
+    fields.forEach(el=>{if(Object.prototype.hasOwnProperty.call(draft,el.id))el.value=draft[el.id]||""});
+  }catch{}
+  const updatePrepProgress=()=>{
+    const done=fields.filter(el=>String(el.value||"").trim()).length,total=fields.length,p=Math.round(done/Math.max(1,total)*100);
+    const bar=document.querySelector("#prepProgressBar"),pctEl=document.querySelector("#prepProgressPct"),label=document.querySelector("#prepProgressLabel"),hint=document.querySelector("#prepProgressHint"),btn=document.querySelector("#submitPrep");
+    if(bar)bar.style.width=p+"%";if(pctEl)pctEl.textContent=p+"%";if(label)label.textContent=done+" de "+total+" listas";
+    if(hint)hint.textContent=done===total?"Listo. Ya podés sellarlas.":"Te faltan "+(total-done)+" respuestas.";
+    if(btn){btn.disabled=done!==total;btn.innerHTML=done===total?'Sellar mis respuestas <span>✦</span>':'Completar las '+total+' respuestas <span>✦</span>'}
+    const draft={};fields.forEach(el=>draft[el.id]=el.value);try{localStorage.setItem(draftKey,JSON.stringify(draft))}catch{}
+  };
+  fields.forEach(el=>{el.addEventListener("input",updatePrepProgress);el.addEventListener("change",updatePrepProgress)});
+  updatePrepProgress();
+
   document.querySelector("#submitPrep").onclick=async()=>{try{
     const body={stories:[document.querySelector("#story0").value,document.querySelector("#story1").value,document.querySelector("#story2").value],truth:document.querySelector("#truth").value,lie:document.querySelector("#lie").value,majority:[document.querySelector("#maj0").value,document.querySelector("#maj1").value,document.querySelector("#maj2").value],hotSeatAnswer:document.querySelector("#hotSeat").value,oneVsAllAnswer:document.querySelector("#oneVsAll").value};
-    await api("/api/rooms/"+r.code+"/submissions",{method:"POST",body:JSON.stringify(body)});refresh()
+    await api("/api/rooms/"+r.code+"/submissions",{method:"POST",body:JSON.stringify(body)});try{localStorage.removeItem(draftKey)}catch{}refresh()
   }catch(e){toast(e.message)}};
   bindHostRoster(r);
 }
