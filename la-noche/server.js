@@ -117,7 +117,16 @@ function shuffle(a){const x=[...(a||[])];for(let i=x.length-1;i>0;i--){const j=c
 function pick(a,n=1){return shuffle(a).slice(0,n)}
 function roomCode(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[crypto.randomInt(c.length)];return s}
 function bearer(req){const h=req.headers.authorization||"";return h.startsWith("Bearer ")?h.slice(7):""}
-function getRoom(code){return rooms.get(String(code||"").toUpperCase())}
+function getRoom(code){
+  const room=rooms.get(String(code||"").toUpperCase());
+  if(room?.state==="paywall"){
+    room.state="playing";room.unlocked=true;
+    room.currentRound=Math.min(Math.max(1,Number(room.currentRound)||0),Math.max(0,(room.rounds?.length||1)-1));
+    room.roundPhase="guess";room.advanceAt=null;
+    persistRoom(room);
+  }
+  return room;
+}
 function auth(room,req){const pid=sessions.get(sessionKey(bearer(req)));return room?.players.find(p=>p.id===pid)||null}
 function requireHost(room,req){const me=auth(room,req);return me&&me.id===room.hostPlayerId?me:null}
 function themePrompts(themeId){return PROMPTS[themeId]||PROMPTS.clasico}
@@ -1395,7 +1404,7 @@ app.post("/api/rooms/:code/unlock-test",(req,res)=>{
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
   if(process.env.ALLOW_TEST_PREMIUM!=="true")return res.status(404).json({error:"Checkout de prueba desactivado."});
   if(!requireAdminAccess(req))return res.status(403).json({error:"La simulación de pago es solo para ADMIN."});
-  const accessPlan=ACCESS_PLANS.find(p=>p.id===req.body?.accessPlan)?.id||"single";
+  const accessPlan=ACCESS_PLANS.find(p=>p.id===req.body?.accessPlan)?.id||"lifetime";
   const accessToken=mintAccess({plan:accessPlan,roomCode:accessPlan==="single"?room.code:null});
   const access=readAccessToken(accessToken);persistAccess(access);
   room.accessPlan=accessPlan;room.unlocked=true;room.state="playing";
