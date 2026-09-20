@@ -741,3 +741,29 @@ body.rules-open{overflow:hidden}
   .rules-meta{grid-template-columns:1fr}.rules-meta strong{font-size:10.5px}
   .rules-footer .primary{width:100%}
 }
+
+/* Exact approved hero artwork — keep animated floating controls above it */
+.hero-visual .hero-people.hero-scene{
+  position:absolute;
+  inset:3% 0 1% 0;
+  width:100%;
+  height:96%;
+  object-fit:cover;
+  object-position:center center;
+  border-radius:30px;
+  border:1px solid rgba(236,200,145,.14);
+  box-shadow:0 34px 85px rgba(0,0,0,.48);
+  z-index:1;
+  filter:saturate(.96) contrast(1.03) brightness(.93);
+}
+.hero-visual .hero-sparks{z-index:2;pointer-events:none}
+.hero-visual .floating-question,
+.hero-visual .floating-phone{z-index:6}
+@media(max-width:600px){
+  .hero-visual .hero-people.hero-scene{
+    inset:5% 0 1%;
+    height:94%;
+    border-radius:21px;
+    object-position:center center;
+  }
+}
