@@ -92,12 +92,9 @@ async function hydrateDatabase(){
 const IMPLEMENTED_MODES=["quien_fue","lee_al_grupo","mentiroso","silla_caliente","todos_contra_uno","duo","ordena_al_grupo"];
 const AUTO_ADVANCE_MS=4200;
 const MODE_ROUND_CAPS={quien_fue:6,lee_al_grupo:3,mentiroso:6,silla_caliente:4,todos_contra_uno:3,duo:2,ordena_al_grupo:2};
+const DEFAULT_PREMIUM_PRICE=5000;
 const ACCESS_PLANS=[
-  {id:"single",title:"Esta Juntada",billing:"one_time",unlimited:false,description:"Desbloquea únicamente esta partida completa."},
-  {id:"day",title:"Pase 24 horas",billing:"day",unlimited:true,description:"Creá y jugá todas las juntadas que quieras durante 24 horas."},
-  {id:"monthly",title:"Pase mensual",billing:"monthly",unlimited:true,description:"Partidas ilimitadas durante 30 días."},
-  {id:"annual",title:"Pase anual",billing:"annual",unlimited:true,description:"Partidas ilimitadas durante 365 días."},
-  {id:"lifetime",title:"De por vida",billing:"lifetime",unlimited:true,description:"Partidas ilimitadas para siempre."}
+  {id:"lifetime",title:"Premium para siempre",billing:"lifetime",unlimited:true,description:"Desbloquea Canceladísimos, Picante 18+ y partidas personalizadas para siempre."}
 ];
 
 const SURPRISE_QUICK_QUESTIONS=[
@@ -274,7 +271,7 @@ function normalizePlanPrices(raw){
   const out={};
   for(const p of ACCESS_PLANS){
     const n=Number(raw?.[p.id]);
-    out[p.id]=Number.isFinite(n)&&n>0?Math.round(n*100)/100:null;
+    out[p.id]=Number.isFinite(n)&&n>0?Math.round(n*100)/100:(p.id==="lifetime"?DEFAULT_PREMIUM_PRICE:null);
   }
   return out;
 }
@@ -362,11 +359,20 @@ async function reconcilePayment(localOrder,providerOrder){
   if(external&&external!==String(localOrder.id))throw new Error("La referencia del pago no coincide.");
   if(providerStatus==="approved"&&(Math.abs(paid-expected)>0.009||currency!==localOrder.currency))throw new Error("El monto o la moneda del pago no coinciden.");
 
+  if(providerStatus==="approved"&&localOrder.plan==="donation"){
+    const paymentId=providerOrder.transactions?.payments?.find?.(p=>p.status==="processed")?.id||
+      providerOrder.transactions?.payments?.[0]?.id||null;
+    const r=await db.query(
+      `UPDATE payment_orders
+       SET status='approved',provider_status=$2,payment_id=$3,fulfilled_at=COALESCE(fulfilled_at,now()),updated_at=now()
+       WHERE id=$1 RETURNING *`,
+      [localOrder.id,String(providerOrder.status_detail||providerOrder.status||"approved"),paymentId]
+    );
+    return r.rows[0];
+  }
+
   if(providerStatus==="approved"&&!localOrder.access_token){
-    const token=mintAccess({
-      plan:localOrder.plan,
-      roomCode:localOrder.plan==="single"?localOrder.room_code:null
-    });
+    const token=mintAccess({plan:localOrder.plan,roomCode:null});
     const access=readAccessToken(token);
     await persistAccess(access);
     const paymentId=providerOrder.transactions?.payments?.find?.(p=>p.status==="processed")?.id||
@@ -396,7 +402,7 @@ async function fetchAndReconcilePayment(localOrder){
 function paymentOrderPublic(row){
   if(!row)return null;
   return {
-    id:row.id,plan:row.plan,amount:Number(row.amount),currency:row.currency,status:row.status,
+    id:row.id,plan:row.plan,amount:Number(row.amount),currency:row.currency,status:row.status,isDonation:row.plan==="donation",
     providerStatus:row.provider_status||null,providerOrderId:row.provider_order_id||null,
     accessToken:row.status==="approved"?decryptPaymentSecret(row.access_token):null,
     createdAt:row.created_at,fulfilledAt:row.fulfilled_at
@@ -652,7 +658,6 @@ function maybeAdvance(room){
   }
   if(room.state!=="playing"||room.roundPhase!=="locked"||!room.advanceAt||Date.now()<room.advanceAt)return;
   room.advanceAt=null;changed=true;
-  if(room.currentRound===0&&!room.unlocked&&room.rounds.length>1){room.state="paywall";persistRoom(room);return}
   if(room.currentRound+1>=room.rounds.length){room.state="finished";room.roundPhase="done";room.finishedAt=Date.now();persistRoom(room);return}
   room.currentRound++;
   room.roundPhase="guess";
@@ -884,7 +889,7 @@ function snapshot(room,viewer){
   const finished=room.state==="finished";
   return {
     code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,startAt:room.startAt||null,advanceAt:room.advanceAt||null,
-    unlocked:room.unlocked,freeRounds:1,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
+    unlocked:true,freeRounds:room.rounds.length,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
     customPack:room.customPack?{id:room.customPack.id,name:room.customPack.name,mixMode:room.customPack.mixMode}:null,
     roundLimit:room.roundLimit||15,disabledModes:room.disabledModes||[],
     surprise:room.surprise?.enabled?{
@@ -979,23 +984,26 @@ app.post("/api/admin/payments",async(req,res)=>{
 
 app.post("/api/payments/checkout",async(req,res)=>{
   if(!db)return res.status(503).json({error:"La base de datos no está disponible."});
-  const room=getRoom(req.body?.roomCode),host=room?requireHost(room,req):null;
-  if(!room)return res.status(404).json({error:"Sala inexistente."});
-  if(!host)return res.status(403).json({error:"Solo el host puede comprar el acceso."});
   const plan=ACCESS_PLANS.find(p=>p.id===req.body?.plan);
-  if(!plan)return res.status(400).json({error:"Pase inválido."});
+  if(!plan)return res.status(400).json({error:"Acceso Premium inválido."});
+  const requestedRoom=clean(req.body?.roomCode,12);
+  const room=requestedRoom?getRoom(requestedRoom):null;
+  const host=room?requireHost(room,req):null;
+  if(requestedRoom&&!room)return res.status(404).json({error:"Sala inexistente."});
+  if(room&&!host)return res.status(403).json({error:"Solo el host puede asociar Premium a esta sala."});
   try{
     const cfg=await getPaymentSettings({secrets:true});
     if(!cfg.accessToken)return res.status(503).json({error:"Mercado Pago todavía no está conectado."});
-    const amount=Number(cfg.prices?.[plan.id]);
-    if(!Number.isFinite(amount)||amount<=0)return res.status(409).json({error:"Este pase todavía no tiene un precio configurado."});
+    const amount=Number(cfg.prices?.[plan.id]||DEFAULT_PREMIUM_PRICE);
+    if(!Number.isFinite(amount)||amount<=0)return res.status(409).json({error:"Premium todavía no tiene un precio configurado."});
     const localId=id(),amountText=amount.toFixed(2);
     await db.query(
       `INSERT INTO payment_orders(id,provider,room_code,host_player_id,plan,amount,currency,status)
        VALUES($1,'mercadopago',$2,$3,$4,$5,'ARS','created')`,
-      [localId,room.code,host.id,plan.id,amount]
+      [localId,room?.code||null,host?.id||null,plan.id,amount]
     );
-    const retBase=PUBLIC_BASE_URL+"/?payment_order="+encodeURIComponent(localId)+"&code="+encodeURIComponent(room.code)+"&payment_return=";
+    const roomQuery=room?"&code="+encodeURIComponent(room.code):"";
+    const retBase=PUBLIC_BASE_URL+"/?payment_order="+encodeURIComponent(localId)+roomQuery+"&payment_return=";
     const providerOrder=await mpFetch("/v1/orders",{
       method:"POST",accessToken:cfg.accessToken,idempotencyKey:localId,
       body:{
@@ -1031,13 +1039,62 @@ app.post("/api/payments/checkout",async(req,res)=>{
   }
 });
 
+app.post("/api/payments/donate",async(req,res)=>{
+  if(!db)return res.status(503).json({error:"La base de datos no está disponible."});
+  const amount=Math.round(Number(req.body?.amount));
+  if(!Number.isFinite(amount)||amount<500||amount>500000)return res.status(400).json({error:"Elegí un monto entre $500 y $500.000."});
+  try{
+    const cfg=await getPaymentSettings({secrets:true});
+    if(!cfg.accessToken)return res.status(503).json({error:"Mercado Pago todavía no está conectado."});
+    const localId=id(),amountText=amount.toFixed(2);
+    await db.query(
+      `INSERT INTO payment_orders(id,provider,room_code,host_player_id,plan,amount,currency,status)
+       VALUES($1,'mercadopago',NULL,NULL,'donation',$2,'ARS','created')`,
+      [localId,amount]
+    );
+    const retBase=PUBLIC_BASE_URL+"/?payment_order="+encodeURIComponent(localId)+"&payment_return=";
+    const providerOrder=await mpFetch("/v1/orders",{
+      method:"POST",accessToken:cfg.accessToken,idempotencyKey:localId,
+      body:{
+        type:"online",
+        processing_mode:"manual",
+        capture_mode:"automatic_async",
+        total_amount:amountText,
+        external_reference:localId,
+        description:"La Juntada · Aporte voluntario",
+        items:[{
+          title:"Aporte voluntario a La Juntada",
+          quantity:1,
+          unit_measure:"unit",
+          unit_price:amountText,
+          total_amount:amountText
+        }],
+        config:{online:{
+          success_url:retBase+"success",
+          pending_url:retBase+"pending",
+          failure_url:retBase+"failure",
+          auto_return:"all"
+        }}
+      }
+    });
+    await db.query(
+      "UPDATE payment_orders SET provider_order_id=$2,provider_status=$3,updated_at=now() WHERE id=$1",
+      [localId,providerOrder.id,String(providerOrder.status_detail||providerOrder.status||"created")]
+    );
+    res.json({orderId:localId,checkoutUrl:providerOrder.checkout_url,providerOrderId:providerOrder.id,amount,currency:"ARS"});
+  }catch(e){
+    console.error("donation checkout",e.message);
+    res.status(e.status>=400&&e.status<500?400:502).json({error:"No pude abrir Mercado Pago: "+e.message});
+  }
+});
+
 app.get("/api/payments/orders/:orderId",async(req,res)=>{
   if(!db)return res.status(503).json({error:"La base de datos no está disponible."});
   try{
     let order=await findLocalPaymentOrder(req.params.orderId);
     if(!order)return res.status(404).json({error:"Pago inexistente."});
-    const room=getRoom(order.room_code);
-    if(!room||!requireHost(room,req))return res.status(403).json({error:"Solo el host puede consultar este pago."});
+    const room=order.room_code?getRoom(order.room_code):null;
+    if(order.room_code&&(!room||!requireHost(room,req)))return res.status(403).json({error:"Solo el host puede consultar este pago."});
     if(order.status!=="approved"&&order.provider_order_id){
       try{order=await fetchAndReconcilePayment(order)}catch(e){console.error("payment reconcile",e.message)}
     }
@@ -1050,8 +1107,8 @@ app.post("/api/payments/orders/:orderId/reconcile",async(req,res)=>{
   try{
     let order=await findLocalPaymentOrder(req.params.orderId);
     if(!order)return res.status(404).json({error:"Pago inexistente."});
-    const room=getRoom(order.room_code);
-    if(!room||!requireHost(room,req))return res.status(403).json({error:"Solo el host puede verificar este pago."});
+    const room=order.room_code?getRoom(order.room_code):null;
+    if(order.room_code&&(!room||!requireHost(room,req)))return res.status(403).json({error:"Solo el host puede verificar este pago."});
     order=await fetchAndReconcilePayment(order);
     res.json({payment:paymentOrderPublic(order)});
   }catch(e){res.status(502).json({error:"No pude verificar el pago con Mercado Pago."})}
@@ -1106,7 +1163,7 @@ app.post("/api/access/admin",(req,res)=>{
 
 app.get("/api/custom-packs",(req,res)=>{
   const access=packOwnerAccess(req);
-  if(!access)return res.status(402).json({error:"Necesitás un pase activo para usar packs personalizados."});
+  if(!access)return res.status(402).json({error:"Necesitás Premium para usar packs personalizados."});
   const prefix=access.id+":";
   const packs=[...customPackStore.entries()].filter(([k])=>k.startsWith(prefix)).map(([,v])=>v).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
   res.json({packs});
@@ -1114,7 +1171,7 @@ app.get("/api/custom-packs",(req,res)=>{
 
 app.post("/api/custom-packs/sync",(req,res)=>{
   const access=packOwnerAccess(req);
-  if(!access)return res.status(402).json({error:"Necesitás un pase activo para sincronizar packs."});
+  if(!access)return res.status(402).json({error:"Necesitás Premium para sincronizar packs."});
   const incoming=Array.isArray(req.body?.packs)?req.body.packs.slice(0,30):[];
   for(const raw of incoming){
     const pack=sanitizeCustomPack(raw);if(!pack)continue;
@@ -1149,17 +1206,16 @@ app.post("/api/rooms",(req,res)=>{
   const name=clean(req.body.name,80),hostName=clean(req.body.hostName,40);
   const themeId=THEMES[req.body.themeId]?req.body.themeId:"clasico";
   const customPack=sanitizeCustomPack(req.body.customPack);
-  if(customPack&&!hasPremiumAccess(req))return res.status(402).json({error:"La personalización es Premium. Necesitás un pase activo."});
+  if(customPack&&!hasPremiumAccess(req))return res.status(402).json({error:"La personalización es Premium. Desbloqueá Premium para usar partidas personalizadas."});
   const surpriseEnabled=req.body.surpriseMode===true;
   const honoreeName=surpriseEnabled?clean(req.body.honoreeName,40):"";
-  if(surpriseEnabled&&!hasPremiumAccess(req))return res.status(402).json({error:"Armala para alguien es Premium. Necesitás un pase activo."});
   if(surpriseEnabled&&!honoreeName)return res.status(400).json({error:"Decinos para quién es la sorpresa."});
   const roundLimit=[8,15,25].includes(Number(req.body.roundLimit))?Number(req.body.roundLimit):15;
   const disabledModes=Array.isArray(req.body.disabledModes)?req.body.disabledModes.filter(x=>MODES[x]).slice(0,12):[];
   const playWhen=req.body.playWhen==="later"?"later":"now",eventDate=playWhen==="later"?clean(req.body.eventDate,40):"";
   if(!name||!hostName)return res.status(400).json({error:"Faltan datos."});
   if(surpriseEnabled&&honoreeName.toLowerCase()===hostName.toLowerCase())return res.status(400).json({error:"La persona sorpresa no puede tener el mismo nombre que el host."});
-  if(THEMES[themeId].premiumOnly&&!hasPremiumAccess(req))return res.status(402).json({error:"Esta temática es Premium +18. Necesitás comprar una partida o tener un pase activo para crearla."});
+  if(THEMES[themeId].premiumOnly&&!hasPremiumAccess(req))return res.status(402).json({error:"Esta temática es Premium. Desbloqueá Premium para usarla."});
   if(THEMES[themeId].age18&&req.body.ageConfirmed!==true)return res.status(400).json({error:"La versión 18+ requiere confirmar mayoría de edad."});
   if(playWhen==="later"&&!eventDate)return res.status(400).json({error:"Elegí la fecha de la juntada."});
   let code=roomCode();while(rooms.has(code))code=roomCode();
@@ -1167,7 +1223,7 @@ app.post("/api/rooms",(req,res)=>{
   const inheritedAccess=accessCanCreatePremium(access);
   const room={
     code,name,themeId,playWhen,eventDate,state:playWhen==="later"?"collecting":"lobby",
-    hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:inheritedAccess,accessPlan:inheritedAccess?(access.role==="admin"?"admin":access.plan):null,
+    hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:true,accessPlan:inheritedAccess?(access.role==="admin"?"admin":access.plan):null,
     players:[{id:hostId,name:hostName,ready:false,score:0}],submissions:{},missions:{},rounds:[],
     customPack,
     surprise:surpriseEnabled?{
@@ -1269,7 +1325,7 @@ app.post("/api/rooms/:code/start-game",(req,res)=>{
   room.players.forEach(p=>p.score=0);
   room.rounds=buildRounds(room);assignMissions(room);
   if(!room.rounds.length)return res.status(409).json({error:"No pude generar rondas con estas respuestas."});
-  room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.unlocked=false;
+  room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.unlocked=true;
   room.startAt=Date.now()+4200;
   res.json({ok:true,rounds:room.rounds.length,startAt:room.startAt});
 });
