@@ -1361,6 +1361,18 @@ app.post("/api/rooms/:code/surprise-honoree",(req,res)=>{
   res.json({ok:true});
 });
 
+app.post("/api/rooms/:code/leave",(req,res)=>{
+  const room=getRoom(req.params.code);if(!room)return res.json({ok:true,closed:false});
+  const me=auth(room,req);if(!me)return res.status(401).json({error:"Sesión inválida."});
+  if(me.id===room.hostPlayerId){
+    rooms.delete(room.code);
+    if(db)db.query("DELETE FROM rooms WHERE code=$1",[room.code]).catch(e=>console.error("delete room",e.message));
+    return res.json({ok:true,closed:true});
+  }
+  removePlayerFromRoom(room,me.id);
+  res.json({ok:true,closed:false});
+});
+
 app.delete("/api/rooms/:code/players/:playerId",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
