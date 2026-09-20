@@ -89,7 +89,7 @@ async function hydrateDatabase(){
   }catch(e){console.error("hydrateDatabase",e.message)}
 }
 
-const IMPLEMENTED_MODES=["quien_fue","lee_al_grupo","mentiroso","silla_caliente","todos_contra_uno","duo","ordena_al_grupo"];
+const IMPLEMENTED_MODES=["quien_fue","lee_al_grupo","mentiroso","silla_caliente","todos_contra_uno","duo","ordena_al_grupo","duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"];
 const AUTO_ADVANCE_MS=4200;
 const MODE_ROUND_CAPS={quien_fue:6,lee_al_grupo:3,mentiroso:6,silla_caliente:4,todos_contra_uno:3,duo:2,ordena_al_grupo:2};
 const DEFAULT_PREMIUM_PRICE=5000;
@@ -435,6 +435,23 @@ function assignMissions(room){
   const shuffled=shuffle(bank);
   room.players.forEach((p,i)=>{room.missions[p.id]={text:shuffled[i%shuffled.length],status:"active",points:250}});
 }
+const DUO2_ROUNDS=[
+  {mode:"duo_coincidimos",prompt:"Coincidimos",statement:"¿Qué plan gana para una noche libre?",options:[{id:"a",label:"Salir sin plan"},{id:"b",label:"Casa, comida y algo para ver"}]},
+  {mode:"duo_coincidimos",prompt:"Coincidimos",statement:"¿Qué elegirían para escaparse un fin de semana?",options:[{id:"a",label:"Playa"},{id:"b",label:"Montaña"}]},
+  {mode:"duo_dilema",prompt:"¿Qué elegirías?",statement:"Si pudieras elegir una sola ventaja…",options:[{id:"a",label:"Viajar gratis para siempre"},{id:"b",label:"No volver a trabajar"}]},
+  {mode:"duo_dilema",prompt:"¿Qué elegirías?",statement:"¿Qué preferís perder durante un año?",options:[{id:"a",label:"Redes sociales"},{id:"b",label:"Series y películas"}]},
+  {mode:"duo_duelo",prompt:"Duelo",statement:"¿Cuál es el planeta más grande del Sistema Solar?",correct:"a",options:[{id:"a",label:"Júpiter"},{id:"b",label:"Saturno"},{id:"c",label:"Neptuno"}]},
+  {mode:"duo_duelo",prompt:"Duelo",statement:"¿Cuántos lados tiene un dodecágono?",correct:"b",options:[{id:"a",label:"10"},{id:"b",label:"12"},{id:"c",label:"14"}]},
+  {mode:"duo_duelo",prompt:"Duelo",statement:"¿En qué continente está Surinam?",correct:"c",options:[{id:"a",label:"África"},{id:"b",label:"Asia"},{id:"c",label:"América del Sur"}]},
+  {mode:"duo_5seg",prompt:"5 segundos",statement:"Decí 3 países que empiecen con la letra C antes de contar hasta cinco.",options:[{id:"yes",label:"Lo hice"},{id:"no",label:"No llegué"}]},
+  {mode:"duo_5seg",prompt:"5 segundos",statement:"Decí 3 cosas que llevarías a una isla desierta.",options:[{id:"yes",label:"Lo hice"},{id:"no",label:"No llegué"}]},
+  {mode:"duo_5seg",prompt:"5 segundos",statement:"Nombrá 3 futbolistas argentinos.",options:[{id:"yes",label:"Lo hice"},{id:"no",label:"No llegué"}]},
+  {mode:"duo_coincidimos",prompt:"Coincidimos",statement:"Si hoy les regalaran entradas, ¿qué eligen?",options:[{id:"a",label:"Recital"},{id:"b",label:"Partido / evento deportivo"}]},
+  {mode:"duo_dilema",prompt:"¿Qué elegirías?",statement:"¿Qué preferís saber?",options:[{id:"a",label:"Qué piensa la gente de vos"},{id:"b",label:"Qué va a pasar dentro de 10 años"}]}
+];
+function buildDuo2Rounds(room){
+  return shuffle(DUO2_ROUNDS).slice(0,Math.min(room.roundLimit||15,DUO2_ROUNDS.length)).map((r,i)=>({id:id(),votes:{},scored:false,position:i,...r}));
+}
 function buildRounds(room){
   const disabled=new Set(room.disabledModes||[]);
   const allowed=(THEME_MODES[room.themeId]||THEME_MODES.clasico).filter(x=>IMPLEMENTED_MODES.includes(x)&&!disabled.has(x));
@@ -579,7 +596,7 @@ function buildRounds(room){
   return mixed.slice(0,limit).map((r,i)=>({...r,position:i}));
 }
 function eligibleVoters(room,round){
-  if(round.mode==="duo"||round.mode==="ordena_al_grupo")return [...room.players];
+  if(["duo","ordena_al_grupo","duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"].includes(round.mode))return [...room.players];
   return room.players.filter(p=>p.id!==round.skipVoteFor);
 }
 function duoActual(room,round){
@@ -603,6 +620,22 @@ function rankDistance(order,consensus){
 }
 function scoreRound(room,round){
   if(round.scored)return;
+
+  if(round.mode==="duo_coincidimos"||round.mode==="duo_dilema"){
+    const vals=room.players.map(p=>round.votes[p.id]);
+    if(vals.some(v=>v===undefined))return;
+    round.correct=vals[0]===vals[1]?"same":"different";
+    if(round.correct==="same")room.players.forEach(p=>p.score+=100);
+    round.scored=true;return;
+  }
+  if(round.mode==="duo_duelo"){
+    for(const p of room.players)if(round.votes[p.id]===round.correct)p.score+=100;
+    round.scored=true;return;
+  }
+  if(round.mode==="duo_5seg"){
+    for(const p of room.players)if(round.votes[p.id]==="yes")p.score+=75;
+    round.correct="honor";round.scored=true;return;
+  }
 
   if(round.mode==="duo"){
     const actual=duoActual(room,round);if(!actual)return;
@@ -741,6 +774,9 @@ function endArchive(room){
   });
 }
 function answerForRound(room,r){
+  if(r.mode==="duo_coincidimos"||r.mode==="duo_dilema")return r.correct==="same"?"¡Coincidieron!":"Eligieron distinto";
+  if(r.mode==="duo_duelo")return (r.options||[]).find(o=>o.id===r.correct)?.label||"";
+  if(r.mode==="duo_5seg")return "Ronda de honor";
   if(r.mode==="quien_fue"||r.mode==="lee_al_grupo")return playerName(room,r.correct);
   if(r.mode==="mentiroso")return r.correct==="true"?"Era verdad":"Era mentira";
   if(r.mode==="duo")return r.correct==="same"?"Coincidieron":"No coincidieron";
@@ -749,6 +785,9 @@ function answerForRound(room,r){
 }
 function roundPointsForViewer(room,r,viewer){
   if(!viewer||!r.scored)return 0;
+  if(r.mode==="duo_coincidimos"||r.mode==="duo_dilema")return r.correct==="same"?100:0;
+  if(r.mode==="duo_duelo")return r.votes[viewer.id]===r.correct?100:0;
+  if(r.mode==="duo_5seg")return r.votes[viewer.id]==="yes"?75:0;
   if(r.mode==="duo"){
     const pair=new Set(r.duoIds||[]),vote=r.votes[viewer.id];
     if(pair.has(viewer.id))return r.correct==="same"?100:0;
@@ -1219,7 +1258,7 @@ app.post("/api/rooms",(req,res)=>{
   const surpriseEnabled=req.body.surpriseMode===true;
   const honoreeName=surpriseEnabled?clean(req.body.honoreeName,40):"";
   if(surpriseEnabled&&!honoreeName)return res.status(400).json({error:"Decinos para quién es la sorpresa."});
-  const roundLimit=[8,15,25].includes(Number(req.body.roundLimit))?Number(req.body.roundLimit):15;
+  const roundLimit=[8,12,15,25].includes(Number(req.body.roundLimit))?Number(req.body.roundLimit):15;
   const disabledModes=Array.isArray(req.body.disabledModes)?req.body.disabledModes.filter(x=>MODES[x]).slice(0,12):[];
   const playWhen=req.body.playWhen==="later"?"later":"now",eventDate=playWhen==="later"?clean(req.body.eventDate,40):"";
   if(!name||!hostName)return res.status(400).json({error:"Faltan datos."});
@@ -1278,7 +1317,12 @@ app.get("/api/rooms/:code",(req,res)=>{
 app.post("/api/rooms/:code/start-collecting",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
-  if(room.players.length<3)return res.status(409).json({error:"Necesitan ser al menos 3."});
+  if(room.players.length<2)return res.status(409).json({error:"Necesitan ser al menos 2."});
+  if(room.players.length===2){
+    room.players.forEach(p=>{p.ready=true;p.score=0});
+    room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;
+    return res.json({ok:true,duo:true,rounds:room.rounds.length,startAt:room.startAt});
+  }
   room.state="collecting";res.json({ok:true});
 });
 
@@ -1328,7 +1372,8 @@ app.delete("/api/rooms/:code/players/:playerId",(req,res)=>{
 app.post("/api/rooms/:code/start-game",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
-  if(room.players.length<3)return res.status(409).json({error:"Necesitan ser al menos 3."});
+  if(room.players.length<2)return res.status(409).json({error:"Necesitan ser al menos 2."});
+  if(room.players.length===2){room.players.forEach(p=>{p.ready=true;p.score=0});room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;return res.json({ok:true,duo:true,rounds:room.rounds.length,startAt:room.startAt});}
   if(room.surprise?.enabled&&!room.surprise.honoreePlayerId)return res.status(409).json({error:"Todavía falta que entre "+room.surprise.honoreeName+" con su link sorpresa."});
   if(room.players.some(p=>!p.ready))return res.status(409).json({error:"Todavía falta gente por responder."});
   room.players.forEach(p=>p.score=0);
