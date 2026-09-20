@@ -1,5 +1,5 @@
 const app=document.querySelector("#app"),toastEl=document.querySelector("#toast");
-const state={code:null,token:null,room:null,poll:null,lastKey:"",config:null};
+const state={code:null,token:null,room:null,poll:null,lastKey:"",config:null,access:null};
 const themeAsset={clasico:"clasico",profundo:"profundo",parejas:"parejas",cumple:"cumple",caos:"caos",rompehielo:"rompehielo",picante18:"picante18",canceladisimos:"canceladisimos"};
 const modeAsset={quien_fue:"who",lee_al_grupo:"group",mentiroso:"liar",silla_caliente:"hot",duo:"duo",ordena_al_grupo:"rank",todos_contra_uno:"versus",mision_secreta:"mission"};
 function assetImg(type,key,cls="ui-icon"){const file=(type==="theme"?themeAsset[key]:modeAsset[key]);if(!file)return "";const ext=type==="theme"?"webp":"svg";return '<img class="'+cls+'" src="/assets/'+type+'-'+file+'.'+ext+'?v=20260920-icons8" alt="">'}
@@ -234,19 +234,119 @@ function toast(m){toastEl.textContent=m;toastEl.classList.add("show");setTimeout
 function brand(){return '<div class="brand brand-real"><img src="/assets/logo-la-juntada.svg" alt="La Juntada"></div>'}
 function saveSession(c,t){localStorage.setItem("ln_code",c);localStorage.setItem("ln_token",t);state.code=c;state.token=t}
 function clearSession(){localStorage.removeItem("ln_code");localStorage.removeItem("ln_token");state.code=null;state.token=null;state.room=null}
-async function api(url,o={}){const h={"Content-Type":"application/json",...(o.headers||{})};if(state.token)h.Authorization="Bearer "+state.token;const r=await fetch(url,{...o,headers:h});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Algo salió mal");return d}
+function accessToken(){return localStorage.getItem("lj_access_token")||""}
+function saveAccessToken(t){if(t)localStorage.setItem("lj_access_token",t);else localStorage.removeItem("lj_access_token")}
+function hasReusableAccess(){return !!state.access?.active&&(state.access.role==="admin"||["day","monthly","annual","lifetime"].includes(state.access.plan))}
+function accessLabel(){
+  if(!state.access?.active)return "Mi acceso";
+  if(state.access.role==="admin")return "ADMIN · Todo desbloqueado";
+  return state.access.title||"Pase activo";
+}
+async function api(url,o={}){
+  const h={"Content-Type":"application/json",...(o.headers||{})};
+  if(state.token)h.Authorization="Bearer "+state.token;
+  const pass=accessToken();if(pass)h["X-La-Juntada-Access"]=pass;
+  const r=await fetch(url,{...o,headers:h});const d=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(d.error||"Algo salió mal");return d
+}
+async function loadAccess(){
+  const pass=accessToken();
+  if(!pass){state.access={active:false};return state.access}
+  try{state.access=await api("/api/access/me");if(!state.access.active&&state.access.expired)saveAccessToken("")}
+  catch{state.access={active:false}}
+  return state.access;
+}
+function formatAccessDate(ms){
+  if(!ms)return "Sin vencimiento";
+  try{return new Intl.DateTimeFormat("es-AR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(ms))}catch{return new Date(ms).toLocaleString()}
+}
+function closeAccessPanel(){document.querySelector(".access-overlay")?.remove();document.body.classList.remove("rules-open")}
+async function openAccessPanel(){
+  await loadAccess();
+  document.querySelector(".access-overlay")?.remove();
+  const active=state.access?.active;
+  const role=state.access?.role;
+  const exp=state.access?.expiresAt;
+  document.body.insertAdjacentHTML("beforeend",`
+    <div class="access-overlay" role="dialog" aria-modal="true" aria-label="Mi acceso">
+      <button class="access-backdrop" data-close-access aria-label="Cerrar"></button>
+      <article class="access-sheet">
+        <button class="rules-close" data-close-access aria-label="Cerrar">×</button>
+        <div class="access-sheet-head">
+          <div class="access-key-icon">${role==="admin"?"✦":"◇"}</div>
+          <div><div class="kicker">MI ACCESO</div><h2>${active?esc(accessLabel()):"Jugá sin registrarte."}</h2>
+          <p>${active
+            ?(role==="admin"?"Acceso de propietario: todas las temáticas y partidas quedan desbloqueadas.":"Este pase queda guardado en este dispositivo. También podés recuperarlo en otro con tu clave.")
+            :"No necesitás una cuenta para entrar como invitado ni para probar una ronda. Solo necesitás un pase cuando quieras desbloquear contenido pago."}</p></div>
+        </div>
+
+        ${active?`
+          <div class="access-current ${role==="admin"?"is-admin":""}">
+            <div><small>ESTADO</small><strong>Activo</strong></div>
+            <div><small>TIPO</small><strong>${esc(state.access.title||state.access.plan)}</strong></div>
+            <div><small>VENCE</small><strong>${esc(formatAccessDate(exp))}</strong></div>
+          </div>
+          <div class="access-actions">
+            <button class="secondary" id="copyRecovery">Copiar clave de recuperación</button>
+            <button class="ghost" id="forgetAccess">Quitar de este dispositivo</button>
+          </div>
+          <div class="access-security-note">La clave de recuperación funciona como una llave. Guardala en un lugar privado si querés usar el pase en otro dispositivo.</div>
+        `:`
+          <div class="access-restore">
+            <div class="kicker">YA TENÉS UN PASE</div>
+            <label>Clave de recuperación</label>
+            <textarea id="restoreAccessKey" placeholder="Pegá acá tu clave LJ1…"></textarea>
+            <button class="secondary wide" id="restoreAccessBtn">Recuperar mi acceso</button>
+          </div>
+          <details class="owner-access">
+            <summary>Acceso de propietario</summary>
+            <div>
+              <label>Código privado de administrador</label>
+              <input id="adminAccessCode" type="password" autocomplete="off" placeholder="Código ADMIN">
+              <button class="ghost wide" id="activateAdmin">Activar acceso ADMIN</button>
+            </div>
+          </details>
+        `}
+      </article>
+    </div>`);
+  document.body.classList.add("rules-open");
+  document.querySelectorAll("[data-close-access]").forEach(b=>b.onclick=closeAccessPanel);
+  document.querySelector("#copyRecovery")?.addEventListener("click",async()=>{
+    try{await navigator.clipboard.writeText(accessToken());toast("Clave de recuperación copiada")}catch{prompt("Copiá tu clave:",accessToken())}
+  });
+  document.querySelector("#forgetAccess")?.addEventListener("click",async()=>{
+    if(!confirm("Quitar este pase de este dispositivo? Si no guardaste la clave, después no vas a poder recuperarlo."))return;
+    saveAccessToken("");state.access={active:false};closeAccessPanel();if(!state.code)await home();toast("Acceso quitado de este dispositivo");
+  });
+  document.querySelector("#restoreAccessBtn")?.addEventListener("click",async()=>{
+    try{
+      const key=document.querySelector("#restoreAccessKey").value.trim();
+      const d=await api("/api/access/restore",{method:"POST",body:JSON.stringify({accessToken:key}),headers:{"X-La-Juntada-Access":""}});
+      saveAccessToken(d.accessToken);state.access=d.access;closeAccessPanel();if(state.code&&state.room?.state==="paywall"&&state.room?.isHost){try{await api("/api/rooms/"+state.code+"/use-access",{method:"POST"});refresh()}catch{}}else if(!state.code)await home();
+      toast("Pase recuperado");
+    }catch(e){toast(e.message)}
+  });
+  document.querySelector("#activateAdmin")?.addEventListener("click",async()=>{
+    try{
+      const code=document.querySelector("#adminAccessCode").value;
+      const d=await api("/api/access/admin",{method:"POST",body:JSON.stringify({code}),headers:{"X-La-Juntada-Access":""}});
+      saveAccessToken(d.accessToken);state.access=d.access;closeAccessPanel();if(!state.code)await home();toast("ADMIN activado · todo desbloqueado")
+    }catch(e){toast(e.message)}
+  });
+}
 function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null;if(window.__homeDemoTimer){clearInterval(window.__homeDemoTimer);window.__homeDemoTimer=null}if(window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}}
 function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
 async function loadConfig(){if(!state.config)state.config=await api("/api/config")}
 function themeCards(){
   return state.config.themes.map(t=>{
     const stats=state.config.themeStats?.[t.id]||{},modes=state.config.themeModes?.[t.id]||[];
+    const locked=t.premiumOnly&&!hasReusableAccess();
     return `
-    <label class="theme-card ${t.premiumOnly?"premium-locked":""}" data-theme="${t.id}">
-      <input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""} ${t.premiumOnly?"disabled":""}>
+    <label class="theme-card ${locked?"premium-locked":t.premiumOnly?"premium-owned":""}" data-theme="${t.id}">
+      <input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""} ${locked?"disabled":""}>
       <div class="theme-art-wrap">
         ${assetImg("theme",t.id,"theme-asset")}
-        ${t.premiumOnly?'<span class="theme-lock">PREMIUM +18</span>':""}
+        ${t.premiumOnly?'<span class="theme-lock">'+(locked?"PREMIUM +18":"INCLUIDO +18")+'</span>':""}
       </div>
       <div class="theme-copy">
         <strong>${esc(t.title)}</strong>
@@ -332,9 +432,9 @@ function openThemeInfo(id){
           <div class="theme-mode-list">${modes}</div>
         </section>
         <div class="theme-content-note"><span>✦</span><p>Estas consignas son la base. La partida además usa las historias, mentiras, votos y respuestas que carga tu propio grupo, por eso dos juntadas nunca terminan siendo iguales.</p></div>
-        ${t.premiumOnly?'<div class="premium-theme-note"><strong>Premium +18</strong><span>Esta temática no entra en la ronda gratuita y requiere acceso Premium.</span></div>':""}
+        ${t.premiumOnly?'<div class="premium-theme-note"><strong>Premium +18</strong><span>'+(hasReusableAccess()?"Incluida en tu pase activo.":"Esta temática requiere un pase activo.")+'</span></div>':""}
         <footer class="theme-sheet-footer">
-          ${t.premiumOnly?'<button class="primary" type="button" data-theme-premium>Ver opciones Premium</button>':`<button class="primary" type="button" data-choose-theme="${id}">Elegir ${esc(t.title)}</button>`}
+          ${t.premiumOnly&&!hasReusableAccess()?'<button class="primary" type="button" data-theme-premium>Ver opciones Premium</button>':`<button class="primary" type="button" data-choose-theme="${id}">Elegir ${esc(t.title)}</button>`}
         </footer>
       </article>
     </div>`);
@@ -377,7 +477,7 @@ function homeAtmosphere(){
 }
 
 async function home(){
-  stopPoll();clearSession();await loadConfig();
+  stopPoll();clearSession();await loadConfig();await loadAccess();
   app.innerHTML=homeAtmosphere()+`
   <header class="site-header">
     ${brand()}
@@ -387,7 +487,10 @@ async function home(){
       <a href="#como">Cómo funciona</a>
       <a href="#premium">Premium</a>
     </nav>
-    <button class="header-cta" data-scroll="#crear">Empezar</button>
+    <div class="header-actions">
+      <button class="header-access ${state.access?.active?"active":""}" id="openAccess">${esc(accessLabel())}</button>
+      <button class="header-cta" data-scroll="#crear">Empezar</button>
+    </div>
   </header>
 
   <main class="home-page">
@@ -591,6 +694,7 @@ async function home(){
   document.querySelectorAll('input[name="when"],input[name="theme"]').forEach(x=>x.onchange=refreshExtras);
   refreshExtras();
   document.querySelector("#createBtn").onclick=createRoom;
+  document.querySelector("#openAccess")?.addEventListener("click",openAccessPanel);
   document.querySelector("#joinBtn").onclick=joinRoom;
   document.querySelectorAll("[data-scroll]").forEach(b=>b.onclick=()=>document.querySelector(b.dataset.scroll)?.scrollIntoView({behavior:"smooth",block:"start"}));
   document.querySelectorAll("[data-rule]").forEach(b=>b.onclick=()=>openRules(b.dataset.rule));
@@ -1007,4 +1111,4 @@ function finished(r){
   }catch(e){toast(e.message);refresh()}};
 }
 function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r)}
-(async()=>{await loadConfig();const q=new URLSearchParams(location.search).get("code"),c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");if(c&&t){state.code=c;state.token=t;startPoll()}else{await home();if(q)document.querySelector("#joinCode").value=q}})();
+(async()=>{await loadConfig();await loadAccess();const q=new URLSearchParams(location.search).get("code"),c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");if(c&&t){state.code=c;state.token=t;startPoll()}else{await home();if(q)document.querySelector("#joinCode").value=q}})();
