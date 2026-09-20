@@ -543,6 +543,64 @@ function bindGameSettings(){
   document.querySelectorAll('input[name="roundLimit"],[data-mode-toggle]').forEach(x=>x.addEventListener("change",refresh));
   refresh();
 }
+
+function surpriseSetupHtml(){
+  const premium=hasReusableAccess();
+  return `<div class="surprise-setup">
+    <div class="surprise-choice-head">
+      <div><small>TIPO DE JUNTADA</small><strong>¿Es una juntada normal o gira alrededor de alguien?</strong></div>
+      ${premium?'<span class="premium-mini">PREMIUM</span>':'<button type="button" class="theme-details" id="surpriseAccess">Requiere pase →</button>'}
+    </div>
+    <div class="surprise-choice-grid">
+      <label class="surprise-choice">
+        <input type="radio" name="partyKind" value="normal" checked>
+        <span class="surprise-choice-icon">●</span>
+        <div><strong>Juntada normal</strong><small>Todos preparan y juegan de la misma manera.</small></div>
+      </label>
+      <label class="surprise-choice ${premium?"":"is-locked"}">
+        <input type="radio" name="partyKind" value="surprise" ${premium?"":"disabled"}>
+        <span class="surprise-choice-icon">✦</span>
+        <div><strong>Armala para alguien</strong><small>El grupo prepara una sorpresa y esa persona entra al final.</small></div>
+      </label>
+    </div>
+    <div class="honoree-wrap" id="honoreeWrap">
+      <label class="field-label">¿Para quién es?</label>
+      <input id="honoreeName" maxlength="40" placeholder="Sofi">
+      <div class="honoree-explainer">
+        <span>1</span><p>Al grupo le mandás el link normal.</p>
+        <span>2</span><p>Preparan recuerdos y respuestas sin que ${'<b id="honoreePreview">esa persona</b>'} vea nada.</p>
+        <span>3</span><p>Cuando llegue el momento, le mandás un link sorpresa exclusivo.</p>
+      </div>
+    </div>
+  </div>`;
+}
+function bindSurpriseSetup(){
+  document.querySelector("#surpriseAccess")?.addEventListener("click",openAccessPanel);
+  const wrap=document.querySelector("#honoreeWrap"),name=document.querySelector("#honoreeName"),preview=document.querySelector("#honoreePreview");
+  const refresh=()=>{
+    const on=document.querySelector('input[name="partyKind"]:checked')?.value==="surprise";
+    wrap?.classList.toggle("show",on);
+  };
+  document.querySelectorAll('input[name="partyKind"]').forEach(x=>x.addEventListener("change",refresh));
+  name?.addEventListener("input",()=>{if(preview)preview.textContent=name.value.trim()||"esa persona"});
+  refresh();
+}
+function honoreeInviteUrl(r){
+  if(!r?.surprise?.inviteKey)return "";
+  return location.origin+"?code="+encodeURIComponent(r.code)+"&honoree="+encodeURIComponent(r.surprise.inviteKey);
+}
+function prepareHonoreeInviteUI(code,key){
+  if(!code||!key)return;
+  const card=document.querySelector(".improved-join");if(!card)return;
+  const title=card.querySelector("h3"),p=card.querySelector("p"),name=document.querySelector("#joinName");
+  if(title)title.textContent="Te prepararon algo.";
+  if(p)p.textContent="Entrá desde este enlace. No vas a ver nada de lo que el grupo preparó antes de jugar.";
+  if(name){name.value="";name.closest("label")?.classList.add("hidden");name.style.display="none";}
+  const labels=[...card.querySelectorAll(".field-label")];if(labels[1])labels[1].style.display="none";
+  const codeInput=document.querySelector("#joinCode");if(codeInput){codeInput.value=code;codeInput.readOnly=true}
+  const btn=document.querySelector("#joinBtn");if(btn)btn.innerHTML='Entrar a mi sorpresa <span>✦</span>';
+  card.classList.add("honoree-invite-card");
+}
 function formatAccessDate(ms){
   if(!ms)return "Sin vencimiento";
   try{return new Intl.DateTimeFormat("es-AR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(ms))}catch{return new Date(ms).toLocaleString()}
@@ -893,6 +951,8 @@ async function home(){
           </div>
           <div id="dateWrap" class="date-wrap"><label>Fecha de la juntada</label><input id="eventDate" type="date"></div>
 
+          <div class="surprise-setup-holder">${surpriseSetupHtml()}</div>
+
           <div class="create-divider"></div>
           <div class="create-step-head"><span>02</span><div><strong>Revisá qué van a jugar</strong><small>La temática que elegiste arriba define los modos y las consignas.</small></div></div>
           <div class="selected-theme-summary" id="selectedThemeSummary">${selectedThemeSummary()}</div>
@@ -976,7 +1036,7 @@ async function home(){
           <strong class="plan-main">Todas las partidas que quieras</strong>
           <ul>
             <li>Creás nuevas juntadas sin pagar cada juego</li>
-            <li>Acceso a temáticas Premium y packs personalizados</li>
+            <li>Temáticas Premium, packs personalizados y “Armala para alguien”</li>
             <li>Las temáticas +18 quedan dentro de Premium</li>
             <li>Un solo pase del organizador alcanza para todo el grupo</li>
           </ul>
@@ -1014,6 +1074,7 @@ async function home(){
   paintCustomPackShelf();
   bindCustomPackControls();
   bindGameSettings();
+  bindSurpriseSetup();
   initHomeMotion();
   if(location.hash.startsWith("#reglas="))openRules(location.hash.split("=")[1]);
 }
@@ -1055,16 +1116,29 @@ async function createRoom(){try{
     eventDate:document.querySelector("#eventDate").value,
     ageConfirmed:document.querySelector("#ageConfirmed").checked,
     customPack:pack||null,
+    surpriseMode:document.querySelector('input[name="partyKind"]:checked')?.value==="surprise",
+    honoreeName:document.querySelector("#honoreeName")?.value||"",
     roundLimit:Number(document.querySelector('input[name="roundLimit"]:checked')?.value||15),
     disabledModes:[...document.querySelectorAll("[data-mode-toggle]")].filter(x=>!x.checked).map(x=>x.dataset.modeToggle)
   })});
   saveSession(d.code,d.sessionToken);startPoll()
 }catch(e){toast(e.message)}}
-async function joinRoom(){try{const c=document.querySelector("#joinCode").value.trim().toUpperCase();state.code=c;const d=await api("/api/rooms/"+c+"/join",{method:"POST",body:JSON.stringify({name:document.querySelector("#joinName").value})});saveSession(d.code,d.sessionToken);if(d.lateJoin)toast("Entraste a una partida en curso");startPoll()}catch(e){toast(e.message)}}
+async function joinRoom(){try{
+  const c=document.querySelector("#joinCode").value.trim().toUpperCase();
+  const params=new URLSearchParams(location.search),honoreeKey=params.get("honoree")||"";
+  state.code=c;
+  const body=honoreeKey?{honoreeKey}:{name:document.querySelector("#joinName").value};
+  const d=await api("/api/rooms/"+c+"/join",{method:"POST",body:JSON.stringify(body)});
+  saveSession(d.code,d.sessionToken);
+  history.replaceState(null,"",location.pathname);
+  if(d.isHonoree)toast("Entraste a tu Juntada sorpresa");
+  else if(d.lateJoin)toast("Entraste a una partida en curso");
+  startPoll()
+}catch(e){toast(e.message)}}
 async function refresh(){if(!state.code)return;try{const r=await api("/api/rooms/"+state.code);state.room=r;const k=JSON.stringify(r);if(k!==state.lastKey){state.lastKey=k;renderRoom()}}catch(e){if(/inexistente|Sesión/.test(e.message)){home();toast(e.message)}}}
 
-function chips(r){return r.players.map(p=>`<span class="chip ${p.ready?"ready":""}"><span class="dot"></span>${esc(p.name)}${p.id===r.me?.id?" · vos":""}${p.isHost?" · host":""}</span>`).join("")}
-function roomHeader(r){return `<div class="room-header"><div class="room-title-wrap">${assetImg("theme",r.themeId,"room-theme-art")}<div><div class="kicker">${esc(r.theme.title)}</div><div class="room-title">${esc(r.name)}</div></div></div><div class="room-meta"><span class="pill">${r.players.length} jugadores</span><span class="room-code-mini">${r.code}</span></div></div>`}
+function chips(r){return r.players.map(p=>`<span class="chip ${p.ready?"ready":""} ${p.isHonoree?"honoree-chip":""}"><span class="dot"></span>${esc(p.name)}${p.id===r.me?.id?" · vos":""}${p.isHost?" · host":""}${p.isHonoree?" · sorpresa":""}</span>`).join("")}
+function roomHeader(r){return `<div class="room-header"><div class="room-title-wrap">${assetImg("theme",r.themeId,"room-theme-art")}<div><div class="kicker">${esc(r.theme.title)}</div><div class="room-title">${esc(r.name)}</div></div></div><div class="room-meta">${r.surprise?.enabled?'<span class="pill surprise-pill">✦ Para '+esc(r.surprise.honoreeName)+'</span>':""}<span class="pill">${r.players.length} jugadores</span><span class="room-code-mini">${r.code}</span></div></div>`}
 function hostRoster(r){
   if(!r.isHost)return "";
   const ready=r.players.filter(p=>p.ready).length,pending=r.players.length-ready;
@@ -1078,9 +1152,10 @@ function hostRoster(r){
       <span><b>${ready}</b> listos</span>
       <span><b>${pending}</b> pendientes</span>
     </div>
-    <div class="roster-list">${r.players.map(p=>`<div class="roster-row ${p.ready?"is-ready":"is-pending"}"><div class="roster-avatar">${esc(p.name).slice(0,1).toUpperCase()}</div><div class="roster-name"><strong>${esc(p.name)}</strong><small>${p.isHost?"Host":p.ready?"Listo para jugar":"Todavía no terminó"}</small></div><span class="roster-state">${p.isHost?"HOST":p.ready?"✓":"…"}</span>${p.isHost?"":`<button class="danger-btn remove-player" data-id="${p.id}" data-name="${esc(p.name)}">Quitar</button>`}</div>`).join("")}</div>
+    <div class="roster-list">${r.players.map(p=>`<div class="roster-row ${p.ready?"is-ready":"is-pending"}"><div class="roster-avatar">${esc(p.name).slice(0,1).toUpperCase()}</div><div class="roster-name"><strong>${esc(p.name)}</strong><small>${p.isHost?"Host":p.isHonoree?"Persona sorpresa":p.ready?"Listo para jugar":"Todavía no terminó"}</small></div><span class="roster-state">${p.isHost?"HOST":p.isHonoree?"✦":p.ready?"✓":"…"}</span>${p.isHost?"":`<button class="danger-btn remove-player" data-id="${p.id}" data-name="${esc(p.name)}">Quitar</button>`}</div>`).join("")}</div>
     <div class="host-control-foot">
-      <p>Podés sumar gente con el mismo link en cualquier momento. Si quitás a alguien, sus respuestas y votos salen del juego.</p>
+      <p>${r.surprise?.enabled?"Compartí el link normal con el grupo. El link especial de "+esc(r.surprise.honoreeName)+" se manda recién cuando quieras que entre.":"Podés sumar gente con el mismo link en cualquier momento. Si quitás a alguien, sus respuestas y votos salen del juego."}</p>
+      ${r.surprise?.enabled&&r.surprise?.inviteKey?`<button class="secondary wide surprise-invite-btn" id="copyHonoreeInvite">✦ Copiar link exclusivo para ${esc(r.surprise.honoreeName)}</button>`:""}
       <button class="ghost wide" id="toggleHostQr">Mostrar QR para sumar gente</button>
       <div class="qr-panel" id="hostQr"><img class="qr-image" src="/api/qr/${r.code}"><div class="qr-code-label">${r.code}</div></div>
     </div>
@@ -1089,6 +1164,7 @@ function hostRoster(r){
 function bindHostRoster(r){
   if(!r.isHost)return;
   const copy=document.querySelector("#copyInvite");if(copy)copy.onclick=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link de invitación copiado")}catch{prompt("Copiá:",u)}};
+  const special=document.querySelector("#copyHonoreeInvite");if(special)special.onclick=async()=>{const u=honoreeInviteUrl(r);try{await navigator.clipboard.writeText(u);toast("Link sorpresa copiado")}catch{prompt("Copiá el link sorpresa:",u)}};
   const qr=document.querySelector("#toggleHostQr");if(qr)qr.onclick=()=>{document.querySelector("#hostQr").classList.toggle("open")};
   document.querySelectorAll(".remove-player").forEach(b=>b.onclick=async()=>{if(!confirm("Quitar a "+b.dataset.name+"? También se eliminan sus respuestas y votos."))return;try{await api("/api/rooms/"+r.code+"/players/"+b.dataset.id,{method:"DELETE"});toast("Jugador eliminado");refresh()}catch(e){toast(e.message)}})
 }
@@ -1098,19 +1174,25 @@ function lobby(r){
   const stats=state.config?.themeStats?.[r.themeId]||{};
   const need=Math.max(0,3-r.players.length);
   const modeChips=(r.availableModes||[]).slice(0,6).map(m=>`<span>${assetImg("mode",m.id,"lobby-mode-icon")}<b>${esc(m.title)}</b></span>`).join("");
+  const surprise=r.surprise?.enabled;
   app.innerHTML=`<div class="room-page lobby-page">
     ${brand()}
     <div class="room-atmosphere">${assetImg("theme",r.themeId,"room-watermark")}</div>
     <section class="card lobby-main game-lobby">
       ${roomHeader(r)}
+      ${surprise?`<div class="surprise-room-banner">
+        <div class="surprise-room-star">✦</div>
+        <div><small>JUNTADA SORPRESA</small><strong>Todo gira alrededor de ${esc(r.surprise.honoreeName)}.</strong><p>El grupo prepara primero. No compartan este link normal con ${esc(r.surprise.honoreeName)}.</p></div>
+        <span class="${r.surprise.honoreeJoined?"joined":"waiting"}">${r.surprise.honoreeJoined?"Ya entró":"Todavía no entra"}</span>
+      </div>`:""}
       <div class="lobby-stage">
         <div class="lobby-invite-panel">
-          <div class="kicker">SALA ABIERTA</div>
-          <h2>Que entren todos.</h2>
-          <p>Usen el código, el link o el QR. Cuando haya al menos 3 personas, pueden empezar a cargar respuestas.</p>
+          <div class="kicker">${surprise?"INVITÁ AL GRUPO":"SALA ABIERTA"}</div>
+          <h2>${surprise?"Primero, todos menos "+esc(r.surprise.honoreeName)+".":"Que entren todos."}</h2>
+          <p>${surprise?"Este código es para quienes van a preparar la sorpresa. Después el host manda un link distinto a "+esc(r.surprise.honoreeName)+".":"Usen el código, el link o el QR. Cuando haya al menos 3 personas, pueden empezar a cargar respuestas."}</p>
           <div class="code-orbit"><i></i><i></i><i></i><div class="code">${r.code}</div></div>
           <div class="actions invite-actions">
-            <button class="secondary" id="copyLink">Copiar link</button>
+            <button class="secondary" id="copyLink">Copiar link del grupo</button>
             <button class="ghost" id="copyCode">Copiar código</button>
             <button class="ghost" id="showQr">Mostrar QR</button>
           </div>
@@ -1120,9 +1202,9 @@ function lobby(r){
           <div class="lobby-theme-card">
             ${assetImg("theme",r.themeId,"lobby-theme-img")}
             <div class="lobby-theme-overlay">
-              <small>ESTÁN ARMANDO</small>
+              <small>${surprise?"SORPRESA PARA "+esc(r.surprise.honoreeName).toUpperCase():"ESTÁN ARMANDO"}</small>
               <strong>${esc(r.theme.title)}</strong>
-              <span>${stats.maxRounds||"—"} rondas máx. · ${stats.modeCount||r.availableModes?.length||"—"} modos</span>
+              <span>${r.roundLimit||15} rondas elegidas · ${stats.modeCount||r.availableModes?.length||"—"} modos disponibles</span>
             </div>
           </div>
           <div class="lobby-mode-strip">${modeChips}</div>
@@ -1131,23 +1213,23 @@ function lobby(r){
 
       <div class="lobby-people-head">
         <div><span class="live-dot"></span><strong>${r.players.length} ${r.players.length===1?"persona":"personas"} en la sala</strong></div>
-        <small>${need?("Faltan "+need+" para poder empezar"):"Ya pueden empezar la preparación"}</small>
+        <small>${need?("Faltan "+need+" para poder empezar la preparación"):"Ya pueden empezar la preparación"}</small>
       </div>
       <div class="lobby-player-grid">${r.players.map((p,i)=>`
-        <div class="lobby-player-card" style="--delay:${i*45}ms">
-          <div class="player-bubble">${esc(p.name).slice(0,1).toUpperCase()}</div>
+        <div class="lobby-player-card ${p.isHonoree?"is-honoree":""}" style="--delay:${i*45}ms">
+          <div class="player-bubble">${p.isHonoree?"✦":esc(p.name).slice(0,1).toUpperCase()}</div>
           <strong>${esc(p.name)}</strong>
-          <small>${p.isHost?"HOST":"CONECTADO"}</small>
+          <small>${p.isHost?"HOST":p.isHonoree?"PERSONA SORPRESA":"CONECTADO"}</small>
           <i></i>
         </div>`).join("")}
-        <button class="lobby-add-card" id="inviteCard"><span>+</span><strong>Sumar a alguien</strong><small>Copiar invitación</small></button>
+        <button class="lobby-add-card" id="inviteCard"><span>+</span><strong>Sumar a alguien</strong><small>Copiar invitación del grupo</small></button>
       </div>
 
       <div class="lobby-bottom">
         <div class="lobby-next">
           <span>PRÓXIMO PASO</span>
-          <strong>Cada persona responde 10 cosas en secreto.</strong>
-          <small>Eso construye las rondas personalizadas de esta juntada.</small>
+          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":"Cada persona responde 10 cosas en secreto."}</strong>
+          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":"Eso construye las rondas personalizadas de esta juntada."}</small>
         </div>
         ${r.isHost?`<button class="primary lobby-start" id="startCollect" ${r.players.length<3?"disabled":""}>Empezar preparación <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia cuando estén todos.</div>'}
       </div>
@@ -1155,7 +1237,7 @@ function lobby(r){
     ${hostRoster(r)}
   </div>`;
   if(r.isHost)document.querySelector("#startCollect").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/start-collecting",{method:"POST"});refresh()}catch(e){toast(e.message)}};
-  const copyInvite=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link copiado")}catch{prompt("Copiá:",u)}};
+  const copyInvite=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link del grupo copiado")}catch{prompt("Copiá:",u)}};
   document.querySelector("#copyLink").onclick=copyInvite;
   document.querySelector("#inviteCard").onclick=copyInvite;
   document.querySelector("#copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(r.code);toast("Código copiado")}catch{}};
@@ -1191,52 +1273,95 @@ function collecting(r){
   const readyCount=r.players.filter(p=>p.ready).length;
   const pct=Math.round((readyCount/Math.max(1,r.players.length))*100);
   const themeStats=state.config?.themeStats?.[r.themeId]||{};
+  const surprise=r.surprise?.enabled;
+
+  if(r.me?.isHonoree&&!r.me?.ready){
+    const qs=r.surprise?.quickQuestions||[];
+    app.innerHTML=`<div class="room-page honoree-prep-page">
+      ${brand()}
+      <section class="card honoree-prep-card">
+        ${roomHeader(r)}
+        <div class="honoree-surprise-hero">
+          <div class="honoree-star">✦</div>
+          <div class="kicker">ESTO ES PARA VOS</div>
+          <h2>${esc(r.me.name)}, el grupo ya preparó algo.</h2>
+          <p>No vas a ver nada de lo que escribieron. Respondé solo estas tres cosas en privado y entrás a jugar.</p>
+        </div>
+        <div class="honoree-questions">
+          ${qs.map((q,i)=>`<section class="honoree-question">
+            <small>0${i+1}</small><strong>${esc(q.question)}</strong>
+            <div class="honoree-options">${q.options.map(o=>`<label><input type="radio" name="hq${i}" value="${esc(o.id)}"><span>${esc(o.label)}</span></label>`).join("")}</div>
+          </section>`).join("")}
+        </div>
+        <div class="honoree-privacy"><span>◉</span><p>Tus respuestas quedan selladas igual que las del resto. Algunas rondas van a intentar adivinar qué elegiste.</p></div>
+        <button class="primary wide big-action" id="submitHonoree" disabled>Guardar y entrar a la sorpresa <span>✦</span></button>
+      </section>
+    </div>`;
+    const update=()=>{
+      const complete=qs.every((_,i)=>document.querySelector('input[name="hq'+i+'"]:checked'));
+      document.querySelector("#submitHonoree").disabled=!complete;
+    };
+    qs.forEach((_,i)=>document.querySelectorAll('input[name="hq'+i+'"]').forEach(x=>x.addEventListener("change",update)));
+    update();
+    document.querySelector("#submitHonoree").onclick=async()=>{try{
+      const answers=qs.map((_,i)=>document.querySelector('input[name="hq'+i+'"]:checked')?.value||"");
+      await api("/api/rooms/"+r.code+"/surprise-honoree",{method:"POST",body:JSON.stringify({answers})});
+      toast("Listo. Ahora sí: a jugar.");refresh()
+    }catch(e){toast(e.message)}};
+    return;
+  }
+
   if(r.me?.ready){
+    const waitingHonoree=surprise&&!r.surprise.honoreeJoined;
     app.innerHTML=`<div class="room-page prep-ready-page">
       ${brand()}
       <section class="card prep-ready-card">
         ${roomHeader(r)}
         <div class="sealed-visual"><img src="/assets/premium-lock.svg" alt=""><span></span></div>
-        <div class="kicker">RESPUESTAS SELLADAS</div>
-        <h2>Tus respuestas ya están adentro.</h2>
-        <p class="muted">${r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":"Esperando al resto. Nadie puede leer las respuestas antes del final."}</p>
+        <div class="kicker">${r.me?.isHonoree?"TU PERFIL QUEDÓ SELLADO":"RESPUESTAS SELLADAS"}</div>
+        <h2>${r.me?.isHonoree?"No viste nada. Perfecto.":"Tus respuestas ya están adentro."}</h2>
+        <p class="muted">${r.me?.isHonoree?"El grupo preparó el resto antes de que entraras. Ahora solo falta que todos estén listos.":r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":"Esperando al resto. Nadie puede leer las respuestas antes del final."}</p>
+        ${waitingHonoree&&r.isHost?`<div class="waiting-honoree-card"><span>✦</span><div><strong>Falta ${esc(r.surprise.honoreeName)}</strong><small>Mandale su link exclusivo cuando llegue el momento.</small></div><button class="secondary" id="readyCopyHonoree">Copiar link sorpresa</button></div>`:""}
         <div class="ready-build-stats">
-          <span><b>${themeStats.maxRounds||"—"}</b> rondas máximas</span>
+          <span><b>${r.roundLimit||15}</b> rondas elegidas</span>
           <span><b>${r.availableModes?.length||"—"}</b> modos posibles</span>
           <span><b>100%</b> respuestas privadas</span>
         </div>
         <div class="ready-meter"><div><i style="width:${pct}%"></i></div><span>${readyCount}/${r.players.length} listos</span></div>
         <div class="players animated-players">${chips(r)}</div>
-        ${r.isHost?'<button class="primary wide lobby-start" id="startGame" '+(r.players.length<3||r.players.some(p=>!p.ready)?"disabled":"")+'>Armar y empezar la partida <span>→</span></button>':""}
-        ${r.isHost&&r.players.some(p=>!p.ready)?'<div class="host-wait-note">La partida se habilita cuando todos hayan sellado sus respuestas. Podés sumar o quitar jugadores mientras preparan.</div>':""}
+        ${r.isHost?'<button class="primary wide lobby-start" id="startGame" '+(r.players.length<3||r.players.some(p=>!p.ready)||waitingHonoree?"disabled":"")+'>Armar y empezar la partida <span>→</span></button>':""}
+        ${r.isHost&&(r.players.some(p=>!p.ready)||waitingHonoree)?'<div class="host-wait-note">'+(waitingHonoree?"La sorpresa se habilita cuando entre "+esc(r.surprise.honoreeName)+" y responda sus 3 preguntas rápidas.":"La partida se habilita cuando todos hayan sellado sus respuestas.")+'</div>':""}
       </section>
       ${hostRoster(r)}
     </div>`;
+    document.querySelector("#readyCopyHonoree")?.addEventListener("click",async()=>{const u=honoreeInviteUrl(r);try{await navigator.clipboard.writeText(u);toast("Link sorpresa copiado")}catch{prompt("Copiá:",u)}});
     if(r.isHost&&document.querySelector("#startGame"))document.querySelector("#startGame").onclick=async()=>{try{const btn=document.querySelector("#startGame");btn.disabled=true;btn.innerHTML='Armando la partida… <span>✦</span>';await api("/api/rooms/"+r.code+"/start-game",{method:"POST"});refresh()}catch(e){toast(e.message);refresh()}};
     bindHostRoster(r);return;
   }
 
-  const opts=r.players.map(p=>`<option value="${p.id}">${esc(p.name)}${p.id===r.me?.id?" (vos)":""}</option>`).join("");
+  const prepTotal=surprise?11:10;
+  const opts=r.players.filter(p=>!p.isHonoree).map(p=>`<option value="${p.id}">${esc(p.name)}${p.id===r.me?.id?" (vos)":""}</option>`).join("");
   app.innerHTML=`<div class="room-page prep-page">
     ${brand()}
     <section class="card prep-card">
       ${roomHeader(r)}
+      ${surprise?`<div class="surprise-prep-callout"><span>✦</span><div><small>SORPRESA PARA ${esc(r.surprise.honoreeName).toUpperCase()}</small><strong>Todo esto queda oculto para ${esc(r.surprise.honoreeName)}.</strong><p>Al final te pedimos un recuerdo extra que puede aparecer durante la partida.</p></div></div>`:""}
       <div class="prep-hero">
         <div>
           <div class="kicker">PREPARACIÓN SECRETA</div>
-          <h2>Diez respuestas. Después juega el sistema.</h2>
+          <h2>${prepTotal} respuestas. Después juega el sistema.</h2>
           <p>Te lleva unos minutos. Tus respuestas alimentan distintos modos y nadie —ni siquiera el host— puede abrirlas antes del final.</p>
           <div class="prep-quick-facts">
-            <span><b>10</b> respuestas</span>
+            <span><b>${prepTotal}</b> respuestas</span>
             <span><b>3–5 min</b> aprox.</span>
-            <span><b>Hasta ${themeStats.maxRounds||"—"}</b> rondas por partida</span>
+            <span><b>${r.roundLimit||15}</b> rondas elegidas</span>
           </div>
         </div>
         <div class="secret-orb"><span>SECRETO</span><i></i></div>
       </div>
 
       <div class="prep-progress-card">
-        <div class="prep-progress-copy"><strong id="prepProgressLabel">0 de 10 listas</strong><span id="prepProgressHint">Completá todo para sellar tus respuestas.</span></div>
+        <div class="prep-progress-copy"><strong id="prepProgressLabel">0 de ${prepTotal} listas</strong><span id="prepProgressHint">Completá todo para sellar tus respuestas.</span></div>
         <div class="prep-progress-track"><i id="prepProgressBar"></i></div>
         <b id="prepProgressPct">0%</b>
       </div>
@@ -1262,8 +1387,14 @@ function collecting(r){
         <div class="prep-block compact"><div class="prep-block-head"><span>05</span><div><strong>Todos contra uno</strong><small>1 respuesta para que intenten leerte</small></div><em>1</em></div><label>${esc(r.prepPrompts.oneVsAllPrompt)}</label><input id="oneVsAll" data-prep-field placeholder="Tu respuesta corta"></div>
       </div>
 
+      ${surprise?`<div class="prep-block surprise-memory-block">
+        <div class="prep-block-head"><span>✦</span><div><strong>Un recuerdo con ${esc(r.surprise.honoreeName)}</strong><small>Solo el grupo ve esta consigna. Puede aparecer como ronda sorpresa.</small></div><em>1</em></div>
+        <label>Contá algo concreto que hayan vivido con ${esc(r.surprise.honoreeName)}.</label>
+        <textarea id="surpriseMemory" data-prep-field placeholder="Ej: En Bariloche perdió el micro porque se quedó comprando chocolate…"></textarea>
+      </div>`:""}
+
       <div class="privacy-promise"><span>◉</span><div><strong>Queda sellado.</strong><p>Durante la partida nadie ve tus respuestas completas ni el ranking acumulado. Todo se revela recién al terminar.</p></div></div>
-      <button class="primary wide big-action seal-button" id="submitPrep" disabled>Completar las 10 respuestas <span>✦</span></button>
+      <button class="primary wide big-action seal-button" id="submitPrep" disabled>Completar las ${prepTotal} respuestas <span>✦</span></button>
       <div class="draft-note" id="draftNote">Tus respuestas se guardan en este dispositivo mientras completás el formulario.</div>
     </section>
     ${hostRoster(r)}
@@ -1287,11 +1418,18 @@ function collecting(r){
   updatePrepProgress();
 
   document.querySelector("#submitPrep").onclick=async()=>{try{
-    const body={stories:[document.querySelector("#story0").value,document.querySelector("#story1").value,document.querySelector("#story2").value],truth:document.querySelector("#truth").value,lie:document.querySelector("#lie").value,majority:[document.querySelector("#maj0").value,document.querySelector("#maj1").value,document.querySelector("#maj2").value],hotSeatAnswer:document.querySelector("#hotSeat").value,oneVsAllAnswer:document.querySelector("#oneVsAll").value};
+    const body={
+      stories:[document.querySelector("#story0").value,document.querySelector("#story1").value,document.querySelector("#story2").value],
+      truth:document.querySelector("#truth").value,lie:document.querySelector("#lie").value,
+      majority:[document.querySelector("#maj0").value,document.querySelector("#maj1").value,document.querySelector("#maj2").value],
+      hotSeatAnswer:document.querySelector("#hotSeat").value,oneVsAllAnswer:document.querySelector("#oneVsAll").value,
+      surpriseMemory:document.querySelector("#surpriseMemory")?.value||""
+    };
     await api("/api/rooms/"+r.code+"/submissions",{method:"POST",body:JSON.stringify(body)});try{localStorage.removeItem(draftKey)}catch{}refresh()
   }catch(e){toast(e.message)}};
   bindHostRoster(r);
 }
+
 function playing(r){
   const x=r.round;if(!x)return;
   const locked=x.locked||r.roundPhase==="locked";
@@ -1483,4 +1621,13 @@ function finished(r){
   }catch(e){toast(e.message);refresh()}};
 }
 function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r)}
-(async()=>{await loadConfig();await loadAccess();const q=new URLSearchParams(location.search).get("code"),c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");if(c&&t){state.code=c;state.token=t;startPoll()}else{await home();if(q)document.querySelector("#joinCode").value=q}})();
+(async()=>{
+  await loadConfig();await loadAccess();
+  const params=new URLSearchParams(location.search),q=params.get("code"),honoree=params.get("honoree"),c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");
+  if(c&&t){state.code=c;state.token=t;startPoll()}
+  else{
+    await home();
+    if(q)document.querySelector("#joinCode").value=q;
+    if(q&&honoree)prepareHonoreeInviteUI(q,honoree);
+  }
+})();
