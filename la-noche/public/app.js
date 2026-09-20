@@ -627,7 +627,7 @@ async function home(){
         <div>
           <div class="kicker">QUÉ PAGÁS Y QUÉ RECIBÍS</div>
           <h2>Probala gratis. Pagá solo si quieren seguir.</h2>
-          <p>La primera ronda personalizada es gratis. Después elegís desbloquear esa juntada o tener acceso ilimitado. No hace falta que cada invitado compre nada.</p>
+          <p>La primera ronda personalizada es gratis. Después elegís desbloquear esa juntada, usar un pase de 24 horas o tener acceso por más tiempo. Los invitados nunca necesitan cuenta.</p>
         </div>
         <div class="premium-big-number"><strong>25</strong><span>rondas máximas<br>por partida completa</span></div>
       </div>
@@ -661,13 +661,13 @@ async function home(){
 
         <article class="value-plan unlimited-plan">
           <div class="plan-label">ILIMITADO</div>
-          <h3>Mensual · Anual · De por vida</h3>
+          <h3>24 horas · Mensual · Anual · De por vida</h3>
           <strong class="plan-main">Todas las partidas que quieras</strong>
           <ul>
             <li>Creás nuevas juntadas sin pagar cada juego</li>
             <li>Acceso a packs y temáticas Premium</li>
             <li>Las temáticas +18 quedan dentro de Premium</li>
-            <li>Una sola cuenta puede organizar para todo el grupo</li>
+            <li>Un solo pase del organizador alcanza para todo el grupo</li>
           </ul>
           <button class="primary" data-scroll="#crear">Empezar</button>
         </article>
