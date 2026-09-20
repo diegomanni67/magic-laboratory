@@ -7,124 +7,181 @@ function assetImg(type,key,cls="ui-icon"){const file=(type==="theme"?themeAsset[
 const GAME_RULES={
   quien_fue:{
     title:"¿Quién fue?",eyebrow:"DETECTIVE SOCIAL",
-    summary:"Una historia real del grupo aparece sin autor. El desafío es descubrir quién la contó.",
-    objective:"Reconocer a tus amigos por sus anécdotas, costumbres y nivel de caos.",
-    players:"Vota todo el grupo menos la persona dueña de la historia.",
+    summary:"Aparece una historia real escrita por alguien del grupo. Todos tienen que descubrir quién la contó.",
+    objective:"Reconocer a tus amigos por sus anécdotas y leer qué historia pertenece a quién.",
+    players:"3+ jugadores. El autor de la historia no vota en esa ronda.",
+    rounds:"Hasta 6 rondas por partida",duration:"≈ 1–2 min por ronda",winner:"Suma más quien más adivina y quien mejor consigue despistar.",
+    scoring:["Acierto: +100 puntos.","Autor: +25 por cada persona que se equivoca, hasta +100."],
     steps:[
-      "Antes de jugar, cada persona deja historias o anécdotas en secreto.",
-      "La Juntada muestra una de esas historias sin revelar quién la escribió.",
-      "Cada jugador elige desde su celular quién cree que fue.",
-      "Cuando todos votaron, la respuesta queda resuelta automáticamente y los puntos se guardan en secreto."
+      "Antes de jugar, cada persona deja 3 historias reales en secreto.",
+      "La Juntada elige una historia y la muestra sin nombre.",
+      "Todos, menos su autor, votan desde el celular quién creen que la escribió.",
+      "El sistema resuelve la ronda, suma los puntos y los mantiene ocultos hasta el final."
     ],
-    scoring:["+100 si adivinás quién fue.","La persona de la historia también puede sumar por lograr despistar al grupo."],
-    tip:"No hace falta escribir una novela: cuanto más concreta y reconocible sea la historia, mejor funciona."
+    example:{
+      prompt:"CONSIGNA PREVIA · Contá una excusa ridícula que hayas usado.",
+      answer:"“Dije que estaba enfermo y en realidad me fui a un asado.”",
+      action:"En pantalla aparecen Sofi, Nico, Mica y Diego. Todos votan quién creen que contó esa historia.",
+      result:"Era Nico. Quien votó Nico suma +100. Nico suma +25 por cada persona que cayó."
+    },
+    tip:"Las mejores historias son concretas: algo que realmente podría delatarte, pero no de inmediato."
   },
   lee_al_grupo:{
     title:"Leé al grupo",eyebrow:"MAYORÍA SECRETA",
-    summary:"No tenés que acertar qué piensa una persona. Tenés que anticipar qué va a decidir la mayoría del grupo.",
+    summary:"Acá no importa qué elegirías vos: tenés que anticipar qué eligió la mayoría del grupo.",
     objective:"Entender la cabeza colectiva de la juntada.",
-    players:"Todos pueden votar y todos intentan predecir el resultado colectivo.",
+    players:"3+ jugadores. Todos participan.",
+    rounds:"3 rondas por partida",duration:"≈ 1 min por ronda",winner:"Gana terreno quien mejor anticipa el consenso del grupo.",
+    scoring:["Acierto sobre la mayoría: +100 puntos."],
     steps:[
-      "Durante la preparación, todos responden consignas del tipo “¿Quién sería más probable que…?” sin ver a los demás.",
-      "La Juntada calcula cuál fue la respuesta mayoritaria.",
-      "En la ronda aparece la consigna y cada jugador intenta anticipar qué eligió el grupo.",
-      "La mayoría real se usa como respuesta correcta."
+      "Durante la preparación todos responden 3 consignas de mayoría sin ver las respuestas ajenas.",
+      "La Juntada cuenta los votos y determina cuál fue la opción más elegida.",
+      "En vivo aparece esa misma consigna y cada jugador intenta predecir qué eligió la mayoría.",
+      "El sistema compara la predicción con el resultado real y suma automáticamente."
     ],
-    scoring:["+100 si anticipás correctamente la decisión de la mayoría."],
-    tip:"No respondas lo que vos elegirías: pensá qué elegiría el grupo entero."
+    example:{
+      prompt:"¿Quién sobreviviría mejor a un apocalipsis?",
+      answer:"En la preparación, la mayoría eligió a Sofi.",
+      action:"Durante la partida todos tienen que adivinar quién creen que ganó esa votación secreta.",
+      result:"Si elegís Sofi, sumás +100."
+    },
+    tip:"Pensá como grupo, no como individuo. Si hay empate en la votación previa, La Juntada lo resuelve automáticamente."
   },
   mentiroso:{
     title:"El Mentiroso",eyebrow:"VERDAD O BLUFF",
-    summary:"Aparece una afirmación sobre alguien del grupo y el resto decide si es verdad o una mentira bien vendida.",
-    objective:"Detectar quién está diciendo la verdad y quién preparó un bluff convincente.",
-    players:"La persona protagonista no vota su propia afirmación; el resto decide.",
+    summary:"Aparece una afirmación sobre alguien del grupo. Puede ser una verdad sorprendente o una mentira preparada por esa misma persona.",
+    objective:"Detectar el engaño y, cuando te toca mentir, conseguir que el resto te crea.",
+    players:"3+ jugadores. La persona protagonista no vota su propia afirmación.",
+    rounds:"Hasta 6 rondas por partida",duration:"≈ 1 min por ronda",winner:"Suman tanto los buenos detectores como quienes mienten mejor.",
+    scoring:["Detectar correctamente verdad o mentira: +100.","Si era mentira, el autor gana +30 por cada persona engañada, hasta +120."],
     steps:[
-      "Cada jugador prepara una verdad sorprendente y una mentira creíble.",
+      "Cada persona deja una verdad sorprendente y una mentira creíble.",
       "La Juntada muestra una afirmación y dice de quién habla.",
       "El resto vota “Es verdad” o “Es mentira”.",
-      "El sistema resuelve la ronda y guarda tanto los aciertos como el poder de engaño."
+      "El sistema resuelve y suma puntos por detectar o por engañar."
     ],
-    scoring:["+100 si detectás correctamente verdad o mentira.","Si era mentira, quien la inventó suma puntos por cada persona que logró engañar."],
-    tip:"La mejor mentira es la que podría ser perfectamente cierta."
+    example:{
+      prompt:"¿Verdad o mentira sobre Mica?",
+      answer:"“Una vez me subí a un avión equivocado.”",
+      action:"Todos votan ES VERDAD o ES MENTIRA.",
+      result:"Era mentira. Quien marcó mentira suma +100. Mica suma +30 por cada persona que creyó la historia."
+    },
+    tip:"La mentira ideal no es absurda: es esa historia que todos podrían imaginar perfectamente de vos."
   },
   silla_caliente:{
     title:"Silla Caliente",eyebrow:"¿CUÁNTO LO CONOCÉS?",
-    summary:"Una persona ya dejó una respuesta personal. El resto tiene que predecir qué eligió.",
-    objective:"Demostrar quién conoce de verdad a la persona que está en la silla caliente.",
-    players:"La persona protagonista queda afuera de la votación; todos los demás intentan adivinarla.",
+    summary:"Una persona ya respondió algo personal en secreto. Los demás tienen que encontrar cuál fue su respuesta real.",
+    objective:"Demostrar quién conoce de verdad a la persona protagonista.",
+    players:"3+ jugadores. La persona en la silla no vota.",
+    rounds:"Hasta 4 rondas por partida",duration:"≈ 1–2 min por ronda",winner:"Suma más quien mejor conoce las respuestas de los demás.",
+    scoring:["Respuesta correcta: +100 puntos."],
     steps:[
-      "En la preparación cada jugador responde una consigna personal.",
-      "La ronda elige a una persona y muestra esa misma pregunta al resto.",
-      "Aparecen varias respuestas posibles mezcladas.",
-      "Todos eligen cuál creen que fue la respuesta real de la persona protagonista."
+      "Durante la preparación cada jugador contesta una pregunta personal.",
+      "La Juntada elige a una persona para la Silla Caliente.",
+      "Su respuesta real se mezcla con respuestas de otros jugadores.",
+      "El resto vota cuál cree que fue la respuesta del protagonista."
     ],
-    scoring:["+100 por acertar la respuesta real."],
-    tip:"Acá no gana la lógica: gana conocer los gustos, manías y decisiones del otro."
+    example:{
+      prompt:"¿Qué pesa más para vos: tener razón o mantener la paz?",
+      answer:"La respuesta real de Diego fue: “Mantener la paz”.",
+      action:"La Juntada mezcla esa respuesta con otras y todos intentan encontrar la de Diego.",
+      result:"Quien elige “Mantener la paz” suma +100."
+    },
+    tip:"No alcanza con conocer gustos: muchas veces gana quien entiende cómo decide la otra persona."
   },
   todos_contra_uno:{
     title:"Todos contra uno",eyebrow:"DESCIFRÁ AL PROTAGONISTA",
-    summary:"Una persona tiene una respuesta escondida y todo el grupo intenta descubrirla.",
-    objective:"Que el grupo descifre al protagonista… o que el protagonista consiga que nadie lo haga.",
-    players:"Una persona es el objetivo. El resto juega contra ella.",
+    summary:"Una persona queda sola contra el resto. Su respuesta está escondida y todo el grupo intenta descubrirla.",
+    objective:"Que el grupo descifre al protagonista… o que el protagonista consiga que todos fallen.",
+    players:"3+ jugadores. Un protagonista queda fuera de la votación.",
+    rounds:"Hasta 3 rondas por partida",duration:"≈ 1–2 min por ronda",winner:"Puntúan los que descifran al protagonista y también el protagonista si logra despistar.",
+    scoring:["Jugador que acierta: +100.","Protagonista: +30 por cada persona que falla, hasta +120."],
     steps:[
       "La Juntada elige a un protagonista y toma una de sus respuestas secretas.",
-      "El grupo recibe la pregunta y opciones posibles.",
-      "Todos intentan encontrar la respuesta que realmente dio esa persona.",
-      "Si muchos fallan, el protagonista también sale beneficiado."
+      "La respuesta real se mezcla con respuestas de otras personas.",
+      "Todo el grupo intenta descubrir cuál pertenece al protagonista.",
+      "Cada error también puede darle puntos a quien está jugando solo."
     ],
-    scoring:["+100 para cada jugador que acierta.","El protagonista suma puntos por cada persona que logra despistar."],
-    tip:"Ideal para descubrir quién realmente sabe cómo piensa el otro."
+    example:{
+      prompt:"Todos contra Sofi · ¿Qué harías primero si ganaras la lotería?",
+      answer:"La respuesta real de Sofi fue: “Me iría de viaje sin avisar a nadie”.",
+      action:"El grupo ve varias respuestas y vota cuál creen que es la suya.",
+      result:"Cada acierto vale +100. Sofi gana +30 por cada jugador que elija otra opción."
+    },
+    tip:"Es parecido a una emboscada social: el protagonista quiere ser difícil de leer."
   },
   duo:{
     title:"Dúo imposible",eyebrow:"¿PIENSAN IGUAL?",
-    summary:"Dos personas responden la misma elección por separado mientras el resto apuesta si van a coincidir.",
+    summary:"La Juntada arma una pareja. Ambos responden la misma elección sin ver al otro y el resto apuesta si van a coincidir.",
     objective:"Descubrir qué dúos están realmente sincronizados.",
-    players:"Dos personas forman el dúo; todos los demás predicen si coinciden o no.",
+    players:"4+ jugadores. Dos forman el dúo y el resto predice.",
+    rounds:"Hasta 2 rondas por partida",duration:"≈ 1–2 min por ronda",winner:"El dúo suma si coincide; el resto suma por anticipar si habrá coincidencia.",
+    scoring:["Si el dúo responde lo mismo: +100 para cada integrante.","Quien predice correctamente “coinciden/no coinciden”: +75."],
     steps:[
-      "La Juntada arma una pareja de jugadores.",
-      "Cada integrante recibe la misma pregunta con dos opciones y responde sin ver al otro.",
-      "El resto vota si cree que van a elegir lo mismo o respuestas distintas.",
-      "Al cerrar la ronda se compara el dúo y se resuelven todas las predicciones."
+      "La Juntada elige dos personas al azar.",
+      "Ambas reciben la misma pregunta de dos opciones y responden en secreto.",
+      "El resto predice si van a elegir lo mismo o distinto.",
+      "Se comparan las dos respuestas y se puntúan tanto el dúo como las predicciones."
     ],
-    scoring:["Si el dúo coincide, ambos integrantes suman +100.","Quienes predijeron correctamente si coincidían o no suman +75."],
-    tip:"Puede ser una pareja, dos mejores amigos o dos personas que aparentemente no tienen nada que ver."
+    example:{
+      prompt:"¿Qué elegirían: viaje improvisado o viaje totalmente planeado?",
+      answer:"Sofi elige IMPROVISADO. Nico elige IMPROVISADO.",
+      action:"Antes de verlo, los demás habían votado si coincidían o no.",
+      result:"Sofi y Nico suman +100 cada uno. Quienes predijeron COINCIDEN suman +75."
+    },
+    tip:"Funciona mejor cuando el dúo parece obvio… o cuando nadie entiende por qué esas dos personas terminaron juntas."
   },
   ordena_al_grupo:{
     title:"Ordená al grupo",eyebrow:"RANKING COLECTIVO",
-    summary:"Todos ordenan a varias personas según una consigna. Después La Juntada arma el ranking colectivo real.",
-    objective:"Acercarte lo máximo posible a cómo el grupo ordena a sus propios integrantes.",
-    players:"Todos arman su ranking desde el celular.",
+    summary:"Todos ordenan a cuatro personas según una consigna. Después se compara tu ranking con el ranking colectivo.",
+    objective:"Acercarte lo máximo posible al orden que construye el grupo entero.",
+    players:"4+ jugadores. Todos arman su ranking.",
+    rounds:"Hasta 2 rondas por partida",duration:"≈ 2 min por ronda",winner:"Puntúa más quien queda más cerca del consenso.",
+    scoring:["Entre 0 y +150 según la distancia entre tu orden y el ranking colectivo."],
     steps:[
       "Aparece una consigna y cuatro personas del grupo.",
-      "Cada jugador toca los nombres para ordenarlos del #1 al #4.",
-      "La Juntada combina todos los rankings enviados.",
-      "Se genera un orden colectivo y se compara cuánto se acercó cada jugador."
+      "Cada jugador las ordena del #1 al #4 desde su celular.",
+      "La Juntada combina todos los rankings y obtiene el orden colectivo.",
+      "Tu puntaje depende de cuánto se parezca tu orden al consenso."
     ],
-    scoring:["Hasta +150 según qué tan cerca quede tu orden del ranking colectivo."],
-    tip:"No se trata de tu opinión solamente: intentá anticipar el consenso."
+    example:{
+      prompt:"Ordenalos de más a menos probable que pierdan un vuelo por llegar tarde.",
+      answer:"Consenso final: Nico → Mica → Diego → Sofi.",
+      action:"Vos habías puesto Nico → Diego → Mica → Sofi.",
+      result:"Como quedaste muy cerca del consenso, recibís gran parte de los +150 posibles."
+    },
+    tip:"No armes tu ranking ideal: intentá adivinar cómo los ordenaría el grupo entero."
   },
   mision_secreta:{
     title:"Misión secreta",eyebrow:"EL JUEGO SALE DE LA PANTALLA",
-    summary:"Recibís un objetivo oculto para cumplir durante la juntada sin que el resto descubra que forma parte del juego.",
-    objective:"Cumplir una misión real dentro de la reunión y mantenerla en secreto.",
-    players:"Cada persona recibe su propia misión.",
+    summary:"Cada jugador recibe un objetivo privado para cumplir durante la juntada sin que el resto se dé cuenta.",
+    objective:"Hacer que el juego siga ocurriendo mientras todos hablan, comen o hacen cualquier otra cosa.",
+    players:"Una misión por jugador en las temáticas que incluyen este modo.",
+    rounds:"1 misión por jugador",duration:"Puede durar toda la juntada",winner:"La misión vale un premio grande y se suma al puntaje general.",
+    scoring:["Misión completada: +250 puntos."],
     steps:[
-      "Al empezar la partida, tu celular te muestra una misión que solo vos podés ver.",
-      "La misión puede requerir provocar una frase, una situación, una foto o una acción durante la juntada.",
-      "Intentás cumplirla naturalmente sin revelar qué estás haciendo.",
-      "Cuando lo lográs, la marcás como cumplida desde tu celular. Se revela al final."
+      "Tu celular te muestra una misión que solo vos podés ver.",
+      "Intentás provocar esa situación naturalmente durante la juntada.",
+      "Cuando la cumplís, la marcás como completada.",
+      "La misión y su resultado se revelan recién al final junto con el resto de las respuestas."
     ],
-    scoring:["Misión cumplida: +250 puntos."],
-    tip:"Es el modo que hace que La Juntada siga ocurriendo incluso cuando nadie está mirando la pantalla."
+    example:{
+      prompt:"TU MISIÓN",
+      answer:"“Conseguí que alguien proponga pedir pizza sin pedir pizza vos primero.”",
+      action:"Seguís jugando y charlando normalmente mientras intentás llevar la conversación hacia ahí.",
+      result:"Si lo conseguís y la marcás como cumplida, sumás +250."
+    },
+    tip:"Es el modo más distinto: no vive solamente en la pantalla, se mete dentro de la juntada real."
   }
 };
 
 function openRules(id){
-  const rule=GAME_RULES[id],mode=state.config?.modes?.find(m=>m.id===id);
+  const rule=GAME_RULES[id];
   if(!rule)return;
   document.querySelector(".rules-overlay")?.remove();
   const steps=rule.steps.map((x,i)=>`<li><span>${String(i+1).padStart(2,"0")}</span><p>${esc(x)}</p></li>`).join("");
   const scoring=rule.scoring.map(x=>`<li>${esc(x)}</li>`).join("");
+  const ex=rule.example||{};
   document.body.insertAdjacentHTML("beforeend",`
     <div class="rules-overlay" role="dialog" aria-modal="true" aria-label="Reglamento de ${esc(rule.title)}">
       <button class="rules-backdrop" data-close-rules aria-label="Cerrar reglamento"></button>
@@ -134,12 +191,29 @@ function openRules(id){
           <div class="rules-icon">${assetImg("mode",id,"rules-mode-icon")}</div>
           <div><div class="kicker">${esc(rule.eyebrow)}</div><h2>${esc(rule.title)}</h2><p>${esc(rule.summary)}</p></div>
         </header>
+
+        <div class="rules-facts">
+          <div><small>RONDAS</small><strong>${esc(rule.rounds)}</strong></div>
+          <div><small>DURACIÓN</small><strong>${esc(rule.duration)}</strong></div>
+          <div><small>JUGADORES</small><strong>${esc(rule.players)}</strong></div>
+        </div>
+
         <div class="rules-meta">
           <div><small>OBJETIVO</small><strong>${esc(rule.objective)}</strong></div>
-          <div><small>QUIÉN JUEGA</small><strong>${esc(rule.players)}</strong></div>
+          <div><small>QUIÉN TERMINA ARRIBA</small><strong>${esc(rule.winner)}</strong></div>
         </div>
+
         <section class="rules-section"><div class="kicker">CÓMO SE JUEGA</div><ol class="rules-steps">${steps}</ol></section>
-        <section class="rules-section scoring"><div class="kicker">PUNTOS</div><ul>${scoring}</ul></section>
+
+        <section class="rules-example">
+          <div class="kicker">EJEMPLO REAL DE UNA RONDA</div>
+          <div class="example-prompt">${esc(ex.prompt||"")}</div>
+          <blockquote>${esc(ex.answer||"")}</blockquote>
+          <div class="example-flow"><span>QUÉ HACEN</span><p>${esc(ex.action||"")}</p></div>
+          <div class="example-result"><span>RESULTADO</span><p>${esc(ex.result||"")}</p></div>
+        </section>
+
+        <section class="rules-section scoring"><div class="kicker">SISTEMA DE PUNTOS</div><ul>${scoring}</ul><div class="auto-score-note">✦ La Juntada calcula y guarda estos puntos automáticamente. El ranking permanece oculto hasta el final.</div></section>
         <aside class="rules-tip"><span>✦</span><div><small>CLAVE</small><strong>${esc(rule.tip)}</strong></div></aside>
         <footer class="rules-footer"><button class="primary" data-close-rules>Entendido</button></footer>
       </article>
@@ -182,7 +256,18 @@ function themeCards(){
 function modeShowcase(){
   return state.config.modes
     .filter(m=>state.config.implementedModes.includes(m.id)||m.id==="mision_secreta")
-    .map(m=>`<button class="mode-mini rule-card" type="button" data-rule="${m.id}">${assetImg("mode",m.id,"mode-show-icon")}<div><strong>${esc(m.title)}</strong><small>${esc(m.description)}</small><em>Ver reglamento →</em></div></button>`).join("");
+    .map(m=>{
+      const r=GAME_RULES[m.id];
+      return `<button class="mode-mini rule-card" type="button" data-rule="${m.id}">
+        ${assetImg("mode",m.id,"mode-show-icon")}
+        <div class="mode-card-copy">
+          <strong>${esc(m.title)}</strong>
+          <small>${esc(r?.summary||m.description)}</small>
+          <div class="mode-card-meta"><span>${esc(r?.rounds||"")}</span><span>${esc(r?.duration||"")}</span></div>
+          <em>Ver ejemplo y reglamento →</em>
+        </div>
+      </button>`;
+    }).join("");
 }
 
 function homeAtmosphere(){
@@ -242,6 +327,15 @@ async function home(){
         <p>Adiviná, engañá, leé al grupo, cumplí misiones y acumulá puntos de formas diferentes.</p>
       </div>
       <div class="mode-showcase">${modeShowcase()}</div>
+      <div class="game-size-strip">
+        <div><strong>Hasta 25</strong><span>rondas personalizadas</span></div>
+        <i></i>
+        <div><strong>7 modos + misiones</strong><span>se mezclan según la temática</span></div>
+        <i></i>
+        <div><strong>1 ronda gratis</strong><span>probás antes de desbloquear</span></div>
+        <i></i>
+        <div><strong>Puntos automáticos</strong><span>nadie ve el ranking hasta el final</span></div>
+      </div>
     </section>
 
     <section id="como" class="home-section how-section reveal-section">
@@ -299,16 +393,60 @@ async function home(){
       </div>
     </section>
 
-    <section id="premium" class="home-section premium-home reveal-section">
-      <div class="premium-art">
-        <img src="/assets/premium-lock.svg" alt="">
-        <span class="premium-glow"></span>
+    <section id="premium" class="home-section premium-home premium-value reveal-section">
+      <div class="premium-value-head">
+        <div>
+          <div class="kicker">QUÉ PAGÁS Y QUÉ RECIBÍS</div>
+          <h2>Probala gratis. Pagá solo si quieren seguir.</h2>
+          <p>La primera ronda personalizada es gratis. Después elegís desbloquear esa juntada o tener acceso ilimitado. No hace falta que cada invitado compre nada.</p>
+        </div>
+        <div class="premium-big-number"><strong>25</strong><span>rondas máximas<br>por partida completa</span></div>
       </div>
-      <div class="premium-copy">
-        <div class="kicker">LA JUNTADA PREMIUM</div>
-        <h2>Llevá la experiencia más lejos.</h2>
-        <p>Una partida completa o acceso ilimitado. Mensual, anual o de por vida. Las temáticas +18 quedan exclusivamente dentro de Premium.</p>
-        <div class="premium-tags"><span>Partidas ilimitadas</span><span>+18 exclusivo</span><span>Nuevos packs</span></div>
+
+      <div class="value-compare">
+        <article class="value-plan free-plan">
+          <div class="plan-label">GRATIS</div>
+          <h3>Probá La Juntada</h3>
+          <strong class="plan-main">1 ronda personalizada</strong>
+          <ul>
+            <li>El grupo responde de verdad</li>
+            <li>Todos votan desde el celular</li>
+            <li>Se calculan puntos reales</li>
+            <li>Ves cómo funciona antes de pagar</li>
+          </ul>
+          <button class="ghost" data-scroll="#crear">Probar gratis</button>
+        </article>
+
+        <article class="value-plan paid-plan">
+          <div class="plan-label">PARTIDA COMPLETA</div>
+          <h3>Una Juntada</h3>
+          <strong class="plan-main">Hasta 25 rondas</strong>
+          <ul>
+            <li>Todos los modos disponibles para esa temática</li>
+            <li>Ranking final y respuestas desbloqueadas</li>
+            <li>Misiones secretas cuando el pack las incluye</li>
+            <li>Ideal si quieren pagar entre todo el grupo una sola vez</li>
+          </ul>
+          <button class="secondary" data-scroll="#crear">Crear partida</button>
+        </article>
+
+        <article class="value-plan unlimited-plan">
+          <div class="plan-label">ILIMITADO</div>
+          <h3>Mensual · Anual · De por vida</h3>
+          <strong class="plan-main">Todas las partidas que quieras</strong>
+          <ul>
+            <li>Creás nuevas juntadas sin pagar cada juego</li>
+            <li>Acceso a packs y temáticas Premium</li>
+            <li>Las temáticas +18 quedan dentro de Premium</li>
+            <li>Una sola cuenta puede organizar para todo el grupo</li>
+          </ul>
+          <button class="primary" data-scroll="#crear">Empezar</button>
+        </article>
+      </div>
+
+      <div class="premium-clarity">
+        <span>✦</span>
+        <p><strong>¿De dónde salen las rondas?</strong> Del contenido que cargan ustedes y de las consignas del pack elegido. La cantidad final depende de la temática, los modos disponibles y cuántos jugadores haya.</p>
       </div>
     </section>
   </main>
