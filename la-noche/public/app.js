@@ -10,7 +10,7 @@ function brand(){return '<div class="brand brand-real"><img src="/assets/logo-la
 function saveSession(c,t){localStorage.setItem("ln_code",c);localStorage.setItem("ln_token",t);state.code=c;state.token=t}
 function clearSession(){localStorage.removeItem("ln_code");localStorage.removeItem("ln_token");state.code=null;state.token=null;state.room=null}
 async function api(url,o={}){const h={"Content-Type":"application/json",...(o.headers||{})};if(state.token)h.Authorization="Bearer "+state.token;const r=await fetch(url,{...o,headers:h});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Algo salió mal");return d}
-function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null}
+function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null;if(window.__homeDemoTimer){clearInterval(window.__homeDemoTimer);window.__homeDemoTimer=null}}
 function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
 async function loadConfig(){if(!state.config)state.config=await api("/api/config")}
 function themeCards(){
