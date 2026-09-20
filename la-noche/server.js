@@ -14,7 +14,7 @@ app.use(express.static(path.join(__dirname,"public")));
 const rooms=new Map();
 const sessions=new Map();
 const IMPLEMENTED_MODES=["quien_fue","lee_al_grupo","mentiroso","silla_caliente","todos_contra_uno","duo","ordena_al_grupo"];
-const AUTO_ADVANCE_MS=2800;
+const AUTO_ADVANCE_MS=4200;
 const MODE_ROUND_CAPS={quien_fue:6,lee_al_grupo:3,mentiroso:6,silla_caliente:4,todos_contra_uno:3,duo:2,ordena_al_grupo:2};
 const ACCESS_PLANS=[
   {id:"single",title:"Una noche",billing:"one_time",unlimited:false,description:"Desbloquea esta partida completa."},
@@ -329,6 +329,29 @@ function answerForRound(room,r){
   if(r.mode==="ordena_al_grupo")return (r.consensus||[]).map(pid=>playerName(room,pid)).join(" → ");
   return r.correct||"";
 }
+function roundPointsForViewer(room,r,viewer){
+  if(!viewer||!r.scored)return 0;
+  if(r.mode==="duo"){
+    const pair=new Set(r.duoIds||[]),vote=r.votes[viewer.id];
+    if(pair.has(viewer.id))return r.correct==="same"?100:0;
+    return vote===r.correct?75:0;
+  }
+  if(r.mode==="ordena_al_grupo"){
+    const order=r.votes[viewer.id];if(!Array.isArray(order)||!Array.isArray(r.consensus))return 0;
+    const n=r.consensus.length,maxDistance=Math.max(1,Math.floor((n*n)/2));
+    const dist=rankDistance(order,r.consensus);
+    return Math.max(0,Math.round(150*(1-Math.min(dist,maxDistance)/maxDistance)));
+  }
+  if(viewer.id===r.skipVoteFor){
+    const wrong=eligibleVoters(room,r).filter(p=>r.votes[p.id]!==r.correct).length;
+    if(r.mode==="quien_fue"&&r.authorId===viewer.id)return Math.min(100,wrong*25);
+    if(r.mode==="mentiroso"&&r.correct==="false"&&r.authorId===viewer.id)return Math.min(120,wrong*30);
+    if(r.mode==="todos_contra_uno"&&r.protagonistId===viewer.id)return Math.min(120,wrong*30);
+    return 0;
+  }
+  return r.votes[viewer.id]===r.correct?100:0;
+}
+
 function roundArchive(room){
   return room.rounds.map(r=>({mode:r.mode,modeTitle:modeInfo(r.mode).title,prompt:r.prompt,statement:r.statement,answer:answerForRound(room,r)}));
 }
@@ -337,7 +360,8 @@ function roundSnapshot(room,raw,viewer){
     id:raw.id,position:raw.position,mode:raw.mode,modeTitle:modeInfo(raw.mode).title,modeEmoji:modeInfo(raw.mode).emoji,
     prompt:raw.prompt,statement:raw.statement,
     voteCount:Object.keys(raw.votes).length,eligibleVoters:eligibleVoters(room,raw).length,
-    locked:room.roundPhase==="locked"
+    locked:room.roundPhase==="locked",
+    reveal:room.roundPhase==="locked"?{answer:answerForRound(room,raw),ownPoints:roundPointsForViewer(room,raw,viewer)}:null
   };
 
   if(raw.mode==="duo"){
@@ -375,7 +399,7 @@ function snapshot(room,viewer){
   const raw=room.rounds[room.currentRound]||null;
   const finished=room.state==="finished";
   return {
-    code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,startAt:room.startAt||null,
+    code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,startAt:room.startAt||null,advanceAt:room.advanceAt||null,
     unlocked:room.unlocked,freeRounds:1,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
     prepPrompts:room.prepPrompts,availableModes:(THEME_MODES[room.themeId]||[]).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
