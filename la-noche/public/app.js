@@ -978,6 +978,7 @@ function playing(r){
 }
 function paywall(r){
   const plans=state.config.accessPlans||[];
+  const usable=!!state.access?.active&&(state.access.role==="admin"||["single","day","monthly","annual","lifetime"].includes(state.access.plan));
   app.innerHTML=`<div class="room-page paywall-page">
     ${brand()}
     <section class="card center paywall premium-paywall">
@@ -985,14 +986,56 @@ function paywall(r){
       <div class="kicker">PRIMERA RONDA COMPLETA</div>
       <h2>Esto recién empieza.</h2>
       <p class="lead">Los puntos quedaron sellados. Tu grupo creó <strong>${Math.max(0,r.totalRounds-1)} rondas más</strong> sobre ustedes.</p>
+
+      ${usable?`<div class="existing-access">
+        <div><small>TENÉS UN ACCESO GUARDADO</small><strong>${esc(accessLabel())}</strong><span>${state.access.role==="admin"?"Desbloquea todo.":"Podés usarlo en esta partida si corresponde."}</span></div>
+        ${r.isHost?'<button class="primary" id="useStoredAccess">Usar mi pase</button>':""}
+      </div>`:""}
+
       <div class="paywall-modes">${r.availableModes.slice(0,6).map(m=>`<span>${assetImg("mode",m.id,"paywall-mode-icon")}<b>${esc(m.title)}</b></span>`).join("")}</div>
-      <div class="access-plans">${plans.map((p,i)=>`<label class="access-plan"><input type="radio" name="accessPlan" value="${p.id}" ${i===1?"checked":""}><div><strong>${esc(p.title)}</strong><span>${esc(p.description)}</span></div>${p.unlimited?'<em>ILIMITADO</em>':""}</label>`).join("")}</div>
-      <div class="group-note"><strong>Compren entre amigos si quieren</strong><span>Una cuenta compra el pase y desde esa cuenta pueden crear todas las partidas incluidas en el plan. Los invitados nunca pagan.</span></div>
-      ${r.isHost?'<button class="primary wide big-action" id="unlockTest">Probar el plan seleccionado <span>→</span></button><div class="tiny muted paywall-dev">Modo desarrollo: todavía no realiza cobros reales.</div>':'<div class="waiting-host"><span class="waiting-pulse"></span>Esperando que el host desbloquee La Juntada…</div>'}
+
+      <div class="paywall-explainer">
+        <div><strong>1 ronda gratis</strong><span>Ya la probaron.</span></div>
+        <i>→</i>
+        <div><strong>Elegís un acceso</strong><span>Solo paga el host.</span></div>
+        <i>→</i>
+        <div><strong>Siguen jugando</strong><span>El grupo no vuelve a entrar.</span></div>
+      </div>
+
+      <div class="access-plans">${plans.map((p,i)=>`<label class="access-plan">
+        <input type="radio" name="accessPlan" value="${p.id}" ${p.id==="day"?"checked":""}>
+        <div><strong>${esc(p.title)}</strong><span>${esc(p.description)}</span></div>
+        ${p.id==="day"?'<em>24H</em>':p.unlimited?'<em>ILIMITADO</em>':""}
+      </label>`).join("")}</div>
+
+      <div class="group-note"><strong>Un solo pase alcanza para todo el grupo</strong><span>Los invitados siguen entrando sin cuenta. El pase queda del lado de quien organiza y puede recuperarse en otro dispositivo con una clave.</span></div>
+
+      ${r.isHost
+        ?`<div class="paywall-actions">
+            <button class="primary wide big-action" id="unlockTest">${state.config.devPayments?"Simular compra y desbloquear":"Continuar al pago"} <span>→</span></button>
+            <button class="ghost wide" id="openAccessFromPaywall">Ya tengo un pase / recuperar acceso</button>
+           </div>
+           ${state.config.devPayments?'<div class="tiny muted paywall-dev">Modo desarrollo: simula la compra y genera un pase real dentro de La Juntada.</div>':""}`
+        :'<div class="waiting-host"><span class="waiting-pulse"></span>Esperando que el host desbloquee La Juntada…</div>'}
     </section>
     ${hostRoster(r)}
   </div>`;
-  if(r.isHost)document.querySelector("#unlockTest").onclick=async()=>{try{const accessPlan=document.querySelector('input[name="accessPlan"]:checked')?.value||"single";await api("/api/rooms/"+r.code+"/unlock-test",{method:"POST",body:JSON.stringify({accessPlan})});refresh()}catch(e){toast(e.message)}};
+
+  document.querySelector("#openAccessFromPaywall")?.addEventListener("click",openAccessPanel);
+  document.querySelector("#useStoredAccess")?.addEventListener("click",async()=>{
+    try{await api("/api/rooms/"+r.code+"/use-access",{method:"POST"});toast("Pase aplicado");refresh()}catch(e){toast(e.message)}
+  });
+  if(r.isHost)document.querySelector("#unlockTest").onclick=async()=>{
+    try{
+      if(!state.config.devPayments){toast("El proveedor de pagos todavía no está conectado.");return}
+      const accessPlan=document.querySelector('input[name="accessPlan"]:checked')?.value||"day";
+      const btn=document.querySelector("#unlockTest");btn.disabled=true;btn.innerHTML='Generando pase… <span>✦</span>';
+      const d=await api("/api/rooms/"+r.code+"/unlock-test",{method:"POST",body:JSON.stringify({accessPlan})});
+      if(d.accessToken){saveAccessToken(d.accessToken);state.access=d.access||await loadAccess()}
+      toast(accessPlan==="single"?"Partida desbloqueada":"Pase activado");
+      refresh();
+    }catch(e){toast(e.message);refresh()}
+  };
   bindHostRoster(r);
 }
 function scoreRows(ps){return[...ps].sort((a,b)=>(b.score||0)-(a.score||0)).map((p,i)=>`<div class="score-row"><div class="rank">#${i+1}</div><div class="score-name">${esc(p.name)}</div><div class="score">${p.score||0}</div></div>`).join("")}
