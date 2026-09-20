@@ -905,23 +905,106 @@ function answersArchive(r){
   </div></details>`).join("")}</section>`;
 }
 function finished(r){
-  const s=[...r.players].sort((a,b)=>(b.score||0)-(a.score||0));
-  const top=s.slice(0,3);
+  const ranking=[...r.players].sort((a,b)=>(b.score||0)-(a.score||0));
+  const first=ranking[0],second=ranking[1],third=ranking[2],f=r.finale||{};
+  const podium=[
+    second?{p:second,place:2,medal:"II"}:null,
+    first?{p:first,place:1,medal:"✦"}:null,
+    third?{p:third,place:3,medal:"III"}:null
+  ].filter(Boolean);
+
+  const awards=(f.awards||[]).map((aw,i)=>`<article class="final-award" style="--award-i:${i}">
+    <div class="award-symbol">${esc(aw.icon)}</div>
+    <small>${esc(aw.title)}</small>
+    <strong>${esc((aw.players||[]).join(" + "))}</strong>
+    <b>${esc(aw.label||"")}</b>
+    <p>${esc(aw.description||"")}</p>
+  </article>`).join("");
+
+  const stats=[
+    {n:f.roundsPlayed??r.totalRounds,label:"rondas jugadas"},
+    {n:f.modesPlayed??"—",label:"modos distintos"},
+    {n:f.totalVotes??"—",label:"votos enviados"},
+    {n:(f.accuracy??0)+"%",label:"aciertos directos"},
+    {n:f.missionsCompleted??0,label:"misiones cumplidas"},
+    {n:f.totalPoints??ranking.reduce((n,p)=>n+(p.score||0),0),label:"puntos repartidos"}
+  ].map(x=>`<div class="final-stat"><strong>${x.n}</strong><span>${x.label}</span></div>`).join("");
+
+  const winnerLine=ranking.length>1&&f.winnerMargin===0
+    ?`Empate en la cima con ${first?.score||0} puntos.`
+    :`${esc(first?.name||"")} terminó ${f.winnerMargin||0} puntos arriba del segundo puesto.`;
+
   app.innerHTML=`<div class="room-page finished-page">
     ${brand()}
-    <section class="finish-hero">
-      <div class="confetti-field" aria-hidden="true">${Array.from({length:18},(_,i)=>`<i style="--i:${i}"></i>`).join("")}</div>
-      <div class="kicker">FIN DE LA JUNTADA</div>
-      <h1><span class="grad">${esc(s[0]?.name||"")}</span><br>se la llevó.</h1>
-      <p>Ahora sí: ranking, puntos y respuestas desbloqueadas.</p>
+    <section class="finish-hero finish-show">
+      <div class="final-glow"></div>
+      <div class="confetti-field final-confetti" aria-hidden="true">${Array.from({length:32},(_,i)=>`<i style="--i:${i}"></i>`).join("")}</div>
+      <div class="kicker">SE TERMINÓ ESTA JUNTADA</div>
+      <div class="champion-crown">✦</div>
+      <h1><span class="grad">${esc(first?.name||"")}</span><br><small>CAMPEÓN DE LA JUNTADA</small></h1>
+      <div class="champion-score"><strong>${first?.score||0}</strong><span>puntos</span></div>
+      <p>${winnerLine}</p>
+      <div class="final-share-row">
+        <button class="secondary" id="shareFinal">Compartir resultado</button>
+        <button class="ghost" id="jumpAnswers">Ver todas las respuestas ↓</button>
+      </div>
     </section>
-    <section class="podium">
-      ${top.map((p,i)=>`<div class="podium-person place-${i+1}"><span class="podium-medal">${i===0?"✦":i===1?"II":"III"}</span><strong>${esc(p.name)}</strong><b>${p.score||0}</b><small>puntos</small><i></i></div>`).join("")}
+
+    <section class="podium final-podium">
+      ${podium.map(x=>`<div class="podium-person place-${x.place}">
+        <span class="podium-medal">${x.medal}</span>
+        <div class="podium-avatar">${esc(x.p.name).slice(0,1).toUpperCase()}</div>
+        <small>#${x.place}</small>
+        <strong>${esc(x.p.name)}</strong>
+        <b>${x.p.score||0}</b>
+        <em>puntos</em><i></i>
+      </div>`).join("")}
     </section>
-    <section class="card final-ranking"><div class="kicker">RANKING COMPLETO</div><div class="score-list">${scoreRows(r.players)}</div>${r.isHost?'<button class="primary wide big-action" id="restart">Preparar otra partida <span>→</span></button>':""}</section>
-    ${answersArchive(r)}
+
+    <section class="final-numbers">
+      <div class="final-section-head"><div><div class="kicker">LA PARTIDA EN NÚMEROS</div><h2>Todo lo que pasó.</h2></div><span>${esc(r.theme.title)}</span></div>
+      <div class="final-stats-grid">${stats}</div>
+    </section>
+
+    ${awards?`<section class="final-awards-section">
+      <div class="final-section-head"><div><div class="kicker">PREMIOS DE LA JUNTADA</div><h2>No todo era salir primero.</h2></div><span>Basados en lo que pasó de verdad</span></div>
+      <div class="final-awards-grid">${awards}</div>
+    </section>`:""}
+
+    <section class="card final-ranking upgraded-ranking">
+      <div class="final-section-head compact"><div><div class="kicker">RANKING COMPLETO</div><h2>Así terminó.</h2></div><span>Puntaje final desbloqueado</span></div>
+      <div class="score-list">${scoreRows(r.players)}</div>
+    </section>
+
+    <div id="finalAnswers">${answersArchive(r)}</div>
+
+    <section class="final-again card">
+      <div>
+        <div class="kicker">¿OTRA?</div>
+        <h2>Esta ya quedó en el archivo.</h2>
+        <p>Podés jugar una revancha con el mismo grupo y consignas nuevas, o arrancar una juntada completamente distinta.</p>
+      </div>
+      <div class="final-actions">
+        ${r.isHost?'<button class="primary" id="restart">Revancha con este grupo <span>→</span></button>':""}
+        <button class="ghost" id="newJuntada">Crear otra Juntada</button>
+      </div>
+    </section>
   </div>`;
-  if(r.isHost)document.querySelector("#restart").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/restart",{method:"POST"});refresh()}catch(e){toast(e.message)}}
+
+  document.querySelector("#shareFinal").onclick=async()=>{
+    const top3=ranking.slice(0,3).map((p,i)=>`${i+1}. ${p.name} — ${p.score||0} pts`).join("\n");
+    const text=`🏆 La Juntada · ${r.name}\nGanó ${first?.name||""} con ${first?.score||0} puntos.\n\n${top3}\n\n${f.roundsPlayed||r.totalRounds} rondas · ${f.totalVotes||0} votos · ${f.missionsCompleted||0} misiones cumplidas`;
+    try{
+      if(navigator.share)await navigator.share({title:"La Juntada",text});
+      else{await navigator.clipboard.writeText(text);toast("Resultado copiado")}
+    }catch(e){if(e?.name!=="AbortError")try{await navigator.clipboard.writeText(text);toast("Resultado copiado")}catch{}}
+  };
+  document.querySelector("#jumpAnswers").onclick=()=>document.querySelector("#finalAnswers")?.scrollIntoView({behavior:"smooth",block:"start"});
+  document.querySelector("#newJuntada").onclick=async()=>{stopPoll();clearSession();history.replaceState(null,"",location.pathname);await home();window.scrollTo({top:0,behavior:"smooth"})};
+  if(r.isHost)document.querySelector("#restart").onclick=async()=>{try{
+    const b=document.querySelector("#restart");b.disabled=true;b.innerHTML='Preparando revancha… <span>✦</span>';
+    await api("/api/rooms/"+r.code+"/restart",{method:"POST"});refresh()
+  }catch(e){toast(e.message);refresh()}};
 }
 function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r)}
 (async()=>{await loadConfig();const q=new URLSearchParams(location.search).get("code"),c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");if(c&&t){state.code=c;state.token=t;startPoll()}else{await home();if(q)document.querySelector("#joinCode").value=q}})();
