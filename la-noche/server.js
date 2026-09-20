@@ -842,6 +842,7 @@ app.post("/api/rooms",(req,res)=>{
   const disabledModes=Array.isArray(req.body.disabledModes)?req.body.disabledModes.filter(x=>MODES[x]).slice(0,12):[];
   const playWhen=req.body.playWhen==="later"?"later":"now",eventDate=playWhen==="later"?clean(req.body.eventDate,40):"";
   if(!name||!hostName)return res.status(400).json({error:"Faltan datos."});
+  if(surpriseEnabled&&honoreeName.toLowerCase()===hostName.toLowerCase())return res.status(400).json({error:"La persona sorpresa no puede tener el mismo nombre que el host."});
   if(THEMES[themeId].premiumOnly&&!hasPremiumAccess(req))return res.status(402).json({error:"Esta temática es Premium +18. Necesitás comprar una partida o tener un pase activo para crearla."});
   if(THEMES[themeId].age18&&req.body.ageConfirmed!==true)return res.status(400).json({error:"La versión 18+ requiere confirmar mayoría de edad."});
   if(playWhen==="later"&&!eventDate)return res.status(400).json({error:"Elegí la fecha de la juntada."});
