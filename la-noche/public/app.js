@@ -13,37 +13,199 @@ async function api(url,o={}){const h={"Content-Type":"application/json",...(o.he
 function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null}
 function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
 async function loadConfig(){if(!state.config)state.config=await api("/api/config")}
-function themeCards(){return state.config.themes.map(t=>`<label class="theme-card ${t.premiumOnly?"premium-locked":""}"><input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""} ${t.premiumOnly?"disabled":""}>${assetImg("theme",t.id,"theme-asset")}<strong>${esc(t.title)}</strong><small>${esc(t.description)}</small>${t.premiumOnly?'<em>🔒 PREMIUM +18</em>':t.age18?'<em>18+</em>':""}${t.premiumOnly?'<span class="premium-note">Sin ronda gratis · requiere compra o pase activo</span>':""}</label>`).join("")}
+function themeCards(){
+  return state.config.themes.map(t=>`
+    <label class="theme-card ${t.premiumOnly?"premium-locked":""}" data-theme="${t.id}">
+      <input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""} ${t.premiumOnly?"disabled":""}>
+      <div class="theme-art-wrap">
+        ${assetImg("theme",t.id,"theme-asset")}
+        ${t.premiumOnly?'<span class="theme-lock">PREMIUM +18</span>':""}
+      </div>
+      <div class="theme-copy">
+        <strong>${esc(t.title)}</strong>
+        <small>${esc(t.tagline||t.description)}</small>
+      </div>
+    </label>`).join("");
+}
+
+function modeShowcase(){
+  return state.config.modes
+    .filter(m=>state.config.implementedModes.includes(m.id)||m.id==="mision_secreta")
+    .map(m=>`<div class="mode-mini">${assetImg("mode",m.id,"mode-show-icon")}<div><strong>${esc(m.title)}</strong><small>${esc(m.description)}</small></div></div>`).join("");
+}
+
+function homeAtmosphere(){
+  return '<div class="ambient-layer" aria-hidden="true"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span><i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><i class="spark s5"></i></div>';
+}
 
 async function home(){
   stopPoll();clearSession();await loadConfig();
-  app.innerHTML=brand()+`
-  <section class="hero hero-premium">
-    <div class="hero-copy">
-      <div class="eyebrow">TUS AMIGOS SON EL JUEGO</div>
-      <h1>Cada juntada<br><span class="grad">se convierte en un juego.</span></h1>
-      <p class="lead">Historias, secretos, votaciones y desafíos creados por el propio grupo. Para una previa, un viaje, un cumpleaños o cualquier plan.</p>
-      <div class="hero-points"><span>Sin descargas</span><span>Desde cualquier celular</span><span>Listo en minutos</span></div>
-    </div>
-    <div class="hero-visual" aria-hidden="true">
-      <img class="hero-people" src="/assets/hero-juntada.svg" alt="">
-      <img class="hero-sparks" src="/assets/gold-sparks.svg" alt="">
-      <div class="floating-card"><img src="/assets/card-fan.svg" alt=""></div>
-    </div>
-  </section>
-  <section class="card"><div class="kicker">1 · CUÁNDO</div><div class="section-title">¿Cuándo van a jugar?</div>
-    <div class="choice-grid">
-      <label class="choice-card"><input type="radio" name="when" value="now" checked><strong>⚡ Jugar ahora</strong><span>Están juntos. Entran, responden y arrancan.</span></label>
-      <label class="choice-card"><input type="radio" name="when" value="later"><strong>📅 Preparar para una fecha</strong><span>Mandás el link durante la semana. Se suma gente hasta último momento.</span></label>
-    </div>
-    <div id="dateWrap" class="date-wrap"><label>Fecha de la juntada</label><input id="eventDate" type="date"></div>
-  </section>
-  <section class="card" style="margin-top:14px"><div class="kicker">2 · TEMÁTICA</div><div class="section-title">¿Qué tipo de noche querés?</div><div class="themes">${themeCards()}</div><label class="age-check" id="ageWrap"><input id="ageConfirmed" type="checkbox"> Confirmo que todos los participantes son mayores de 18 años.</label></section>
-  <section class="card accent" style="margin-top:14px"><div class="kicker">3 · CREAR</div><label>Nombre de la juntada</label><input id="roomName" placeholder="Cumple de Sofi" maxlength="80"><label>Tu nombre</label><input id="hostName" placeholder="Diego" maxlength="40"><button class="primary wide" id="createBtn">Crear La Juntada →</button></section>
-  <section class="card" style="margin-top:14px"><div class="kicker">YA TENÉS CÓDIGO</div><div class="section-title">Entrar a una noche</div><label>Código</label><input id="joinCode" maxlength="6" placeholder="ABC123" style="text-transform:uppercase"><label>Tu nombre</label><input id="joinName" maxlength="40"><button class="secondary wide" id="joinBtn">Entrar</button></section>`;
-  const refreshExtras=()=>{const when=document.querySelector('input[name="when"]:checked').value;document.querySelector("#dateWrap").classList.toggle("show",when==="later");const themeId=document.querySelector('input[name="theme"]:checked').value;const theme=state.config.themes.find(t=>t.id===themeId);document.querySelector("#ageWrap").classList.toggle("show",!!theme?.age18)};
-  document.querySelectorAll('input[name="when"],input[name="theme"]').forEach(x=>x.onchange=refreshExtras);refreshExtras();
-  document.querySelector("#createBtn").onclick=createRoom;document.querySelector("#joinBtn").onclick=joinRoom;
+  app.innerHTML=homeAtmosphere()+`
+  <header class="site-header">
+    ${brand()}
+    <nav class="desktop-nav">
+      <a href="#tematicas">Temáticas</a>
+      <a href="#modos">Modos</a>
+      <a href="#como">Cómo funciona</a>
+      <a href="#premium">Premium</a>
+    </nav>
+    <button class="header-cta" data-scroll="#crear">Empezar</button>
+  </header>
+
+  <main class="home-page">
+    <section class="hero hero-premium">
+      <div class="hero-copy reveal-up">
+        <div class="eyebrow">CONVERSÁS · JUGÁS · DESCUBRÍS</div>
+        <h1>Tus amigos<br><span class="grad">son el juego.</span></h1>
+        <p class="lead">Cada grupo crea una experiencia distinta con sus propias historias, secretos, votaciones, desafíos y misiones.</p>
+        <div class="hero-actions">
+          <button class="primary hero-cta" data-scroll="#crear">Empezar a jugar <span>→</span></button>
+          <button class="ghost hero-demo" data-scroll="#como">Ver cómo funciona</button>
+        </div>
+        <div class="hero-trust">
+          <div class="avatar-stack"><span>D</span><span>S</span><span>M</span><span>N</span></div>
+          <div><strong>Sin descargas ni cuentas para invitados</strong><small>Entrás desde cualquier celular con un código.</small></div>
+        </div>
+      </div>
+      <div class="hero-visual reveal-scale" aria-hidden="true">
+        <div class="hero-halo"></div>
+        <img class="hero-people" src="/assets/hero-juntada.svg?v=20260920" alt="">
+        <img class="hero-sparks" src="/assets/gold-sparks.svg?v=20260920" alt="">
+        <div class="floating-question fq-one"><span>¿QUIÉN FUE?</span><strong>“Me bajé en la ciudad equivocada.”</strong></div>
+        <div class="floating-phone fp-one"><span class="phone-notch"></span><small>TU VOTO</small><strong>SOFI</strong><i>✓</i></div>
+        <div class="floating-phone fp-two"><span class="phone-notch"></span><small>7/9</small><strong>VOTARON</strong><i>●</i></div>
+      </div>
+    </section>
+
+    <section id="tematicas" class="home-section themes-section reveal-section">
+      <div class="section-head">
+        <div><div class="kicker">ELEGÍ EL MOOD</div><h2>Una juntada distinta cada vez.</h2></div>
+        <p>Cada temática cambia el tono, las consignas y la energía del juego.</p>
+      </div>
+      <div class="themes compact-themes">${themeCards()}</div>
+    </section>
+
+    <section id="modos" class="home-section modes-section reveal-section">
+      <div class="section-head">
+        <div><div class="kicker">MODOS DE JUEGO</div><h2>No es un quiz. Son juegos distintos.</h2></div>
+        <p>Adiviná, engañá, leé al grupo, cumplí misiones y acumulá puntos de formas diferentes.</p>
+      </div>
+      <div class="mode-showcase">${modeShowcase()}</div>
+    </section>
+
+    <section id="como" class="home-section how-section reveal-section">
+      <div class="how-copy">
+        <div class="kicker">ASÍ SE JUEGA</div>
+        <h2>La pantalla muestra.<br>Los celulares deciden.</h2>
+        <p>Podés usar una notebook o TV como centro de la juntada y cada persona vota desde su teléfono. Si no hay pantalla compartida, funciona igual desde todos los celulares.</p>
+        <div class="how-steps">
+          <div class="how-step active" data-step="1"><span>01</span><div><strong>Creás la sala</strong><small>Compartís QR, link o código.</small></div></div>
+          <div class="how-step" data-step="2"><span>02</span><div><strong>Todos responden en secreto</strong><small>Ni el host ve las respuestas.</small></div></div>
+          <div class="how-step" data-step="3"><span>03</span><div><strong>La Juntada arma el juego</strong><small>Genera rondas sobre ese grupo.</small></div></div>
+          <div class="how-step" data-step="4"><span>04</span><div><strong>Votan y suman</strong><small>Los puntos se calculan solos.</small></div></div>
+        </div>
+      </div>
+      <div class="party-demo" id="partyDemo" aria-hidden="true">
+        <div class="demo-screen">
+          <div class="demo-top"><span>LA JUNTADA</span><small id="demoCount">1 / 4</small></div>
+          <div class="demo-badge" id="demoBadge">¿QUIÉN FUE?</div>
+          <div class="demo-question" id="demoQuestion">Creá la sala y compartí el código.</div>
+          <div class="demo-progress"><i id="demoProgress"></i></div>
+        </div>
+        <div class="demo-phones">
+          <div class="demo-phone p1"><span></span><strong>SOFI</strong><small>LISTA</small></div>
+          <div class="demo-phone p2"><span></span><strong>NICO</strong><small>LISTO</small></div>
+          <div class="demo-phone p3"><span></span><strong>MICA</strong><small>LISTA</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="crear" class="home-section create-section reveal-section">
+      <div class="create-intro">
+        <div class="kicker">CREÁ TU JUNTADA</div>
+        <h2>¿Juegan ahora o la preparan antes?</h2>
+        <p>Podés armarla en el momento o mandar el link durante la semana para llegar con todo listo.</p>
+      </div>
+      <div class="create-grid">
+        <div class="create-main card premium-panel">
+          <div class="choice-grid">
+            <label class="choice-card"><input type="radio" name="when" value="now" checked><strong>⚡ Jugar ahora</strong><span>Están juntos. Entran, responden y arrancan.</span></label>
+            <label class="choice-card"><input type="radio" name="when" value="later"><strong>📅 Preparar antes</strong><span>Mandás el link y cada uno responde cuando puede.</span></label>
+          </div>
+          <div id="dateWrap" class="date-wrap"><label>Fecha de la juntada</label><input id="eventDate" type="date"></div>
+          <label class="field-label">Nombre de la juntada</label><input id="roomName" placeholder="Cumple de Sofi" maxlength="80">
+          <label class="field-label">Tu nombre</label><input id="hostName" placeholder="Diego" maxlength="40">
+          <button class="primary wide big-action" id="createBtn">Crear La Juntada <span>→</span></button>
+        </div>
+        <aside class="join-card card">
+          <div class="join-icon">↗</div>
+          <div class="kicker">YA TE INVITARON</div>
+          <h3>Entrá con tu código</h3>
+          <label class="field-label">Código</label><input id="joinCode" maxlength="6" placeholder="ABC123" style="text-transform:uppercase">
+          <label class="field-label">Tu nombre</label><input id="joinName" maxlength="40" placeholder="Tu nombre">
+          <button class="secondary wide" id="joinBtn">Entrar</button>
+        </aside>
+      </div>
+    </section>
+
+    <section id="premium" class="home-section premium-home reveal-section">
+      <div class="premium-art">
+        <img src="/assets/premium-lock.svg" alt="">
+        <span class="premium-glow"></span>
+      </div>
+      <div class="premium-copy">
+        <div class="kicker">LA JUNTADA PREMIUM</div>
+        <h2>Llevá la experiencia más lejos.</h2>
+        <p>Una partida completa o acceso ilimitado. Mensual, anual o de por vida. Las temáticas +18 quedan exclusivamente dentro de Premium.</p>
+        <div class="premium-tags"><span>Partidas ilimitadas</span><span>+18 exclusivo</span><span>Nuevos packs</span></div>
+      </div>
+    </section>
+  </main>
+
+  <label class="age-check" id="ageWrap"><input id="ageConfirmed" type="checkbox"> Confirmo que todos los participantes son mayores de 18 años.</label>
+  `;
+
+  const refreshExtras=()=>{
+    const when=document.querySelector('input[name="when"]:checked')?.value||"now";
+    document.querySelector("#dateWrap")?.classList.toggle("show",when==="later");
+    const themeId=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
+    const theme=state.config.themes.find(t=>t.id===themeId);
+    document.querySelector("#ageWrap")?.classList.toggle("show",!!theme?.age18);
+  };
+  document.querySelectorAll('input[name="when"],input[name="theme"]').forEach(x=>x.onchange=refreshExtras);
+  refreshExtras();
+  document.querySelector("#createBtn").onclick=createRoom;
+  document.querySelector("#joinBtn").onclick=joinRoom;
+  document.querySelectorAll("[data-scroll]").forEach(b=>b.onclick=()=>document.querySelector(b.dataset.scroll)?.scrollIntoView({behavior:"smooth",block:"start"}));
+  initHomeMotion();
+}
+
+function initHomeMotion(){
+  const sections=[...document.querySelectorAll(".reveal-section")];
+  const io=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add("in-view")}),{threshold:.12});
+  sections.forEach(s=>io.observe(s));
+
+  const steps=[...document.querySelectorAll(".how-step")];
+  const badge=document.querySelector("#demoBadge"),q=document.querySelector("#demoQuestion"),count=document.querySelector("#demoCount"),bar=document.querySelector("#demoProgress");
+  const demo=[
+    ["CREÁ LA SALA","Compartí QR, link o código con el grupo."],
+    ["RESPUESTAS SECRETAS","Todos aportan historias sin mostrárselas a nadie."],
+    ["JUEGO PERSONALIZADO","El sistema mezcla el contenido y crea las rondas."],
+    ["VOTEN DESDE EL CELULAR","Los puntos se calculan solos y el resultado queda sellado."]
+  ];
+  let i=0;
+  const paint=()=>{steps.forEach((s,n)=>s.classList.toggle("active",n===i));if(badge)badge.textContent=demo[i][0];if(q)q.textContent=demo[i][1];if(count)count.textContent=(i+1)+" / 4";if(bar){bar.style.transition="none";bar.style.width="0";requestAnimationFrame(()=>{bar.style.transition="width 3.5s linear";bar.style.width="100%"})}};
+  paint();
+  window.__homeDemoTimer=setInterval(()=>{i=(i+1)%demo.length;paint()},3800);
+
+  const hero=document.querySelector(".hero-visual");
+  if(hero&&matchMedia("(pointer:fine)").matches){
+    hero.addEventListener("pointermove",e=>{
+      const r=hero.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+      hero.style.setProperty("--mx",x.toFixed(3));hero.style.setProperty("--my",y.toFixed(3));
+    });
+    hero.addEventListener("pointerleave",()=>{hero.style.setProperty("--mx",0);hero.style.setProperty("--my",0)});
+  }
 }
 async function createRoom(){try{const d=await api("/api/rooms",{method:"POST",body:JSON.stringify({name:document.querySelector("#roomName").value,hostName:document.querySelector("#hostName").value,themeId:document.querySelector('input[name="theme"]:checked').value,playWhen:document.querySelector('input[name="when"]:checked').value,eventDate:document.querySelector("#eventDate").value,ageConfirmed:document.querySelector("#ageConfirmed").checked})});saveSession(d.code,d.sessionToken);startPoll()}catch(e){toast(e.message)}}
 async function joinRoom(){try{const c=document.querySelector("#joinCode").value.trim().toUpperCase();state.code=c;const d=await api("/api/rooms/"+c+"/join",{method:"POST",body:JSON.stringify({name:document.querySelector("#joinName").value})});saveSession(d.code,d.sessionToken);if(d.lateJoin)toast("Entraste a una partida en curso");startPoll()}catch(e){toast(e.message)}}
