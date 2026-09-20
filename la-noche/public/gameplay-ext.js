@@ -18,10 +18,10 @@ function playing(r){
 
   const mission=r.mission?'<section class="card soft mission-card" style="margin-top:14px"><div class="kicker">💣 TU MISIÓN SECRETA</div><div class="section-title">'+esc(r.mission.text)+'</div>'+(r.mission.status==="completed"?'<div class="mission-done">✓ Misión cumplida · puntos guardados</div>':'<button class="secondary wide" id="missionDone">Marcar como cumplida · +'+r.mission.points+' puntos</button>')+'</section>':"";
 
-  const votePct=Math.round((x.voteCount/Math.max(1,x.eligibleVoters))*100);
+  const votePct=Math.round((x.voteCount/Math.max(1,x.eligibleVoters))*100),voteDeg=(votePct*3.6).toFixed(1);
   app.innerHTML='<div class="room-page live-game-page">'+brand()+
   '<div class="game-theme-atmosphere">'+assetImg("theme",r.themeId,"game-theme-bg")+'</div>'+
-  '<div class="game-topbar"><div class="mode-live">'+assetImg("mode",x.mode,"mode-live-icon")+'<div><div class="kicker">'+esc(x.modeTitle)+'</div><small>'+esc(r.theme.title)+' · Ronda '+(r.currentRound+1)+' de '+r.totalRounds+'</small></div></div><div class="vote-orb" style="--vote:'+votePct+'deg"><span>'+x.voteCount+'/'+x.eligibleVoters+'</span><small>VOTOS</small></div></div>'+
+  '<div class="game-topbar"><div class="mode-live">'+assetImg("mode",x.mode,"mode-live-icon")+'<div><div class="kicker">'+esc(x.modeTitle)+'</div><small>'+esc(r.theme.title)+' · Ronda '+(r.currentRound+1)+' de '+r.totalRounds+'</small></div></div><div class="vote-orb" style="--vote:'+voteDeg+'deg"><span>'+x.voteCount+'/'+x.eligibleVoters+'</span><small>VOTOS</small></div></div>'+
   '<section class="card prompt-card live-prompt"><div class="prompt-shimmer"></div><div class="tiny muted prompt-label">'+esc(x.prompt)+'</div><div class="statement">“'+esc(x.statement)+'”</div>'+interaction+'</section>'+
   mission+
   '<section class="card soft hidden-score live-hidden-score"><div class="score-seal">✦</div><div><div class="kicker">PUNTAJE SELLADO</div><div class="section-title">Nadie sabe quién va ganando.</div><div class="muted">Dúos, rankings, misiones y aciertos se suman automáticamente. Todo se abre al final.</div></div></section>'+
