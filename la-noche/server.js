@@ -10,7 +10,7 @@ const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 const PORT=process.env.PORT||3000;
 const {Pool}=pg;
-const db=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}}):null;
+const db=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL}):null;
 app.use(express.json({limit:"250kb"}));
 app.use(express.static(path.join(__dirname,"public")));
 
@@ -744,7 +744,7 @@ function snapshot(room,viewer){
   };
 }
 
-app.get("/api/health",(_req,res)=>res.json({ok:true,rooms:rooms.size}));
+app.get("/api/health",(_req,res)=>res.json({ok:true,rooms:rooms.size,persistence:db?"postgres":"memory"}));
 app.use("/api/rooms/:code",(req,res,next)=>{
   const roomCodeParam=req.params.code;
   if(req.method!=="GET"){
