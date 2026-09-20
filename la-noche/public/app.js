@@ -982,9 +982,9 @@ async function home(){
     const theme=state.config.themes.find(t=>t.id===themeId);
     document.querySelector("#ageWrap")?.classList.toggle("show",!!theme?.age18);
     paintSelectedTheme();
-    paintGameSettings();
   };
   document.querySelectorAll('input[name="when"],input[name="theme"]').forEach(x=>x.onchange=refreshExtras);
+  document.querySelectorAll('input[name="theme"]').forEach(x=>x.addEventListener("change",paintGameSettings));
   refreshExtras();
   document.querySelector("#createBtn").onclick=createRoom;
   document.querySelector("#openAccess")?.addEventListener("click",openAccessPanel);
