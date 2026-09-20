@@ -35,6 +35,35 @@ function getRoom(code){return rooms.get(String(code||"").toUpperCase())}
 function auth(room,req){const pid=sessions.get(bearer(req));return room?.players.find(p=>p.id===pid)||null}
 function requireHost(room,req){const me=auth(room,req);return me&&me.id===room.hostPlayerId?me:null}
 function themePrompts(themeId){return PROMPTS[themeId]||PROMPTS.clasico}
+function cleanList(v,maxItems=40,maxLen=220){
+  return Array.isArray(v)?v.map(x=>clean(x,maxLen)).filter(Boolean).slice(0,maxItems):[];
+}
+function sanitizeCustomPack(raw){
+  if(!raw||typeof raw!=="object")return null;
+  const content=raw.content&&typeof raw.content==="object"?raw.content:{};
+  const duo=Array.isArray(content.duo)?content.duo.map(x=>({
+    question:clean(x?.question,180),a:clean(x?.a,90),b:clean(x?.b,90)
+  })).filter(x=>x.question&&x.a&&x.b).slice(0,30):[];
+  return {
+    id:clean(raw.id,80)||id(),
+    name:clean(raw.name,70)||"Mi pack",
+    mixMode:raw.mixMode==="custom_first"?"custom_first":"mixed",
+    content:{
+      prep_story:cleanList(content.prep_story,40,220),
+      majority:cleanList(content.majority,40,180),
+      hot_seat:cleanList(content.hot_seat,30,180),
+      one_vs_all:cleanList(content.one_vs_all,30,180),
+      rank:cleanList(content.rank,30,180),
+      missions:cleanList(content.missions,40,180),
+      duo
+    }
+  };
+}
+function packBank(room,key,official=[]){
+  const own=room.customPack?.content?.[key];
+  if(!Array.isArray(own)||!own.length)return official;
+  return room.customPack.mixMode==="custom_first"?[...own,...official]:shuffle([...official,...own]);
+}
 function modeInfo(modeId){return MODES[modeId]||{id:modeId,title:modeId,emoji:"🎮",description:""}}
 function themeStats(themeId){
   const modeIds=THEME_MODES[themeId]||[];
@@ -128,7 +157,7 @@ function uniqueAnswerOptions(room,key,correct,ownerId,max=4){
 function assignMissions(room){
   room.missions={};
   if(!(THEME_MODES[room.themeId]||[]).includes("mision_secreta"))return;
-  const bank=themePrompts(room.themeId).missions||[];
+  const bank=packBank(room,"missions",themePrompts(room.themeId).missions||[]);
   if(!bank.length)return;
   const shuffled=shuffle(bank);
   room.players.forEach((p,i)=>{room.missions[p.id]={text:shuffled[i%shuffled.length],status:"active",points:250}});
@@ -199,7 +228,7 @@ function buildRounds(room){
   }
 
   if(allowed.includes("duo")&&room.players.length>=4){
-    const bank=DUO_CHOICES[room.themeId]||[];
+    const bank=packBank(room,"duo",DUO_CHOICES[room.themeId]||[]);
     const qs=pick(bank,Math.min(2,bank.length));
     for(const q of qs){
       const pair=pick(room.players,2);
@@ -215,7 +244,7 @@ function buildRounds(room){
   }
 
   if(allowed.includes("ordena_al_grupo")&&room.players.length>=4){
-    const rankBank=themePrompts(room.themeId).rank||[];
+    const rankBank=packBank(room,"rank",themePrompts(room.themeId).rank||[]);
     for(const prompt of pick(rankBank,Math.min(2,rankBank.length))){
       const targets=pick(room.players,Math.min(4,room.players.length));
       add({
@@ -542,6 +571,7 @@ function snapshot(room,viewer){
   return {
     code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,startAt:room.startAt||null,advanceAt:room.advanceAt||null,
     unlocked:room.unlocked,freeRounds:1,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
+    customPack:room.customPack?{id:room.customPack.id,name:room.customPack.name,mixMode:room.customPack.mixMode}:null,
     prepPrompts:room.prepPrompts,availableModes:(THEME_MODES[room.themeId]||[]).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
     me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,score:finished?viewer.score:null}:null,
@@ -596,6 +626,8 @@ app.get("/api/qr/:code",async(req,res)=>{
 app.post("/api/rooms",(req,res)=>{
   const name=clean(req.body.name,80),hostName=clean(req.body.hostName,40);
   const themeId=THEMES[req.body.themeId]?req.body.themeId:"clasico";
+  const customPack=sanitizeCustomPack(req.body.customPack);
+  if(customPack&&!hasPremiumAccess(req))return res.status(402).json({error:"La personalización es Premium. Necesitás un pase activo."});
   const playWhen=req.body.playWhen==="later"?"later":"now",eventDate=playWhen==="later"?clean(req.body.eventDate,40):"";
   if(!name||!hostName)return res.status(400).json({error:"Faltan datos."});
   if(THEMES[themeId].premiumOnly&&!hasPremiumAccess(req))return res.status(402).json({error:"Esta temática es Premium +18. Necesitás comprar una partida o tener un pase activo para crearla."});
@@ -608,11 +640,12 @@ app.post("/api/rooms",(req,res)=>{
     code,name,themeId,playWhen,eventDate,state:playWhen==="later"?"collecting":"lobby",
     hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:inheritedAccess,accessPlan:inheritedAccess?(access.role==="admin"?"admin":access.plan):null,
     players:[{id:hostId,name:hostName,ready:false,score:0}],submissions:{},missions:{},rounds:[],
+    customPack,
     prepPrompts:{
-      storyPrompts:pick(tp.prep_story,3),
-      majorityPrompts:pick(tp.majority,3),
-      hotSeatPrompt:pick(tp.hot_seat,1)[0]||"",
-      oneVsAllPrompt:pick(tp.one_vs_all,1)[0]||""
+      storyPrompts:pick(customPack?packBank({customPack},"prep_story",tp.prep_story):tp.prep_story,3),
+      majorityPrompts:pick(customPack?packBank({customPack},"majority",tp.majority):tp.majority,3),
+      hotSeatPrompt:pick(customPack?packBank({customPack},"hot_seat",tp.hot_seat):tp.hot_seat,1)[0]||"",
+      oneVsAllPrompt:pick(customPack?packBank({customPack},"one_vs_all",tp.one_vs_all):tp.one_vs_all,1)[0]||""
     },
     createdAt:Date.now()
   };
@@ -760,10 +793,10 @@ app.post("/api/rooms/:code/restart",(req,res)=>{
   room.submissions={};room.missions={};room.rounds=[];
   const tp=themePrompts(room.themeId);
   room.prepPrompts={
-    storyPrompts:pick(tp.prep_story,3),
-    majorityPrompts:pick(tp.majority,3),
-    hotSeatPrompt:pick(tp.hot_seat,1)[0]||"",
-    oneVsAllPrompt:pick(tp.one_vs_all,1)[0]||""
+    storyPrompts:pick(packBank(room,"prep_story",tp.prep_story),3),
+    majorityPrompts:pick(packBank(room,"majority",tp.majority),3),
+    hotSeatPrompt:pick(packBank(room,"hot_seat",tp.hot_seat),1)[0]||"",
+    oneVsAllPrompt:pick(packBank(room,"one_vs_all",tp.one_vs_all),1)[0]||""
   };
   room.state="collecting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=null;room.unlocked=false;
   res.json({ok:true});
