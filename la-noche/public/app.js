@@ -1242,7 +1242,7 @@ function openCreateWizard(initialTheme="clasico"){
   document.querySelector("#wizardBack2").onclick=()=>setCreateWizardStep(1);
   document.querySelector("#wizardNext2").onclick=()=>setCreateWizardStep(3);
   document.querySelector("#wizardBack3").onclick=()=>setCreateWizardStep(2);
-  document.querySelector("#createBtn").onclick=createRoom;
+  document.querySelector("#createBtn")?.removeAttribute("disabled");
 }
 function homeAtmosphere(){
   return '<div class="ambient-layer" aria-hidden="true"><span class="orb orb-a"></span><span class="orb orb-b"></span><span class="orb orb-c"></span><i class="spark s1"></i><i class="spark s2"></i><i class="spark s3"></i><i class="spark s4"></i><i class="spark s5"></i></div>';
@@ -1365,26 +1365,54 @@ function initHomeMotion(){
     hero.addEventListener("pointerleave",()=>{hero.style.setProperty("--mx",0);hero.style.setProperty("--my",0)});
   }
 }
-async function createRoom(){try{
-  const pack=selectedCustomPack();
-  const themeInput=document.querySelector('input[name="theme"]:checked');
-  if(!themeInput)throw new Error("Elegí una temática.");
-  const d=await api("/api/rooms",{method:"POST",body:JSON.stringify({
-    name:document.querySelector("#roomName")?.value||"",
-    hostName:document.querySelector("#hostName")?.value||"",
-    themeId:themeInput.value,
-    playWhen:document.querySelector('input[name="when"]:checked')?.value||"now",
-    eventDate:document.querySelector("#eventDate")?.value||"",
-    ageConfirmed:!!document.querySelector("#ageConfirmed")?.checked,
-    customPack:pack||null,
-    surpriseMode:document.querySelector('input[name="partyKind"]:checked')?.value==="surprise",
-    honoreeName:document.querySelector("#honoreeName")?.value||"",
-    roundLimit:Number(document.querySelector('input[name="roundLimit"]:checked')?.value||15),
-    disabledModes:[...document.querySelectorAll("[data-mode-toggle]")].filter(x=>!x.checked).map(x=>x.dataset.modeToggle)
-  })});
-  closeCreateWizard();
-  saveSession(d.code,d.sessionToken);startPoll()
-}catch(e){toast(e.message)}}
+async function createRoom(){
+  const btn=document.querySelector("#createBtn");
+  const fail=message=>{
+    let box=document.querySelector("#createRoomError");
+    if(!box&&btn){
+      box=document.createElement("div");
+      box.id="createRoomError";
+      box.className="create-room-error";
+      btn.closest(".wizard-actions")?.insertAdjacentElement("beforebegin",box);
+    }
+    if(box){box.textContent=message;box.scrollIntoView({behavior:"smooth",block:"center"})}
+    toast(message);
+  };
+  try{
+    if(btn?.dataset.busy==="1")return;
+    const name=document.querySelector("#roomName")?.value.trim()||"";
+    const hostName=document.querySelector("#hostName")?.value.trim()||"";
+    const themeInput=document.querySelector('input[name="theme"]:checked');
+    if(!name){fail("Poné un nombre para la Juntada.");document.querySelector("#roomName")?.focus();return}
+    if(!hostName){fail("Escribí tu nombre.");document.querySelector("#hostName")?.focus();return}
+    if(!themeInput){fail("Elegí una temática.");return}
+    const when=document.querySelector('input[name="when"]:checked')?.value||"now";
+    const eventDate=document.querySelector("#eventDate")?.value||"";
+    if(when==="later"&&!eventDate){fail("Elegí la fecha de la Juntada.");setCreateWizardStep(1);return}
+    const surpriseMode=document.querySelector('input[name="partyKind"]:checked')?.value==="surprise";
+    const honoreeName=document.querySelector("#honoreeName")?.value.trim()||"";
+    if(surpriseMode&&!honoreeName){fail("Decinos para quién es la sorpresa.");setCreateWizardStep(1);return}
+
+    document.querySelector("#createRoomError")?.remove();
+    if(btn){btn.dataset.busy="1";btn.disabled=true;btn.innerHTML='Creando sala… <span>✦</span>'}
+
+    const pack=selectedCustomPack();
+    const d=await api("/api/rooms",{method:"POST",body:JSON.stringify({
+      name,hostName,themeId:themeInput.value,playWhen:when,eventDate,
+      ageConfirmed:!!document.querySelector("#ageConfirmed")?.checked,
+      customPack:pack||null,
+      surpriseMode,honoreeName,
+      roundLimit:Number(document.querySelector('input[name="roundLimit"]:checked')?.value||15),
+      disabledModes:[...document.querySelectorAll("[data-mode-toggle]")].filter(x=>!x.checked).map(x=>x.dataset.modeToggle)
+    })});
+    closeCreateWizard();
+    saveSession(d.code,d.sessionToken);
+    startPoll();
+  }catch(e){
+    if(btn){btn.dataset.busy="0";btn.disabled=false;btn.innerHTML='Crear La Juntada <span>→</span>'}
+    fail(e?.message||"No pude crear la sala. Probá de nuevo.");
+  }
+}
 async function joinRoom(){try{
   const code=document.querySelector("#joinCode")?.value.trim().toUpperCase()||"";
   const params=new URLSearchParams(location.search),honoreeKey=params.get("honoree")||"";
@@ -1831,6 +1859,15 @@ function finished(r){
   }catch(e){toast(e.message);refresh()}};
 }
 function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r)}
+document.addEventListener("click",e=>{
+  const create=e.target.closest?.("#createBtn");
+  if(create){
+    e.preventDefault();
+    e.stopPropagation();
+    createRoom();
+  }
+});
+
 (async()=>{
   await loadConfig();await loadAccess();
   const params=new URLSearchParams(location.search),q=params.get("code"),honoree=params.get("honoree"),
