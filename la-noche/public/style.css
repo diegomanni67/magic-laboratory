@@ -112,3 +112,25 @@ body{background:#0b0809 url('/assets/ambient-pattern.svg') center top/1200px aut
 @keyframes cardHover{0%,100%{transform:rotate(5deg) translateY(0)}50%{transform:rotate(3deg) translateY(-9px)}}
 @media(max-width:860px){.hero-premium{grid-template-columns:1fr;min-height:0}.hero-visual{min-height:330px;margin-top:-12px}.floating-card{right:1%;bottom:-2%;width:27%}}
 @media(max-width:520px){.hero-premium{padding-top:10px}.hero-visual{min-height:250px}.floating-card{width:30%;min-width:105px}.hero-points span{font-size:10px}}
+
+/* Generated theme art: each pack gets its own visual identity */
+.theme-card{padding:10px 10px 14px}
+.theme-card .theme-asset{
+  width:100%;
+  height:auto;
+  aspect-ratio:1/1;
+  object-fit:cover;
+  border-radius:14px;
+  margin:0 0 12px;
+  display:block;
+  box-shadow:0 12px 30px rgba(0,0,0,.28);
+}
+.theme-card:hover .theme-asset{transform:scale(1.025)}
+.theme-card:has(input[value="clasico"]:checked){border-color:rgba(201,73,73,.55)}
+.theme-card:has(input[value="profundo"]:checked){border-color:rgba(144,91,216,.58)}
+.theme-card:has(input[value="parejas"]:checked){border-color:rgba(240,77,173,.58)}
+.theme-card:has(input[value="cumple"]:checked){border-color:rgba(155,93,223,.58)}
+.theme-card:has(input[value="caos"]:checked){border-color:rgba(255,116,49,.64)}
+.theme-card:has(input[value="rompehielo"]:checked){border-color:rgba(93,202,255,.62)}
+.theme-card:has(input[value="picante18"]:checked){border-color:rgba(235,54,63,.6)}
+.theme-card:has(input[value="canceladisimos"]:checked){border-color:rgba(238,63,65,.62)}
