@@ -252,6 +252,10 @@ function finalizeRound(room){
   room.advanceAt=Date.now()+AUTO_ADVANCE_MS;
 }
 function maybeAdvance(room){
+  if(room.state==="starting"){
+    if(room.startAt&&Date.now()>=room.startAt){room.state="playing";room.startAt=null}
+    return;
+  }
   if(room.state!=="playing"||room.roundPhase!=="locked"||!room.advanceAt||Date.now()<room.advanceAt)return;
   room.advanceAt=null;
   if(room.currentRound===0&&!room.unlocked&&room.rounds.length>1){room.state="paywall";return}
@@ -371,7 +375,7 @@ function snapshot(room,viewer){
   const raw=room.rounds[room.currentRound]||null;
   const finished=room.state==="finished";
   return {
-    code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,
+    code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,startAt:room.startAt||null,
     unlocked:room.unlocked,freeRounds:1,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
     prepPrompts:room.prepPrompts,availableModes:(THEME_MODES[room.themeId]||[]).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
@@ -411,7 +415,7 @@ app.post("/api/rooms",(req,res)=>{
   const hostId=id(),sessionToken=token(),tp=themePrompts(themeId);
   const room={
     code,name,themeId,playWhen,eventDate,state:playWhen==="later"?"collecting":"lobby",
-    hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,unlocked:false,accessPlan:null,
+    hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:false,accessPlan:null,
     players:[{id:hostId,name:hostName,ready:false,score:0}],submissions:{},missions:{},rounds:[],
     prepPrompts:{
       storyPrompts:pick(tp.prep_story,3),
@@ -429,7 +433,7 @@ app.post("/api/rooms/:code/join",(req,res)=>{
   if(room.state==="finished")return res.status(409).json({error:"Esta partida ya terminó."});
   const name=clean(req.body.name,40);if(!name)return res.status(400).json({error:"Escribí tu nombre."});
   if(room.players.some(p=>p.name.toLowerCase()===name.toLowerCase()))return res.status(409).json({error:"Ese nombre ya está en la sala."});
-  const alreadyPlaying=["playing","paywall"].includes(room.state);
+  const alreadyPlaying=["starting","playing","paywall"].includes(room.state);
   const p={id:id(),name,ready:alreadyPlaying,score:0},t=token();
   room.players.push(p);sessions.set(t,p.id);
   if(alreadyPlaying&&room.state==="playing"&&room.roundPhase==="guess")finalizeRound(room);
@@ -481,8 +485,9 @@ app.post("/api/rooms/:code/start-game",(req,res)=>{
   room.players.forEach(p=>p.score=0);
   room.rounds=buildRounds(room);assignMissions(room);
   if(!room.rounds.length)return res.status(409).json({error:"No pude generar rondas con estas respuestas."});
-  room.state="playing";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.unlocked=false;
-  res.json({ok:true,rounds:room.rounds.length});
+  room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.unlocked=false;
+  room.startAt=Date.now()+4200;
+  res.json({ok:true,rounds:room.rounds.length,startAt:room.startAt});
 });
 
 app.post("/api/rooms/:code/vote",(req,res)=>{
@@ -549,7 +554,7 @@ app.post("/api/rooms/:code/restart",(req,res)=>{
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
   room.players.forEach(p=>{p.ready=false;p.score=0});
   room.submissions={};room.missions={};room.rounds=[];
-  room.state="collecting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.unlocked=false;
+  room.state="collecting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=null;room.unlocked=false;
   res.json({ok:true});
 });
 
