@@ -220,7 +220,7 @@ async function home(){
       </div>
       <div class="hero-visual reveal-scale" aria-hidden="true">
         <div class="hero-halo"></div>
-        <img class="hero-people" src="/assets/hero-juntada.svg?v=20260920-restored" alt="">
+        <img class="hero-people hero-scene" src="/assets/hero-juntada-premium.webp?v=20260920-exact" alt="">
         <img class="hero-sparks" src="/assets/gold-sparks.svg?v=20260920-restored" alt="">
         <div class="floating-question fq-one"><span>¿QUIÉN FUE?</span><strong>“Me bajé en la ciudad equivocada.”</strong></div>
         <div class="floating-phone fp-one"><span class="phone-notch"></span><small>TU VOTO</small><strong>SOFI</strong><i>✓</i></div>
