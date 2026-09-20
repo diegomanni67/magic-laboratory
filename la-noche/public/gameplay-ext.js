@@ -67,14 +67,54 @@ function playing(r){
 
 function answersArchive(r){
   if(!r.answers)return "";
-  return '<section class="card answers-archive" style="margin-top:14px"><div class="kicker">🔓 RESPUESTAS DESBLOQUEADAS</div><div class="section-title">Ahora sí: todo lo que escribió el grupo</div><p class="muted">Hasta este momento estas respuestas nunca estuvieron disponibles para nadie.</p>'+
-  r.answers.map(a=>'<details><summary>'+esc(a.name)+'</summary><div class="answer-body">'+
-    a.stories.map(s=>'<div class="answer-item"><small>'+esc(s.prompt)+'</small><strong>'+esc(s.answer)+'</strong></div>').join("")+
-    '<div class="answer-item"><small>Verdad</small><strong>'+esc(a.truth)+'</strong></div>'+
-    '<div class="answer-item"><small>Mentira</small><strong>'+esc(a.lie)+'</strong></div>'+
-    '<div class="answer-item"><small>'+esc(a.hotSeat.prompt)+'</small><strong>'+esc(a.hotSeat.answer)+'</strong></div>'+
-    '<div class="answer-item"><small>'+esc(a.oneVsAll.prompt)+'</small><strong>'+esc(a.oneVsAll.answer)+'</strong></div>'+
-    a.majority.map(m=>'<div class="answer-item"><small>'+esc(m.prompt)+'</small><strong>'+esc(m.answer)+'</strong></div>').join("")+
-    (a.mission?'<div class="answer-item"><small>Misión secreta</small><strong>'+esc(a.mission.text)+' · '+(a.mission.status==="completed"?"Cumplida (+"+a.mission.points+")":"No cumplida")+'</strong></div>':"")+
-  '</div></details>').join("")+'</section>';
+  const people=r.answers.map((a,i)=>`<details class="answer-person" ${i===0?"open":""}>
+    <summary>
+      <span class="answer-avatar">${esc(a.name).slice(0,1).toUpperCase()}</span>
+      <div><strong>${esc(a.name)}</strong><small>Ver todo lo que respondió</small></div>
+      <i>+</i>
+    </summary>
+    <div class="answer-body">
+      <div class="answer-group-title">HISTORIAS</div>
+      ${a.stories.map(s=>`<div class="answer-item"><small>${esc(s.prompt)}</small><strong>${esc(s.answer)}</strong></div>`).join("")}
+      <div class="answer-split">
+        <div class="answer-item truth-item"><small>SU VERDAD</small><strong>${esc(a.truth)}</strong></div>
+        <div class="answer-item lie-item"><small>SU MENTIRA</small><strong>${esc(a.lie)}</strong></div>
+      </div>
+      <div class="answer-group-title">RESPUESTAS PERSONALES</div>
+      <div class="answer-item"><small>${esc(a.hotSeat.prompt)}</small><strong>${esc(a.hotSeat.answer)}</strong></div>
+      <div class="answer-item"><small>${esc(a.oneVsAll.prompt)}</small><strong>${esc(a.oneVsAll.answer)}</strong></div>
+      <div class="answer-group-title">VOTOS SECRETOS</div>
+      ${a.majority.map(m=>`<div class="answer-item"><small>${esc(m.prompt)}</small><strong>${esc(m.answer)}</strong></div>`).join("")}
+      ${a.mission?`<div class="answer-group-title">MISIÓN</div><div class="answer-item mission-answer"><small>${a.mission.status==="completed"?"✓ CUMPLIDA":"NO CUMPLIDA"}</small><strong>${esc(a.mission.text)}</strong><b>${a.mission.status==="completed"?"+"+a.mission.points+" puntos":""}</b></div>`:""}
+    </div>
+  </details>`).join("");
+
+  const rounds=(r.roundAnswers||[]).map((x,i)=>`<div class="round-archive-row">
+    <span>${String(i+1).padStart(2,"0")}</span>
+    <div>
+      <small>${esc(x.modeTitle||x.mode)}</small>
+      <strong>${esc(x.statement||x.prompt||"")}</strong>
+      <em>${esc(x.answer||"")}</em>
+    </div>
+  </div>`).join("");
+
+  return `<section class="answers-vault">
+    <div class="final-section-head">
+      <div><div class="kicker">🔓 ARCHIVO DESBLOQUEADO</div><h2>Ahora sí, pueden ver todo.</h2></div>
+      <span>Durante la partida esto estuvo sellado</span>
+    </div>
+    <div class="archive-tabs">
+      <button class="archive-tab active" data-archive-tab="people">Lo que respondió cada uno</button>
+      <button class="archive-tab" data-archive-tab="rounds">Cómo se resolvió la partida</button>
+    </div>
+    <div class="archive-panel active" data-archive-panel="people">${people}</div>
+    <div class="archive-panel" data-archive-panel="rounds"><div class="round-archive-list">${rounds}</div></div>
+  </section>`;
 }
+
+document.addEventListener("click",e=>{
+  const tab=e.target.closest("[data-archive-tab]");if(!tab)return;
+  const root=tab.closest(".answers-vault");if(!root)return;
+  root.querySelectorAll("[data-archive-tab]").forEach(x=>x.classList.toggle("active",x===tab));
+  root.querySelectorAll("[data-archive-panel]").forEach(x=>x.classList.toggle("active",x.dataset.archivePanel===tab.dataset.archiveTab));
+});
