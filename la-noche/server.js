@@ -392,16 +392,19 @@ function finalizeRound(room){
   room.advanceAt=Date.now()+AUTO_ADVANCE_MS;
 }
 function maybeAdvance(room){
+  let changed=false;
   if(room.state==="starting"){
-    if(room.startAt&&Date.now()>=room.startAt){room.state="playing";room.startAt=null}
+    if(room.startAt&&Date.now()>=room.startAt){room.state="playing";room.startAt=null;changed=true}
+    if(changed)persistRoom(room);
     return;
   }
   if(room.state!=="playing"||room.roundPhase!=="locked"||!room.advanceAt||Date.now()<room.advanceAt)return;
-  room.advanceAt=null;
-  if(room.currentRound===0&&!room.unlocked&&room.rounds.length>1){room.state="paywall";return}
-  if(room.currentRound+1>=room.rounds.length){room.state="finished";room.roundPhase="done";room.finishedAt=Date.now();return}
+  room.advanceAt=null;changed=true;
+  if(room.currentRound===0&&!room.unlocked&&room.rounds.length>1){room.state="paywall";persistRoom(room);return}
+  if(room.currentRound+1>=room.rounds.length){room.state="finished";room.roundPhase="done";room.finishedAt=Date.now();persistRoom(room);return}
   room.currentRound++;
   room.roundPhase="guess";
+  if(changed)persistRoom(room);
 }
 function recalculateScores(room){
   room.players.forEach(p=>p.score=0);
@@ -636,10 +639,11 @@ function snapshot(room,viewer){
 
 app.get("/api/health",(_req,res)=>res.json({ok:true,rooms:rooms.size}));
 app.use("/api/rooms/:code",(req,res,next)=>{
+  const roomCodeParam=req.params.code;
   if(req.method!=="GET"){
     res.on("finish",()=>{
       if(res.statusCode<400){
-        const room=getRoom(req.params.code);
+        const room=getRoom(roomCodeParam);
         if(room)persistRoom(room);
       }
     });
@@ -712,7 +716,7 @@ app.post("/api/rooms",(req,res)=>{
     },
     createdAt:Date.now()
   };
-  rooms.set(code,room);sessions.set(sessionKey(sessionToken),hostId);persistRoom(room);persistSession(sessionToken,code,hostId);res.json({code,sessionToken});
+  rooms.set(code,room);sessions.set(sessionKey(sessionToken),hostId);persistRoom(room).then(()=>persistSession(sessionToken,code,hostId));res.json({code,sessionToken});
 });
 
 app.post("/api/rooms/:code/join",(req,res)=>{
