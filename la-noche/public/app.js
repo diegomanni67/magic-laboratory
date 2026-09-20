@@ -636,6 +636,10 @@ async function openAccessPanel(){
             <button class="ghost" id="forgetAccess">Quitar de este dispositivo</button>
           </div>
           <div class="access-security-note">La clave de recuperación funciona como una llave. Guardala en un lugar privado si querés usar el pase en otro dispositivo.</div>
+          ${role==="admin"?`<div class="admin-payment-tools">
+            <div><small>COBROS REALES</small><strong>Mercado Pago</strong><span>Precios, credenciales y webhook.</span></div>
+            <button class="primary" id="openPaymentAdmin">Configurar cobros</button>
+          </div>`:""}
         `:`
           <div class="access-restore">
             <div class="kicker">YA TENÉS UN PASE</div>
@@ -678,6 +682,124 @@ async function openAccessPanel(){
       saveAccessToken(d.accessToken);state.access=d.access;closeAccessPanel();if(!state.code)await home();toast("ADMIN activado · todo desbloqueado")
     }catch(e){toast(e.message)}
   });
+  document.querySelector("#openPaymentAdmin")?.addEventListener("click",()=>{closeAccessPanel();openPaymentAdmin()});
+}
+
+function formatArs(value){
+  const n=Number(value);if(!Number.isFinite(n)||n<=0)return "Sin precio";
+  try{return new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS",maximumFractionDigits:0}).format(n)}
+  catch{return "$ "+Math.round(n).toLocaleString("es-AR")}
+}
+function closePaymentAdmin(){document.querySelector(".payment-admin-overlay")?.remove();document.body.classList.remove("rules-open")}
+async function openPaymentAdmin(){
+  if(state.access?.role!=="admin"){toast("Necesitás acceso ADMIN.");return}
+  let cfg;
+  try{cfg=await api("/api/admin/payments")}catch(e){toast(e.message);return}
+  const plans=state.config?.accessPlans||[];
+  document.querySelector(".payment-admin-overlay")?.remove();
+  document.body.insertAdjacentHTML("beforeend",`
+    <div class="payment-admin-overlay" role="dialog" aria-modal="true" aria-label="Cobros con Mercado Pago">
+      <button class="payment-admin-backdrop" data-close-payment-admin aria-label="Cerrar"></button>
+      <article class="payment-admin-sheet">
+        <button class="rules-close" data-close-payment-admin aria-label="Cerrar">×</button>
+        <header class="payment-admin-head">
+          <div class="payment-admin-mark">MP</div>
+          <div><div class="kicker">COBROS REALES</div><h2>Mercado Pago</h2><p>Las credenciales se guardan cifradas en el servidor. Nunca vuelven al navegador después de guardarlas.</p></div>
+        </header>
+
+        <div class="payment-status-card ${cfg.configured?"ready":"not-ready"}">
+          <span></span><div><small>ESTADO</small><strong>${cfg.configured?"Access Token conectado":"Falta conectar Mercado Pago"}</strong><p>${cfg.webhookSecretConfigured?"Webhook firmado configurado.":"Falta la firma secreta del webhook para notificaciones automáticas."}</p></div>
+        </div>
+
+        <section class="payment-admin-section">
+          <div class="payment-admin-section-head"><div><small>01</small><strong>Precios en pesos argentinos</strong></div><span>Solo se cobran los que tengan precio.</span></div>
+          <div class="payment-price-grid">
+            ${plans.map(p=>`<label><span>${esc(p.title)}</span><div class="money-input"><b>$</b><input type="number" min="1" step="1" data-payment-price="${p.id}" value="${cfg.prices?.[p.id]||""}" placeholder="0"></div></label>`).join("")}
+          </div>
+        </section>
+
+        <section class="payment-admin-section">
+          <div class="payment-admin-section-head"><div><small>02</small><strong>Credenciales productivas</strong></div><span>No se muestran una vez guardadas.</span></div>
+          <label>Access Token de producción</label>
+          <input id="mpAccessToken" type="password" autocomplete="off" placeholder="${cfg.accessTokenConfigured?"Ya configurado · dejá vacío para conservarlo":"APP_USR-…"}">
+          <label>Secret signature de Webhooks</label>
+          <input id="mpWebhookSecret" type="password" autocomplete="off" placeholder="${cfg.webhookSecretConfigured?"Ya configurado · dejá vacío para conservarlo":"Firma secreta del webhook"}">
+          <div class="webhook-box">
+            <div><small>URL DE WEBHOOK</small><strong>${esc(cfg.webhookUrl||"")}</strong></div>
+            <button class="ghost" id="copyWebhookUrl">Copiar</button>
+          </div>
+        </section>
+
+        <div class="payment-admin-note"><span>◉</span><p>La compra real queda habilitada solo cuando hay Access Token válido y un precio para el pase elegido. La simulación sigue disponible únicamente para tu ADMIN.</p></div>
+
+        <footer class="payment-admin-footer">
+          <button class="ghost" data-close-payment-admin>Cancelar</button>
+          <button class="primary" id="savePaymentAdmin">Guardar configuración</button>
+        </footer>
+      </article>
+    </div>`);
+  document.body.classList.add("rules-open");
+  document.querySelectorAll("[data-close-payment-admin]").forEach(b=>b.onclick=closePaymentAdmin);
+  document.querySelector("#copyWebhookUrl").onclick=async()=>{
+    try{await navigator.clipboard.writeText(cfg.webhookUrl);toast("URL de webhook copiada")}catch{}
+  };
+  document.querySelector("#savePaymentAdmin").onclick=async()=>{
+    const btn=document.querySelector("#savePaymentAdmin");
+    try{
+      const prices={};document.querySelectorAll("[data-payment-price]").forEach(i=>prices[i.dataset.paymentPrice]=i.value?Number(i.value):null);
+      btn.disabled=true;btn.textContent="Verificando y guardando…";
+      const saved=await api("/api/admin/payments",{method:"POST",body:JSON.stringify({
+        accessToken:document.querySelector("#mpAccessToken").value.trim(),
+        webhookSecret:document.querySelector("#mpWebhookSecret").value.trim(),
+        prices
+      })});
+      state.config=null;await loadConfig();closePaymentAdmin();toast(saved.configured?"Mercado Pago configurado":"Precios guardados");
+      if(state.room?.state==="paywall")renderRoom();
+    }catch(e){toast(e.message);btn.disabled=false;btn.textContent="Guardar configuración"}
+  };
+}
+function paymentReturnView(kind,message){
+  document.querySelector(".payment-return-overlay")?.remove();
+  document.body.insertAdjacentHTML("beforeend",`<div class="payment-return-overlay">
+    <div class="payment-return-card ${kind}">
+      <div class="payment-return-spinner"><i></i></div>
+      <div class="kicker">MERCADO PAGO</div>
+      <h2>${kind==="success"?"Pago confirmado":kind==="failure"?"No se completó el pago":"Verificando tu pago…"}</h2>
+      <p>${esc(message)}</p>
+      <button class="ghost" id="closePaymentReturn" style="${kind==="checking"?"display:none":""}">Volver a La Juntada</button>
+    </div>
+  </div>`);
+  document.querySelector("#closePaymentReturn")?.addEventListener("click",()=>{document.querySelector(".payment-return-overlay")?.remove();history.replaceState(null,"",location.pathname)});
+}
+async function handlePaymentReturn(orderId,returnState){
+  if(!orderId||!state.token)return;
+  paymentReturnView("checking",returnState==="pending"?"El pago figura pendiente. Lo verificamos automáticamente.":"Estamos confirmando el pago directamente con Mercado Pago.");
+  let last=null;
+  for(let i=0;i<18;i++){
+    try{
+      const d=i===0
+        ?await api("/api/payments/orders/"+encodeURIComponent(orderId)+"/reconcile",{method:"POST"})
+        :await api("/api/payments/orders/"+encodeURIComponent(orderId));
+      last=d.payment;
+      if(last?.status==="approved"){
+        if(last.accessToken){saveAccessToken(last.accessToken);await loadAccess()}
+        history.replaceState(null,"",location.pathname);
+        paymentReturnView("success","El pase ya está activo y la partida quedó desbloqueada.");
+        await refresh();
+        setTimeout(()=>document.querySelector(".payment-return-overlay")?.remove(),1800);
+        return;
+      }
+      if(last?.status==="failed"){
+        history.replaceState(null,"",location.pathname);
+        paymentReturnView("failure","Mercado Pago no aprobó esta operación. Podés intentarlo nuevamente sin perder la sala.");
+        return;
+      }
+    }catch(e){
+      if(i===0)console.warn("payment return",e.message);
+    }
+    await new Promise(r=>setTimeout(r,2500));
+  }
+  paymentReturnView("pending","Todavía no recibimos la confirmación final. Si elegiste un medio de pago diferido, el pase se activará cuando Mercado Pago lo acredite.");
 }
 function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null;if(window.__homeDemoTimer){clearInterval(window.__homeDemoTimer);window.__homeDemoTimer=null}if(window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}}
 function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
@@ -1444,8 +1566,11 @@ function playing(r){
   bindHostRoster(r);
 }
 function paywall(r){
-  const plans=state.config.accessPlans||[];
+  const plans=state.config.accessPlans||[],payCfg=state.config.payments||{};
   const usable=!!state.access?.active&&(state.access.role==="admin"||["single","day","monthly","annual","lifetime"].includes(state.access.plan));
+  const realReady=!!payCfg.configured;
+  const isAdmin=state.access?.role==="admin";
+  const planPrice=id=>Number(payCfg.prices?.[id]||0);
   app.innerHTML=`<div class="room-page paywall-page">
     ${brand()}
     <section class="card center paywall premium-paywall">
@@ -1469,20 +1594,22 @@ function paywall(r){
         <div><strong>Siguen jugando</strong><span>El grupo no vuelve a entrar.</span></div>
       </div>
 
-      <div class="access-plans">${plans.map((p,i)=>`<label class="access-plan">
-        <input type="radio" name="accessPlan" value="${p.id}" ${p.id==="day"?"checked":""}>
-        <div><strong>${esc(p.title)}</strong><span>${esc(p.description)}</span></div>
-        ${p.id==="day"?'<em>24H</em>':p.unlimited?'<em>ILIMITADO</em>':""}
-      </label>`).join("")}</div>
+      <div class="access-plans payment-plans">${plans.map(p=>{
+        const price=planPrice(p.id);
+        return `<label class="access-plan ${price>0?"priced":"unpriced"}">
+          <input type="radio" name="accessPlan" value="${p.id}" ${p.id==="day"?"checked":""}>
+          <div><strong>${esc(p.title)}</strong><span>${esc(p.description)}</span><b class="plan-price">${price>0?esc(formatArs(price)):"Precio a definir"}</b></div>
+          ${p.id==="day"?'<em>24H</em>':p.unlimited?'<em>ILIMITADO</em>':""}
+        </label>`}).join("")}</div>
 
-      <div class="group-note"><strong>Un solo pase alcanza para todo el grupo</strong><span>Los invitados siguen entrando sin cuenta. El pase queda del lado de quien organiza y puede recuperarse en otro dispositivo con una clave.</span></div>
+      <div class="group-note"><strong>Un solo pase alcanza para todo el grupo</strong><span>Los invitados siguen entrando sin cuenta. Después del pago, el pase queda guardado en el dispositivo del host y puede recuperarse con su clave.</span></div>
 
       ${r.isHost
         ?`<div class="paywall-actions">
-            <button class="primary wide big-action" id="unlockTest">${state.config.devPayments?"Simular compra y desbloquear":"Continuar al pago"} <span>→</span></button>
+            ${realReady?'<button class="primary wide big-action mp-pay-button" id="checkoutPayment">Pagar con Mercado Pago <span>→</span></button>':'<div class="payments-not-ready">Los cobros reales todavía no están habilitados por el administrador.</div>'}
             <button class="ghost wide" id="openAccessFromPaywall">Ya tengo un pase / recuperar acceso</button>
-           </div>
-           ${state.config.devPayments?'<div class="tiny muted paywall-dev">Modo desarrollo: simula la compra y genera un pase real dentro de La Juntada.</div>':""}`
+            ${isAdmin&&state.config.devPayments?'<button class="ghost wide dev-unlock" id="unlockTest">Simular compra (solo ADMIN)</button>':""}
+           </div>`
         :'<div class="waiting-host"><span class="waiting-pulse"></span>Esperando que el host desbloquee La Juntada…</div>'}
     </section>
     ${hostRoster(r)}
@@ -1492,17 +1619,34 @@ function paywall(r){
   document.querySelector("#useStoredAccess")?.addEventListener("click",async()=>{
     try{await api("/api/rooms/"+r.code+"/use-access",{method:"POST"});toast("Pase aplicado");refresh()}catch(e){toast(e.message)}
   });
-  if(r.isHost)document.querySelector("#unlockTest").onclick=async()=>{
+
+  const updateCheckout=()=>{
+    const plan=document.querySelector('input[name="accessPlan"]:checked')?.value||"day",price=planPrice(plan),btn=document.querySelector("#checkoutPayment");
+    if(!btn)return;
+    btn.disabled=!price;
+    btn.innerHTML=price?`Pagar ${esc(formatArs(price))} con Mercado Pago <span>→</span>`:'Este pase todavía no tiene precio';
+  };
+  document.querySelectorAll('input[name="accessPlan"]').forEach(x=>x.addEventListener("change",updateCheckout));
+  updateCheckout();
+
+  document.querySelector("#checkoutPayment")?.addEventListener("click",async()=>{
+    const plan=document.querySelector('input[name="accessPlan"]:checked')?.value||"day",btn=document.querySelector("#checkoutPayment");
     try{
-      if(!state.config.devPayments){toast("El proveedor de pagos todavía no está conectado.");return}
+      btn.disabled=true;btn.innerHTML='Abriendo Mercado Pago… <span>✦</span>';
+      const d=await api("/api/payments/checkout",{method:"POST",body:JSON.stringify({plan,roomCode:r.code})});
+      if(!d.checkoutUrl)throw new Error("Mercado Pago no devolvió un checkout.");
+      location.href=d.checkoutUrl;
+    }catch(e){toast(e.message);updateCheckout()}
+  });
+
+  document.querySelector("#unlockTest")?.addEventListener("click",async()=>{
+    try{
       const accessPlan=document.querySelector('input[name="accessPlan"]:checked')?.value||"day";
-      const btn=document.querySelector("#unlockTest");btn.disabled=true;btn.innerHTML='Generando pase… <span>✦</span>';
       const d=await api("/api/rooms/"+r.code+"/unlock-test",{method:"POST",body:JSON.stringify({accessPlan})});
       if(d.accessToken){saveAccessToken(d.accessToken);state.access=d.access||await loadAccess()}
-      toast(accessPlan==="single"?"Partida desbloqueada":"Pase activado");
-      refresh();
-    }catch(e){toast(e.message);refresh()}
-  };
+      toast("Simulación ADMIN completada");refresh()
+    }catch(e){toast(e.message)}
+  });
   bindHostRoster(r);
 }
 function scoreRows(ps){return[...ps].sort((a,b)=>(b.score||0)-(a.score||0)).map((p,i)=>`<div class="score-row"><div class="rank">#${i+1}</div><div class="score-name">${esc(p.name)}</div><div class="score">${p.score||0}</div></div>`).join("")}
@@ -1623,16 +1767,20 @@ function finished(r){
 function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r)}
 (async()=>{
   await loadConfig();await loadAccess();
-  const params=new URLSearchParams(location.search),q=params.get("code"),honoree=params.get("honoree"),c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");
+  const params=new URLSearchParams(location.search),q=params.get("code"),honoree=params.get("honoree"),
+    paymentOrder=params.get("payment_order"),paymentReturn=params.get("payment_return"),
+    c=localStorage.getItem("ln_code"),t=localStorage.getItem("ln_token");
   if(q&&honoree){
     clearSession();
     await home();
     document.querySelector("#joinCode").value=q;
     prepareHonoreeInviteUI(q,honoree);
   }else if(c&&t){
-    state.code=c;state.token=t;startPoll()
+    state.code=c;state.token=t;startPoll();
+    if(paymentOrder)setTimeout(()=>handlePaymentReturn(paymentOrder,paymentReturn||"checking"),350);
   }else{
     await home();
     if(q)document.querySelector("#joinCode").value=q;
+    if(paymentOrder)paymentReturnView("failure","No encontramos la sesión del host en este dispositivo. Volvé a entrar a tu sala para verificar el pago.");
   }
 })();
