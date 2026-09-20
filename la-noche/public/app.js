@@ -1463,7 +1463,7 @@ function bindHostRoster(r){
 function lobby(r){
   const ready=r.players.filter(p=>p.ready).length;
   const stats=state.config?.themeStats?.[r.themeId]||{};
-  const need=Math.max(0,3-r.players.length);
+  const need=Math.max(0,2-r.players.length);
   const modeChips=(r.availableModes||[]).slice(0,6).map(m=>`<span>${assetImg("mode",m.id,"lobby-mode-icon")}<b>${esc(m.title)}</b></span>`).join("");
   const surprise=r.surprise?.enabled;
   app.innerHTML=`<div class="room-page lobby-page">
@@ -1480,7 +1480,7 @@ function lobby(r){
         <div class="lobby-invite-panel">
           <div class="kicker">${surprise?"INVITÁ AL GRUPO":"SALA ABIERTA"}</div>
           <h2>${surprise?"Primero, todos menos "+esc(r.surprise.honoreeName)+".":"Que entren todos."}</h2>
-          <p>${surprise?"Este código es para quienes van a preparar la sorpresa. Después el host manda un link distinto a "+esc(r.surprise.honoreeName)+".":"Usen el código, el link o el QR. Cuando haya al menos 3 personas, pueden empezar a cargar respuestas."}</p>
+          <p>${surprise?"Este código es para quienes van a preparar la sorpresa. Después el host manda un link distinto a "+esc(r.surprise.honoreeName)+".":"Usen el código, el link o el QR. Con 2 personas se activa Modo Dúo automáticamente; con 3 o más se juega la experiencia grupal."}</p>
           <div class="code-orbit"><i></i><i></i><i></i><div class="code">${r.code}</div></div>
           <div class="actions invite-actions">
             <button class="secondary" id="copyLink">Copiar link del grupo</button>
@@ -1504,7 +1504,7 @@ function lobby(r){
 
       <div class="lobby-people-head">
         <div><span class="live-dot"></span><strong>${r.players.length} ${r.players.length===1?"persona":"personas"} en la sala</strong></div>
-        <small>${need?("Faltan "+need+" para poder empezar la preparación"):"Ya pueden empezar la preparación"}</small>
+        <small>${need?("Falta "+need+" persona para poder empezar"):(r.players.length===2?"Modo Dúo listo para empezar":"Ya pueden empezar la preparación")}</small>
       </div>
       <div class="lobby-player-grid">${r.players.map((p,i)=>`
         <div class="lobby-player-card ${p.isHonoree?"is-honoree":""}" style="--delay:${i*45}ms">
@@ -1519,10 +1519,10 @@ function lobby(r){
       <div class="lobby-bottom">
         <div class="lobby-next">
           <span>PRÓXIMO PASO</span>
-          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":"Cada persona responde 10 cosas en secreto."}</strong>
-          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":"Eso construye las rondas personalizadas de esta juntada."}</small>
+          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":"${r.players.length===2?"Sin votaciones grupales: juegan Coincidimos, ¿Qué elegirías?, Duelo y 5 segundos.":"Cada persona responde 10 cosas en secreto."}"}</strong>
+          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":"${r.players.length===2?"Los dos responden en simultáneo y el resultado se revela cuando ambos eligieron.":"Eso construye las rondas personalizadas de esta juntada."}"}</small>
         </div>
-        ${r.isHost?`<button class="primary lobby-start" id="startCollect" ${r.players.length<3?"disabled":""}>Empezar preparación <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia cuando estén todos.</div>'}
+        ${r.isHost?`<button class="primary lobby-start" id="startCollect" ${r.players.length<2?"disabled":""}>${r.players.length===2?"Empezar Modo Dúo":"Empezar preparación"} <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia cuando estén todos.</div>'}
       </div>
     </section>
     ${hostRoster(r)}
