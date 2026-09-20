@@ -239,7 +239,9 @@ function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null;if(w
 function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
 async function loadConfig(){if(!state.config)state.config=await api("/api/config")}
 function themeCards(){
-  return state.config.themes.map(t=>`
+  return state.config.themes.map(t=>{
+    const stats=state.config.themeStats?.[t.id]||{},modes=state.config.themeModes?.[t.id]||[];
+    return `
     <label class="theme-card ${t.premiumOnly?"premium-locked":""}" data-theme="${t.id}">
       <input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""} ${t.premiumOnly?"disabled":""}>
       <div class="theme-art-wrap">
@@ -249,8 +251,108 @@ function themeCards(){
       <div class="theme-copy">
         <strong>${esc(t.title)}</strong>
         <small>${esc(t.tagline||t.description)}</small>
+        <div class="theme-facts">
+          <span>${stats.maxRounds||"—"} rondas máx.</span>
+          <span>${stats.modeCount||modes.length} modos</span>
+          <span>${stats.promptCount||"—"} consignas base</span>
+        </div>
+        <button class="theme-details" type="button" data-theme-info="${t.id}">Qué incluye →</button>
       </div>
-    </label>`).join("");
+    </label>`;
+  }).join("");
+}
+
+function selectedThemeSummary(){
+  const id=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
+  const t=state.config.themes.find(x=>x.id===id)||state.config.themes[0];
+  const stats=state.config.themeStats?.[id]||{},modeIds=state.config.themeModes?.[id]||[];
+  const modes=modeIds.slice(0,6).map(mid=>{
+    const m=state.config.modes.find(x=>x.id===mid);
+    return m?`<span>${assetImg("mode",mid,"selected-mode-icon")}<b>${esc(m.title)}</b></span>`:"";
+  }).join("");
+  return `
+    <div class="selected-theme-art">${assetImg("theme",id,"selected-theme-image")}</div>
+    <div class="selected-theme-copy">
+      <small>TEMÁTICA ELEGIDA</small>
+      <strong>${esc(t.title)}</strong>
+      <p>${esc(t.description)}</p>
+      <div class="selected-theme-stats">
+        <span><b>${stats.maxRounds||"—"}</b> rondas máx.</span>
+        <span><b>${stats.modeCount||modeIds.length}</b> modos</span>
+        <span><b>${stats.promptCount||"—"}</b> consignas base</span>
+      </div>
+      <div class="selected-theme-modes">${modes}</div>
+    </div>
+    <button type="button" class="change-theme" data-scroll="#tematicas">Cambiar</button>`;
+}
+
+function paintSelectedTheme(){
+  const el=document.querySelector("#selectedThemeSummary");
+  if(el)el.innerHTML=selectedThemeSummary();
+  document.querySelector("#selectedThemeSummary [data-scroll]")?.addEventListener("click",e=>{
+    const target=document.querySelector(e.currentTarget.dataset.scroll);target?.scrollIntoView({behavior:"smooth",block:"start"});
+  });
+}
+
+function openThemeInfo(id){
+  const t=state.config.themes.find(x=>x.id===id);if(!t)return;
+  const stats=state.config.themeStats?.[id]||{},modeIds=state.config.themeModes?.[id]||[];
+  const modes=modeIds.map(mid=>{
+    const m=state.config.modes.find(x=>x.id===mid),r=GAME_RULES[mid];
+    if(!m)return "";
+    return `<button type="button" class="theme-mode-row" data-theme-rule="${mid}">
+      ${assetImg("mode",mid,"theme-mode-icon")}
+      <div><strong>${esc(m.title)}</strong><small>${esc(r?.rounds||m.description)}</small></div>
+      <span>→</span>
+    </button>`;
+  }).join("");
+  document.querySelector(".theme-overlay")?.remove();
+  document.body.insertAdjacentHTML("beforeend",`
+    <div class="theme-overlay" role="dialog" aria-modal="true" aria-label="Temática ${esc(t.title)}">
+      <button class="theme-backdrop" data-close-theme aria-label="Cerrar"></button>
+      <article class="theme-sheet">
+        <button class="rules-close" data-close-theme aria-label="Cerrar">×</button>
+        <header class="theme-sheet-hero">
+          <div class="theme-sheet-art">${assetImg("theme",id,"theme-sheet-image")}</div>
+          <div class="theme-sheet-copy">
+            <div class="kicker">TEMÁTICA</div>
+            <h2>${esc(t.title)}</h2>
+            <p class="theme-tagline">${esc(t.tagline||"")}</p>
+            <p>${esc(t.description)}</p>
+          </div>
+        </header>
+        <div class="theme-sheet-stats">
+          <div><small>PARTIDA</small><strong>Hasta ${stats.maxRounds||"—"} rondas</strong></div>
+          <div><small>FORMATOS</small><strong>${stats.modeCount||modeIds.length} modos</strong></div>
+          <div><small>BANCO BASE</small><strong>${stats.promptCount||"—"} consignas</strong></div>
+          <div><small>MISIONES</small><strong>${stats.hasMissions?(stats.missionCount+" disponibles"):"No incluye"}</strong></div>
+        </div>
+        <section class="theme-modes-section">
+          <div class="kicker">MODOS QUE PUEDE MEZCLAR</div>
+          <div class="theme-mode-list">${modes}</div>
+        </section>
+        <div class="theme-content-note"><span>✦</span><p>Estas consignas son la base. La partida además usa las historias, mentiras, votos y respuestas que carga tu propio grupo, por eso dos juntadas nunca terminan siendo iguales.</p></div>
+        ${t.premiumOnly?'<div class="premium-theme-note"><strong>Premium +18</strong><span>Esta temática no entra en la ronda gratuita y requiere acceso Premium.</span></div>':""}
+        <footer class="theme-sheet-footer">
+          ${t.premiumOnly?'<button class="primary" type="button" data-theme-premium>Ver opciones Premium</button>':`<button class="primary" type="button" data-choose-theme="${id}">Elegir ${esc(t.title)}</button>`}
+        </footer>
+      </article>
+    </div>`);
+  document.body.classList.add("rules-open");
+  document.querySelectorAll("[data-close-theme]").forEach(b=>b.onclick=closeThemeInfo);
+  document.querySelectorAll("[data-theme-rule]").forEach(b=>b.onclick=()=>{closeThemeInfo();setTimeout(()=>openRules(b.dataset.themeRule),230)});
+  document.querySelector("[data-choose-theme]")?.addEventListener("click",e=>{
+    const input=document.querySelector('input[name="theme"][value="'+e.currentTarget.dataset.chooseTheme+'"]');
+    if(input&&!input.disabled){input.checked=true;input.dispatchEvent(new Event("change",{bubbles:true}));}
+    closeThemeInfo();setTimeout(()=>document.querySelector("#crear")?.scrollIntoView({behavior:"smooth",block:"start"}),230);
+  });
+  document.querySelector("[data-theme-premium]")?.addEventListener("click",()=>{
+    closeThemeInfo();setTimeout(()=>document.querySelector("#premium")?.scrollIntoView({behavior:"smooth",block:"start"}),230);
+  });
+}
+function closeThemeInfo(){
+  const o=document.querySelector(".theme-overlay");if(!o)return;
+  o.classList.add("closing");setTimeout(()=>o.remove(),220);document.body.classList.remove("rules-open");
 }
 
 function modeShowcase(){
@@ -368,27 +470,51 @@ async function home(){
     <section id="crear" class="home-section create-section reveal-section">
       <div class="create-intro">
         <div class="kicker">CREÁ TU JUNTADA</div>
-        <h2>¿Juegan ahora o la preparan antes?</h2>
-        <p>Podés armarla en el momento o mandar el link durante la semana para llegar con todo listo.</p>
+        <h2>Armala en tres pasos.</h2>
+        <p>Elegís cuándo juegan, confirmás la temática y compartís el acceso. Después La Juntada hace el resto.</p>
       </div>
-      <div class="create-grid">
+
+      <div class="create-flow">
         <div class="create-main card premium-panel">
+          <div class="create-step-head"><span>01</span><div><strong>¿Cuándo van a jugar?</strong><small>Esto cambia cómo se prepara el grupo.</small></div></div>
           <div class="choice-grid">
             <label class="choice-card"><input type="radio" name="when" value="now" checked><strong>⚡ Jugar ahora</strong><span>Están juntos. Entran, responden y arrancan.</span></label>
-            <label class="choice-card"><input type="radio" name="when" value="later"><strong>📅 Preparar antes</strong><span>Mandás el link y cada uno responde cuando puede.</span></label>
+            <label class="choice-card"><input type="radio" name="when" value="later"><strong>📅 Preparar antes</strong><span>Mandás el link durante la semana y llegan con todo listo.</span></label>
           </div>
           <div id="dateWrap" class="date-wrap"><label>Fecha de la juntada</label><input id="eventDate" type="date"></div>
-          <label class="field-label">Nombre de la juntada</label><input id="roomName" placeholder="Cumple de Sofi" maxlength="80">
-          <label class="field-label">Tu nombre</label><input id="hostName" placeholder="Diego" maxlength="40">
+
+          <div class="create-divider"></div>
+          <div class="create-step-head"><span>02</span><div><strong>Revisá qué van a jugar</strong><small>La temática que elegiste arriba define los modos y las consignas.</small></div></div>
+          <div class="selected-theme-summary" id="selectedThemeSummary">${selectedThemeSummary()}</div>
+
+          <div class="create-divider"></div>
+          <div class="create-step-head"><span>03</span><div><strong>Creá el acceso del grupo</strong><small>No hace falta que los invitados tengan cuenta.</small></div></div>
+          <div class="form-two">
+            <div><label class="field-label">Nombre de la juntada</label><input id="roomName" placeholder="Cumple de Sofi" maxlength="80"></div>
+            <div><label class="field-label">Tu nombre</label><input id="hostName" placeholder="Diego" maxlength="40"></div>
+          </div>
           <button class="primary wide big-action" id="createBtn">Crear La Juntada <span>→</span></button>
+
+          <div class="after-create">
+            <strong>¿Qué pasa después?</strong>
+            <div class="after-create-steps">
+              <span><i>1</i>Recibís QR, link y código</span>
+              <span><i>2</i>Todos responden en secreto</span>
+              <span><i>3</i>Juegan 1 ronda gratis</span>
+              <span><i>4</i>Si quieren seguir, desbloquean el resto</span>
+            </div>
+          </div>
         </div>
-        <aside class="join-card card">
+
+        <aside class="join-card card improved-join">
           <div class="join-icon">↗</div>
           <div class="kicker">YA TE INVITARON</div>
-          <h3>Entrá con tu código</h3>
-          <label class="field-label">Código</label><input id="joinCode" maxlength="6" placeholder="ABC123" style="text-transform:uppercase">
+          <h3>No tenés que crear nada.</h3>
+          <p>Si alguien ya armó la juntada, entrás directamente con el código y tu nombre.</p>
+          <label class="field-label">Código de 6 caracteres</label><input id="joinCode" maxlength="6" placeholder="ABC123" style="text-transform:uppercase">
           <label class="field-label">Tu nombre</label><input id="joinName" maxlength="40" placeholder="Tu nombre">
-          <button class="secondary wide" id="joinBtn">Entrar</button>
+          <button class="secondary wide" id="joinBtn">Entrar a la juntada</button>
+          <div class="join-note">Sin descarga · Sin registro para invitados</div>
         </aside>
       </div>
     </section>
@@ -460,6 +586,7 @@ async function home(){
     const themeId=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
     const theme=state.config.themes.find(t=>t.id===themeId);
     document.querySelector("#ageWrap")?.classList.toggle("show",!!theme?.age18);
+    paintSelectedTheme();
   };
   document.querySelectorAll('input[name="when"],input[name="theme"]').forEach(x=>x.onchange=refreshExtras);
   refreshExtras();
@@ -467,6 +594,7 @@ async function home(){
   document.querySelector("#joinBtn").onclick=joinRoom;
   document.querySelectorAll("[data-scroll]").forEach(b=>b.onclick=()=>document.querySelector(b.dataset.scroll)?.scrollIntoView({behavior:"smooth",block:"start"}));
   document.querySelectorAll("[data-rule]").forEach(b=>b.onclick=()=>openRules(b.dataset.rule));
+  document.querySelectorAll("[data-theme-info]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();openThemeInfo(b.dataset.themeInfo)});
   initHomeMotion();
   if(location.hash.startsWith("#reglas="))openRules(location.hash.split("=")[1]);
 }
