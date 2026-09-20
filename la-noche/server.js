@@ -375,7 +375,7 @@ async function reconcilePayment(localOrder,providerOrder){
       `UPDATE payment_orders
        SET status='approved',provider_status=$2,access_token=$3,payment_id=$4,fulfilled_at=now(),updated_at=now()
        WHERE id=$1 RETURNING *`,
-      [localOrder.id,String(providerOrder.status_detail||providerOrder.status||"approved"),token,paymentId]
+      [localOrder.id,String(providerOrder.status_detail||providerOrder.status||"approved"),encryptPaymentSecret(token),paymentId]
     );
     await unlockPaidRoom(localOrder.room_code,localOrder.plan);
     return r.rows[0];
@@ -398,7 +398,7 @@ function paymentOrderPublic(row){
   return {
     id:row.id,plan:row.plan,amount:Number(row.amount),currency:row.currency,status:row.status,
     providerStatus:row.provider_status||null,providerOrderId:row.provider_order_id||null,
-    accessToken:row.status==="approved"?row.access_token:null,
+    accessToken:row.status==="approved"?decryptPaymentSecret(row.access_token):null,
     createdAt:row.created_at,fulfilledAt:row.fulfilled_at
   };
 }
