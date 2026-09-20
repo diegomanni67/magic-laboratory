@@ -4,6 +4,157 @@ const themeAsset={clasico:"clasico",profundo:"profundo",parejas:"parejas",cumple
 const modeAsset={quien_fue:"who",lee_al_grupo:"group",mentiroso:"liar",silla_caliente:"hot",duo:"duo",ordena_al_grupo:"rank",todos_contra_uno:"versus",mision_secreta:"mission"};
 function assetImg(type,key,cls="ui-icon"){const file=(type==="theme"?themeAsset[key]:modeAsset[key]);if(!file)return "";const ext=type==="theme"?"webp":"svg";return '<img class="'+cls+'" src="/assets/'+type+'-'+file+'.'+ext+'?v=20260920" alt="">'}
 
+const GAME_RULES={
+  quien_fue:{
+    title:"¿Quién fue?",eyebrow:"DETECTIVE SOCIAL",
+    summary:"Una historia real del grupo aparece sin autor. El desafío es descubrir quién la contó.",
+    objective:"Reconocer a tus amigos por sus anécdotas, costumbres y nivel de caos.",
+    players:"Vota todo el grupo menos la persona dueña de la historia.",
+    steps:[
+      "Antes de jugar, cada persona deja historias o anécdotas en secreto.",
+      "La Juntada muestra una de esas historias sin revelar quién la escribió.",
+      "Cada jugador elige desde su celular quién cree que fue.",
+      "Cuando todos votaron, la respuesta queda resuelta automáticamente y los puntos se guardan en secreto."
+    ],
+    scoring:["+100 si adivinás quién fue.","La persona de la historia también puede sumar por lograr despistar al grupo."],
+    tip:"No hace falta escribir una novela: cuanto más concreta y reconocible sea la historia, mejor funciona."
+  },
+  lee_al_grupo:{
+    title:"Leé al grupo",eyebrow:"MAYORÍA SECRETA",
+    summary:"No tenés que acertar qué piensa una persona. Tenés que anticipar qué va a decidir la mayoría del grupo.",
+    objective:"Entender la cabeza colectiva de la juntada.",
+    players:"Todos pueden votar y todos intentan predecir el resultado colectivo.",
+    steps:[
+      "Durante la preparación, todos responden consignas del tipo “¿Quién sería más probable que…?” sin ver a los demás.",
+      "La Juntada calcula cuál fue la respuesta mayoritaria.",
+      "En la ronda aparece la consigna y cada jugador intenta anticipar qué eligió el grupo.",
+      "La mayoría real se usa como respuesta correcta."
+    ],
+    scoring:["+100 si anticipás correctamente la decisión de la mayoría."],
+    tip:"No respondas lo que vos elegirías: pensá qué elegiría el grupo entero."
+  },
+  mentiroso:{
+    title:"El Mentiroso",eyebrow:"VERDAD O BLUFF",
+    summary:"Aparece una afirmación sobre alguien del grupo y el resto decide si es verdad o una mentira bien vendida.",
+    objective:"Detectar quién está diciendo la verdad y quién preparó un bluff convincente.",
+    players:"La persona protagonista no vota su propia afirmación; el resto decide.",
+    steps:[
+      "Cada jugador prepara una verdad sorprendente y una mentira creíble.",
+      "La Juntada muestra una afirmación y dice de quién habla.",
+      "El resto vota “Es verdad” o “Es mentira”.",
+      "El sistema resuelve la ronda y guarda tanto los aciertos como el poder de engaño."
+    ],
+    scoring:["+100 si detectás correctamente verdad o mentira.","Si era mentira, quien la inventó suma puntos por cada persona que logró engañar."],
+    tip:"La mejor mentira es la que podría ser perfectamente cierta."
+  },
+  silla_caliente:{
+    title:"Silla Caliente",eyebrow:"¿CUÁNTO LO CONOCÉS?",
+    summary:"Una persona ya dejó una respuesta personal. El resto tiene que predecir qué eligió.",
+    objective:"Demostrar quién conoce de verdad a la persona que está en la silla caliente.",
+    players:"La persona protagonista queda afuera de la votación; todos los demás intentan adivinarla.",
+    steps:[
+      "En la preparación cada jugador responde una consigna personal.",
+      "La ronda elige a una persona y muestra esa misma pregunta al resto.",
+      "Aparecen varias respuestas posibles mezcladas.",
+      "Todos eligen cuál creen que fue la respuesta real de la persona protagonista."
+    ],
+    scoring:["+100 por acertar la respuesta real."],
+    tip:"Acá no gana la lógica: gana conocer los gustos, manías y decisiones del otro."
+  },
+  todos_contra_uno:{
+    title:"Todos contra uno",eyebrow:"DESCIFRÁ AL PROTAGONISTA",
+    summary:"Una persona tiene una respuesta escondida y todo el grupo intenta descubrirla.",
+    objective:"Que el grupo descifre al protagonista… o que el protagonista consiga que nadie lo haga.",
+    players:"Una persona es el objetivo. El resto juega contra ella.",
+    steps:[
+      "La Juntada elige a un protagonista y toma una de sus respuestas secretas.",
+      "El grupo recibe la pregunta y opciones posibles.",
+      "Todos intentan encontrar la respuesta que realmente dio esa persona.",
+      "Si muchos fallan, el protagonista también sale beneficiado."
+    ],
+    scoring:["+100 para cada jugador que acierta.","El protagonista suma puntos por cada persona que logra despistar."],
+    tip:"Ideal para descubrir quién realmente sabe cómo piensa el otro."
+  },
+  duo:{
+    title:"Dúo imposible",eyebrow:"¿PIENSAN IGUAL?",
+    summary:"Dos personas responden la misma elección por separado mientras el resto apuesta si van a coincidir.",
+    objective:"Descubrir qué dúos están realmente sincronizados.",
+    players:"Dos personas forman el dúo; todos los demás predicen si coinciden o no.",
+    steps:[
+      "La Juntada arma una pareja de jugadores.",
+      "Cada integrante recibe la misma pregunta con dos opciones y responde sin ver al otro.",
+      "El resto vota si cree que van a elegir lo mismo o respuestas distintas.",
+      "Al cerrar la ronda se compara el dúo y se resuelven todas las predicciones."
+    ],
+    scoring:["Si el dúo coincide, ambos integrantes suman +100.","Quienes predijeron correctamente si coincidían o no suman +75."],
+    tip:"Puede ser una pareja, dos mejores amigos o dos personas que aparentemente no tienen nada que ver."
+  },
+  ordena_al_grupo:{
+    title:"Ordená al grupo",eyebrow:"RANKING COLECTIVO",
+    summary:"Todos ordenan a varias personas según una consigna. Después La Juntada arma el ranking colectivo real.",
+    objective:"Acercarte lo máximo posible a cómo el grupo ordena a sus propios integrantes.",
+    players:"Todos arman su ranking desde el celular.",
+    steps:[
+      "Aparece una consigna y cuatro personas del grupo.",
+      "Cada jugador toca los nombres para ordenarlos del #1 al #4.",
+      "La Juntada combina todos los rankings enviados.",
+      "Se genera un orden colectivo y se compara cuánto se acercó cada jugador."
+    ],
+    scoring:["Hasta +150 según qué tan cerca quede tu orden del ranking colectivo."],
+    tip:"No se trata de tu opinión solamente: intentá anticipar el consenso."
+  },
+  mision_secreta:{
+    title:"Misión secreta",eyebrow:"EL JUEGO SALE DE LA PANTALLA",
+    summary:"Recibís un objetivo oculto para cumplir durante la juntada sin que el resto descubra que forma parte del juego.",
+    objective:"Cumplir una misión real dentro de la reunión y mantenerla en secreto.",
+    players:"Cada persona recibe su propia misión.",
+    steps:[
+      "Al empezar la partida, tu celular te muestra una misión que solo vos podés ver.",
+      "La misión puede requerir provocar una frase, una situación, una foto o una acción durante la juntada.",
+      "Intentás cumplirla naturalmente sin revelar qué estás haciendo.",
+      "Cuando lo lográs, la marcás como cumplida desde tu celular. Se revela al final."
+    ],
+    scoring:["Misión cumplida: +250 puntos."],
+    tip:"Es el modo que hace que La Juntada siga ocurriendo incluso cuando nadie está mirando la pantalla."
+  }
+};
+
+function openRules(id){
+  const rule=GAME_RULES[id],mode=state.config?.modes?.find(m=>m.id===id);
+  if(!rule)return;
+  document.querySelector(".rules-overlay")?.remove();
+  const steps=rule.steps.map((x,i)=>`<li><span>${String(i+1).padStart(2,"0")}</span><p>${esc(x)}</p></li>`).join("");
+  const scoring=rule.scoring.map(x=>`<li>${esc(x)}</li>`).join("");
+  document.body.insertAdjacentHTML("beforeend",`
+    <div class="rules-overlay" role="dialog" aria-modal="true" aria-label="Reglamento de ${esc(rule.title)}">
+      <button class="rules-backdrop" data-close-rules aria-label="Cerrar reglamento"></button>
+      <article class="rules-sheet">
+        <button class="rules-close" data-close-rules aria-label="Cerrar">×</button>
+        <header class="rules-hero">
+          <div class="rules-icon">${assetImg("mode",id,"rules-mode-icon")}</div>
+          <div><div class="kicker">${esc(rule.eyebrow)}</div><h2>${esc(rule.title)}</h2><p>${esc(rule.summary)}</p></div>
+        </header>
+        <div class="rules-meta">
+          <div><small>OBJETIVO</small><strong>${esc(rule.objective)}</strong></div>
+          <div><small>QUIÉN JUEGA</small><strong>${esc(rule.players)}</strong></div>
+        </div>
+        <section class="rules-section"><div class="kicker">CÓMO SE JUEGA</div><ol class="rules-steps">${steps}</ol></section>
+        <section class="rules-section scoring"><div class="kicker">PUNTOS</div><ul>${scoring}</ul></section>
+        <aside class="rules-tip"><span>✦</span><div><small>CLAVE</small><strong>${esc(rule.tip)}</strong></div></aside>
+        <footer class="rules-footer"><button class="primary" data-close-rules>Entendido</button></footer>
+      </article>
+    </div>`);
+  document.body.classList.add("rules-open");
+  document.querySelectorAll("[data-close-rules]").forEach(b=>b.onclick=closeRules);
+  history.replaceState(null,"","#reglas="+id);
+}
+function closeRules(){
+  document.querySelector(".rules-overlay")?.classList.add("closing");
+  setTimeout(()=>document.querySelector(".rules-overlay")?.remove(),220);
+  document.body.classList.remove("rules-open");
+  if(location.hash.startsWith("#reglas="))history.replaceState(null,"","#modos");
+}
+
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(m){toastEl.textContent=m;toastEl.classList.add("show");setTimeout(()=>toastEl.classList.remove("show"),2500)}
 function brand(){return '<div class="brand brand-real"><img src="/assets/logo-la-juntada.svg" alt="La Juntada"></div>'}
@@ -31,7 +182,7 @@ function themeCards(){
 function modeShowcase(){
   return state.config.modes
     .filter(m=>state.config.implementedModes.includes(m.id)||m.id==="mision_secreta")
-    .map(m=>`<div class="mode-mini">${assetImg("mode",m.id,"mode-show-icon")}<div><strong>${esc(m.title)}</strong><small>${esc(m.description)}</small></div></div>`).join("");
+    .map(m=>`<button class="mode-mini rule-card" type="button" data-rule="${m.id}">${assetImg("mode",m.id,"mode-show-icon")}<div><strong>${esc(m.title)}</strong><small>${esc(m.description)}</small><em>Ver reglamento →</em></div></button>`).join("");
 }
 
 function homeAtmosphere(){
@@ -67,13 +218,13 @@ async function home(){
           <div><strong>Sin descargas ni cuentas para invitados</strong><small>Entrás desde cualquier celular con un código.</small></div>
         </div>
       </div>
-      <div class="hero-visual reveal-scale" aria-hidden="true">
+      <div class="hero-visual hero-photo-visual reveal-scale">
         <div class="hero-halo"></div>
-        <img class="hero-people" src="/assets/hero-juntada.svg?v=20260920" alt="">
-        <img class="hero-sparks" src="/assets/gold-sparks.svg?v=20260920" alt="">
-        <div class="floating-question fq-one"><span>¿QUIÉN FUE?</span><strong>“Me bajé en la ciudad equivocada.”</strong></div>
-        <div class="floating-phone fp-one"><span class="phone-notch"></span><small>TU VOTO</small><strong>SOFI</strong><i>✓</i></div>
-        <div class="floating-phone fp-two"><span class="phone-notch"></span><small>7/9</small><strong>VOTARON</strong><i>●</i></div>
+        <div class="hero-photo-frame">
+          <img class="hero-premium-art" src="/assets/hero-juntada-premium.webp?v=20260920a" alt="Grupo de amigos jugando La Juntada desde sus celulares">
+          <div class="hero-photo-vignette"></div>
+          <div class="hero-photo-status"><span class="live-dot"></span><div><small>UNA JUNTADA REAL</small><strong>Todos participan desde su celular</strong></div></div>
+        </div>
       </div>
     </section>
 
@@ -177,7 +328,9 @@ async function home(){
   document.querySelector("#createBtn").onclick=createRoom;
   document.querySelector("#joinBtn").onclick=joinRoom;
   document.querySelectorAll("[data-scroll]").forEach(b=>b.onclick=()=>document.querySelector(b.dataset.scroll)?.scrollIntoView({behavior:"smooth",block:"start"}));
+  document.querySelectorAll("[data-rule]").forEach(b=>b.onclick=()=>openRules(b.dataset.rule));
   initHomeMotion();
+  if(location.hash.startsWith("#reglas="))openRules(location.hash.split("=")[1]);
 }
 
 function initHomeMotion(){
