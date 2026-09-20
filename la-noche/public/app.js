@@ -787,6 +787,26 @@ async function home(){
       </div>
     </section>
 
+    <section id="personalizar" class="home-section custom-home reveal-section">
+      <div class="section-head">
+        <div><div class="kicker">TU GRUPO, TUS REGLAS</div><h2>Meté preguntas que solo ustedes entienden.</h2></div>
+        <p>Creá packs para cumpleaños, viajes, parejas, grupos de amigos o cualquier juntada especial. Es una función Premium.</p>
+      </div>
+      <div class="custom-home-demo">
+        <div class="custom-demo-card">
+          <span>PACK PROPIO</span>
+          <strong>“Viaje a Córdoba 2026”</strong>
+          <div class="custom-demo-lines">
+            <i>¿Quién fue el primero en perder algo?</i>
+            <i>Ordenalos de más a menos probable que llegue tarde.</i>
+            <i>Conseguí que alguien diga “esto ya pasó”.</i>
+          </div>
+          <small>Se mezcla con historias y respuestas reales del grupo.</small>
+        </div>
+        <div id="customPackShelf" class="custom-pack-library">${customPackShelfHtml()}</div>
+      </div>
+    </section>
+
     <section id="crear" class="home-section create-section reveal-section">
       <div class="create-intro">
         <div class="kicker">CREÁ TU JUNTADA</div>
@@ -806,6 +826,8 @@ async function home(){
           <div class="create-divider"></div>
           <div class="create-step-head"><span>02</span><div><strong>Revisá qué van a jugar</strong><small>La temática que elegiste arriba define los modos y las consignas.</small></div></div>
           <div class="selected-theme-summary" id="selectedThemeSummary">${selectedThemeSummary()}</div>
+
+          <div id="customPackHolder" class="custom-pack-holder">${customPackSelectorHtml()}</div>
 
           <div class="create-divider"></div>
           <div class="create-step-head"><span>03</span><div><strong>Creá el acceso del grupo</strong><small>No hace falta que los invitados tengan cuenta.</small></div></div>
@@ -882,7 +904,7 @@ async function home(){
           <strong class="plan-main">Todas las partidas que quieras</strong>
           <ul>
             <li>Creás nuevas juntadas sin pagar cada juego</li>
-            <li>Acceso a packs y temáticas Premium</li>
+            <li>Acceso a temáticas Premium y packs personalizados</li>
             <li>Las temáticas +18 quedan dentro de Premium</li>
             <li>Un solo pase del organizador alcanza para todo el grupo</li>
           </ul>
@@ -916,6 +938,8 @@ async function home(){
   document.querySelectorAll("[data-scroll]").forEach(b=>b.onclick=()=>document.querySelector(b.dataset.scroll)?.scrollIntoView({behavior:"smooth",block:"start"}));
   document.querySelectorAll("[data-rule]").forEach(b=>b.onclick=()=>openRules(b.dataset.rule));
   document.querySelectorAll("[data-theme-info]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();openThemeInfo(b.dataset.themeInfo)});
+  paintCustomPackShelf();
+  bindCustomPackControls();
   initHomeMotion();
   if(location.hash.startsWith("#reglas="))openRules(location.hash.split("=")[1]);
 }
@@ -947,7 +971,19 @@ function initHomeMotion(){
     hero.addEventListener("pointerleave",()=>{hero.style.setProperty("--mx",0);hero.style.setProperty("--my",0)});
   }
 }
-async function createRoom(){try{const d=await api("/api/rooms",{method:"POST",body:JSON.stringify({name:document.querySelector("#roomName").value,hostName:document.querySelector("#hostName").value,themeId:document.querySelector('input[name="theme"]:checked').value,playWhen:document.querySelector('input[name="when"]:checked').value,eventDate:document.querySelector("#eventDate").value,ageConfirmed:document.querySelector("#ageConfirmed").checked})});saveSession(d.code,d.sessionToken);startPoll()}catch(e){toast(e.message)}}
+async function createRoom(){try{
+  const pack=selectedCustomPack();
+  const d=await api("/api/rooms",{method:"POST",body:JSON.stringify({
+    name:document.querySelector("#roomName").value,
+    hostName:document.querySelector("#hostName").value,
+    themeId:document.querySelector('input[name="theme"]:checked').value,
+    playWhen:document.querySelector('input[name="when"]:checked').value,
+    eventDate:document.querySelector("#eventDate").value,
+    ageConfirmed:document.querySelector("#ageConfirmed").checked,
+    customPack:pack||null
+  })});
+  saveSession(d.code,d.sessionToken);startPoll()
+}catch(e){toast(e.message)}}
 async function joinRoom(){try{const c=document.querySelector("#joinCode").value.trim().toUpperCase();state.code=c;const d=await api("/api/rooms/"+c+"/join",{method:"POST",body:JSON.stringify({name:document.querySelector("#joinName").value})});saveSession(d.code,d.sessionToken);if(d.lateJoin)toast("Entraste a una partida en curso");startPoll()}catch(e){toast(e.message)}}
 async function refresh(){if(!state.code)return;try{const r=await api("/api/rooms/"+state.code);state.room=r;const k=JSON.stringify(r);if(k!==state.lastKey){state.lastKey=k;renderRoom()}}catch(e){if(/inexistente|Sesión/.test(e.message)){home();toast(e.message)}}}
 
