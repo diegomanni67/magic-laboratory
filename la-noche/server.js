@@ -120,8 +120,10 @@ function sanitizeCustomPack(raw){
   const duo=Array.isArray(content.duo)?content.duo.map(x=>({
     question:clean(x?.question,180),a:clean(x?.a,90),b:clean(x?.b,90)
   })).filter(x=>x.question&&x.a&&x.b).slice(0,30):[];
+  const rawId=clean(raw.id,80);
+  const safeId=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawId)?rawId:id();
   return {
-    id:clean(raw.id,80)||id(),
+    id:safeId,
     name:clean(raw.name,70)||"Mi pack",
     description:clean(raw.description,180),
     mixMode:raw.mixMode==="custom_first"?"custom_first":"mixed",
