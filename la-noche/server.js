@@ -239,6 +239,170 @@ function constantTimeTextEqual(a,b){
   return x.length===y.length&&crypto.timingSafeEqual(x,y);
 }
 
+
+const PAYMENT_CONFIG_KEY_HEX=process.env.PAYMENT_CONFIG_ENCRYPTION_KEY||"";
+const PUBLIC_BASE_URL=(process.env.PUBLIC_BASE_URL||"https://la-noche-mvp.onrender.com").replace(/\/$/,"");
+const PAYMENT_PROVIDER="mercadopago";
+const PAYMENT_CURRENCY="ARS";
+
+function paymentKey(){
+  if(!/^[0-9a-f]{64}$/i.test(PAYMENT_CONFIG_KEY_HEX))throw new Error("PAYMENT_CONFIG_ENCRYPTION_KEY inválida");
+  return Buffer.from(PAYMENT_CONFIG_KEY_HEX,"hex");
+}
+function encryptPaymentSecret(value){
+  if(!value)return null;
+  const iv=crypto.randomBytes(12),cipher=crypto.createCipheriv("aes-256-gcm",paymentKey(),iv);
+  const enc=Buffer.concat([cipher.update(String(value),"utf8"),cipher.final()]);
+  const tag=cipher.getAuthTag();
+  return ["v1",iv.toString("base64url"),tag.toString("base64url"),enc.toString("base64url")].join(".");
+}
+function decryptPaymentSecret(value){
+  if(!value)return "";
+  try{
+    const [v,iv,tag,data]=String(value).split(".");
+    if(v!=="v1")return "";
+    const decipher=crypto.createDecipheriv("aes-256-gcm",paymentKey(),Buffer.from(iv,"base64url"));
+    decipher.setAuthTag(Buffer.from(tag,"base64url"));
+    return Buffer.concat([decipher.update(Buffer.from(data,"base64url")),decipher.final()]).toString("utf8");
+  }catch{return ""}
+}
+function requireAdminAccess(req){
+  const a=accessFromReq(req);
+  return a&&!a.expired&&a.role==="admin"?a:null;
+}
+function normalizePlanPrices(raw){
+  const out={};
+  for(const p of ACCESS_PLANS){
+    const n=Number(raw?.[p.id]);
+    out[p.id]=Number.isFinite(n)&&n>0?Math.round(n*100)/100:null;
+  }
+  return out;
+}
+async function getPaymentSettings({secrets=false}={}){
+  if(!db)return {provider:PAYMENT_PROVIDER,currency:PAYMENT_CURRENCY,prices:normalizePlanPrices({}),configured:false};
+  const r=await db.query("SELECT * FROM payment_settings WHERE id='main' LIMIT 1");
+  if(!r.rowCount)return {provider:PAYMENT_PROVIDER,currency:PAYMENT_CURRENCY,prices:normalizePlanPrices({}),configured:false};
+  const row=r.rows[0],accessToken=decryptPaymentSecret(row.encrypted_access_token),webhookSecret=decryptPaymentSecret(row.encrypted_webhook_secret);
+  const base={
+    provider:PAYMENT_PROVIDER,currency:row.currency||PAYMENT_CURRENCY,prices:normalizePlanPrices(row.prices||{}),
+    accessTokenConfigured:!!accessToken,webhookSecretConfigured:!!webhookSecret,
+    configured:!!accessToken
+  };
+  return secrets?{...base,accessToken,webhookSecret}:base;
+}
+async function paymentPublicConfig(){
+  try{
+    const p=await getPaymentSettings();
+    return {
+      provider:p.provider,label:"Mercado Pago",currency:p.currency,configured:p.configured,
+      webhookReady:p.webhookSecretConfigured,prices:p.prices,
+      webhookUrl:PUBLIC_BASE_URL+"/api/payments/webhook"
+    };
+  }catch(e){
+    console.error("paymentPublicConfig",e.message);
+    return {provider:PAYMENT_PROVIDER,label:"Mercado Pago",currency:PAYMENT_CURRENCY,configured:false,webhookReady:false,prices:normalizePlanPrices({})};
+  }
+}
+async function mpFetch(pathname,{method="GET",body=null,accessToken,idempotencyKey=null}={}){
+  const headers={Accept:"application/json","Content-Type":"application/json",Authorization:"Bearer "+accessToken};
+  if(idempotencyKey)headers["X-Idempotency-Key"]=idempotencyKey;
+  const r=await fetch("https://api.mercadopago.com"+pathname,{method,headers,body:body?JSON.stringify(body):undefined});
+  const data=await r.json().catch(()=>({}));
+  if(!r.ok){
+    const msg=data?.message||data?.error||data?.cause?.[0]?.description||"Mercado Pago rechazó la solicitud.";
+    const err=new Error(String(msg));err.status=r.status;throw err;
+  }
+  return data;
+}
+function verifyMercadoPagoWebhook(req,secret){
+  const sig=String(req.headers["x-signature"]||""),requestId=String(req.headers["x-request-id"]||"");
+  const dataId=String(req.query["data.id"]||req.body?.data?.id||"").toLowerCase();
+  if(!sig||!requestId||!dataId||!secret)return false;
+  let ts="",v1="";
+  sig.split(",").forEach(part=>{
+    const [k,...rest]=part.split("="),v=rest.join("=").trim();
+    if(k?.trim()==="ts")ts=v;
+    if(k?.trim()==="v1")v1=v;
+  });
+  if(!ts||!v1)return false;
+  const manifest=`id:${dataId};request-id:${requestId};ts:${ts};`;
+  const expected=crypto.createHmac("sha256",secret).update(manifest).digest("hex");
+  const a=Buffer.from(v1),b=Buffer.from(expected);
+  return a.length===b.length&&crypto.timingSafeEqual(a,b);
+}
+function paymentStatusFromProvider(order){
+  const status=String(order?.status||"").toLowerCase(),detail=String(order?.status_detail||"").toLowerCase();
+  if(status==="processed"&&detail==="accredited")return "approved";
+  if(["failed","cancelled","canceled","expired","rejected"].includes(status)||["rejected","cancelled","canceled","expired"].includes(detail))return "failed";
+  return "pending";
+}
+async function findLocalPaymentOrder(idOrProvider){
+  if(!db)return null;
+  const r=await db.query(
+    "SELECT * FROM payment_orders WHERE id::text=$1 OR provider_order_id=$1 LIMIT 1",
+    [String(idOrProvider||"")]
+  );
+  return r.rows[0]||null;
+}
+async function unlockPaidRoom(roomCode,plan){
+  const room=getRoom(roomCode);if(!room)return;
+  room.accessPlan=plan;room.unlocked=true;
+  if(room.state==="paywall"){
+    room.state="playing";room.currentRound=Math.min(1,room.rounds.length-1);room.roundPhase="guess";room.advanceAt=null;
+  }
+  await persistRoom(room);
+}
+async function reconcilePayment(localOrder,providerOrder){
+  if(!localOrder||!providerOrder)return localOrder;
+  const providerStatus=paymentStatusFromProvider(providerOrder);
+  const external=String(providerOrder.external_reference||"");
+  const paid=Number(providerOrder.total_paid_amount??providerOrder.total_amount??0);
+  const expected=Number(localOrder.amount);
+  const currency=String(providerOrder.currency||providerOrder.currency_id||localOrder.currency||"ARS");
+  if(external&&external!==String(localOrder.id))throw new Error("La referencia del pago no coincide.");
+  if(providerStatus==="approved"&&(Math.abs(paid-expected)>0.009||currency!==localOrder.currency))throw new Error("El monto o la moneda del pago no coinciden.");
+
+  if(providerStatus==="approved"&&!localOrder.access_token){
+    const token=mintAccess({
+      plan:localOrder.plan,
+      roomCode:localOrder.plan==="single"?localOrder.room_code:null
+    });
+    const access=readAccessToken(token);
+    await persistAccess(access);
+    const paymentId=providerOrder.transactions?.payments?.find?.(p=>p.status==="processed")?.id||
+      providerOrder.transactions?.payments?.[0]?.id||null;
+    const r=await db.query(
+      `UPDATE payment_orders
+       SET status='approved',provider_status=$2,access_token=$3,payment_id=$4,fulfilled_at=now(),updated_at=now()
+       WHERE id=$1 RETURNING *`,
+      [localOrder.id,String(providerOrder.status_detail||providerOrder.status||"approved"),token,paymentId]
+    );
+    await unlockPaidRoom(localOrder.room_code,localOrder.plan);
+    return r.rows[0];
+  }
+
+  const r=await db.query(
+    `UPDATE payment_orders SET status=$2,provider_status=$3,updated_at=now() WHERE id=$1 RETURNING *`,
+    [localOrder.id,providerStatus,String(providerOrder.status_detail||providerOrder.status||providerStatus)]
+  );
+  return r.rows[0];
+}
+async function fetchAndReconcilePayment(localOrder){
+  const cfg=await getPaymentSettings({secrets:true});
+  if(!cfg.accessToken||!localOrder?.provider_order_id)return localOrder;
+  const providerOrder=await mpFetch("/v1/orders/"+encodeURIComponent(localOrder.provider_order_id),{accessToken:cfg.accessToken});
+  return reconcilePayment(localOrder,providerOrder);
+}
+function paymentOrderPublic(row){
+  if(!row)return null;
+  return {
+    id:row.id,plan:row.plan,amount:Number(row.amount),currency:row.currency,status:row.status,
+    providerStatus:row.provider_status||null,providerOrderId:row.provider_order_id||null,
+    accessToken:row.status==="approved"?row.access_token:null,
+    createdAt:row.created_at,fulfilledAt:row.fulfilled_at
+  };
+}
+
 function uniqueAnswerOptions(room,key,correct,ownerId,max=4){
   const pool=shuffle(room.players.map(p=>({value:room.submissions[p.id]?.[key],sourcePlayerId:p.id})).filter(x=>x.value));
   const out=[{id:correct,label:correct,sourcePlayerId:ownerId}];
@@ -758,12 +922,164 @@ app.use("/api/rooms/:code",(req,res,next)=>{
   next();
 });
 
-app.get("/api/config",(_req,res)=>res.json({
-  themes:Object.values(THEMES),modes:Object.values(MODES),themeModes:THEME_MODES,
-  implementedModes:IMPLEMENTED_MODES,accessPlans:ACCESS_PLANS,
-  devPayments:process.env.ALLOW_TEST_PREMIUM==="true",
-  themeStats:Object.fromEntries(Object.keys(THEMES).map(id=>[id,themeStats(id)]))
-}));
+app.get("/api/config",async(_req,res)=>{
+  const payments=await paymentPublicConfig();
+  res.json({
+    themes:Object.values(THEMES),modes:Object.values(MODES),themeModes:THEME_MODES,
+    implementedModes:IMPLEMENTED_MODES,accessPlans:ACCESS_PLANS,
+    devPayments:process.env.ALLOW_TEST_PREMIUM==="true",
+    payments,
+    themeStats:Object.fromEntries(Object.keys(THEMES).map(id=>[id,themeStats(id)]))
+  });
+});
+app.get("/api/admin/payments",async(req,res)=>{
+  if(!requireAdminAccess(req))return res.status(403).json({error:"Solo ADMIN."});
+  try{
+    const cfg=await getPaymentSettings();
+    res.json({
+      provider:"mercadopago",label:"Mercado Pago",currency:cfg.currency,prices:cfg.prices,
+      accessTokenConfigured:cfg.accessTokenConfigured,webhookSecretConfigured:cfg.webhookSecretConfigured,
+      configured:cfg.configured,webhookUrl:PUBLIC_BASE_URL+"/api/payments/webhook"
+    });
+  }catch(e){res.status(500).json({error:"No pude leer la configuración de cobros."})}
+});
+
+app.post("/api/admin/payments",async(req,res)=>{
+  if(!requireAdminAccess(req))return res.status(403).json({error:"Solo ADMIN."});
+  if(!db)return res.status(503).json({error:"La base de datos no está disponible."});
+  try{
+    const current=await getPaymentSettings({secrets:true});
+    const accessToken=clean(req.body?.accessToken,800)||current.accessToken||"";
+    const webhookSecret=clean(req.body?.webhookSecret,800)||current.webhookSecret||"";
+    const prices=normalizePlanPrices(req.body?.prices||current.prices||{});
+    if(accessToken&&accessToken!==current.accessToken){
+      const check=await fetch("https://api.mercadolibre.com/users/me",{headers:{Authorization:"Bearer "+accessToken}});
+      if(!check.ok)return res.status(400).json({error:"El Access Token de Mercado Pago no es válido."});
+    }
+    await db.query(
+      `INSERT INTO payment_settings(id,provider,encrypted_access_token,encrypted_webhook_secret,prices,currency,updated_at)
+       VALUES('main','mercadopago',$1,$2,$3::jsonb,'ARS',now())
+       ON CONFLICT(id) DO UPDATE SET
+         encrypted_access_token=EXCLUDED.encrypted_access_token,
+         encrypted_webhook_secret=EXCLUDED.encrypted_webhook_secret,
+         prices=EXCLUDED.prices,currency='ARS',updated_at=now()`,
+      [accessToken?encryptPaymentSecret(accessToken):null,webhookSecret?encryptPaymentSecret(webhookSecret):null,JSON.stringify(prices)]
+    );
+    const saved=await getPaymentSettings();
+    res.json({
+      ok:true,configured:saved.configured,accessTokenConfigured:saved.accessTokenConfigured,
+      webhookSecretConfigured:saved.webhookSecretConfigured,prices:saved.prices,currency:saved.currency,
+      webhookUrl:PUBLIC_BASE_URL+"/api/payments/webhook"
+    });
+  }catch(e){
+    console.error("save payment settings",e.message);
+    res.status(500).json({error:"No pude guardar la configuración de Mercado Pago."});
+  }
+});
+
+app.post("/api/payments/checkout",async(req,res)=>{
+  if(!db)return res.status(503).json({error:"La base de datos no está disponible."});
+  const room=getRoom(req.body?.roomCode),host=room?requireHost(room,req):null;
+  if(!room)return res.status(404).json({error:"Sala inexistente."});
+  if(!host)return res.status(403).json({error:"Solo el host puede comprar el acceso."});
+  const plan=ACCESS_PLANS.find(p=>p.id===req.body?.plan);
+  if(!plan)return res.status(400).json({error:"Pase inválido."});
+  try{
+    const cfg=await getPaymentSettings({secrets:true});
+    if(!cfg.accessToken)return res.status(503).json({error:"Mercado Pago todavía no está conectado."});
+    const amount=Number(cfg.prices?.[plan.id]);
+    if(!Number.isFinite(amount)||amount<=0)return res.status(409).json({error:"Este pase todavía no tiene un precio configurado."});
+    const localId=id(),amountText=amount.toFixed(2);
+    await db.query(
+      `INSERT INTO payment_orders(id,provider,room_code,host_player_id,plan,amount,currency,status)
+       VALUES($1,'mercadopago',$2,$3,$4,$5,'ARS','created')`,
+      [localId,room.code,host.id,plan.id,amount]
+    );
+    const retBase=PUBLIC_BASE_URL+"/?payment_order="+encodeURIComponent(localId)+"&code="+encodeURIComponent(room.code)+"&payment_return=";
+    const providerOrder=await mpFetch("/v1/orders",{
+      method:"POST",accessToken:cfg.accessToken,idempotencyKey:localId,
+      body:{
+        type:"online",
+        processing_mode:"manual",
+        capture_mode:"automatic_async",
+        total_amount:amountText,
+        external_reference:localId,
+        description:"La Juntada · "+plan.title,
+        items:[{
+          title:"La Juntada · "+plan.title,
+          quantity:1,
+          unit_measure:"unit",
+          unit_price:amountText,
+          total_amount:amountText
+        }],
+        config:{online:{
+          success_url:retBase+"success",
+          pending_url:retBase+"pending",
+          failure_url:retBase+"failure",
+          auto_return:"all"
+        }}
+      }
+    });
+    await db.query(
+      "UPDATE payment_orders SET provider_order_id=$2,provider_status=$3,updated_at=now() WHERE id=$1",
+      [localId,providerOrder.id,String(providerOrder.status_detail||providerOrder.status||"created")]
+    );
+    res.json({orderId:localId,checkoutUrl:providerOrder.checkout_url,providerOrderId:providerOrder.id,amount,currency:"ARS"});
+  }catch(e){
+    console.error("payment checkout",e.message);
+    res.status(e.status>=400&&e.status<500?400:502).json({error:"No pude iniciar el pago con Mercado Pago: "+e.message});
+  }
+});
+
+app.get("/api/payments/orders/:orderId",async(req,res)=>{
+  if(!db)return res.status(503).json({error:"La base de datos no está disponible."});
+  try{
+    let order=await findLocalPaymentOrder(req.params.orderId);
+    if(!order)return res.status(404).json({error:"Pago inexistente."});
+    const room=getRoom(order.room_code);
+    if(!room||!requireHost(room,req))return res.status(403).json({error:"Solo el host puede consultar este pago."});
+    if(order.status!=="approved"&&order.provider_order_id){
+      try{order=await fetchAndReconcilePayment(order)}catch(e){console.error("payment reconcile",e.message)}
+    }
+    res.json({payment:paymentOrderPublic(order)});
+  }catch(e){res.status(500).json({error:"No pude consultar el pago."})}
+});
+
+app.post("/api/payments/orders/:orderId/reconcile",async(req,res)=>{
+  if(!db)return res.status(503).json({error:"La base de datos no está disponible."});
+  try{
+    let order=await findLocalPaymentOrder(req.params.orderId);
+    if(!order)return res.status(404).json({error:"Pago inexistente."});
+    const room=getRoom(order.room_code);
+    if(!room||!requireHost(room,req))return res.status(403).json({error:"Solo el host puede verificar este pago."});
+    order=await fetchAndReconcilePayment(order);
+    res.json({payment:paymentOrderPublic(order)});
+  }catch(e){res.status(502).json({error:"No pude verificar el pago con Mercado Pago."})}
+});
+
+app.post("/api/payments/webhook",async(req,res)=>{
+  try{
+    const cfg=await getPaymentSettings({secrets:true});
+    if(!cfg.webhookSecret)return res.status(503).end();
+    if(!verifyMercadoPagoWebhook(req,cfg.webhookSecret))return res.status(401).end();
+    const dataId=String(req.query["data.id"]||req.body?.data?.id||"");
+    if(!dataId)return res.status(200).end();
+    const eventId=String(req.body?.id||"")+"|"+String(req.body?.action||"")+"|"+dataId;
+    const seen=await db.query("SELECT 1 FROM payment_webhook_events WHERE event_id=$1",[eventId]);
+    if(seen.rowCount)return res.status(200).end();
+    const local=await findLocalPaymentOrder(dataId);
+    if(local){
+      const providerOrder=await mpFetch("/v1/orders/"+encodeURIComponent(dataId),{accessToken:cfg.accessToken});
+      await reconcilePayment(local,providerOrder);
+    }
+    await db.query("INSERT INTO payment_webhook_events(event_id,provider) VALUES($1,'mercadopago') ON CONFLICT DO NOTHING",[eventId]);
+    res.status(200).end();
+  }catch(e){
+    console.error("payment webhook",e.message);
+    res.status(500).end();
+  }
+});
+
 app.get("/api/access/me",(req,res)=>{
   const a=accessFromReq(req);
   res.json(accessPublic(a));
