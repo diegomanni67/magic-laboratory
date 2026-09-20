@@ -2,17 +2,66 @@ import express from "express";
 import crypto from "crypto";
 import path from "path";
 import QRCode from "qrcode";
+import pg from "pg";
 import { fileURLToPath } from "url";
 import { THEMES, MODES, THEME_MODES, PROMPTS, DUO_CHOICES } from "./content.js";
 
 const __dirname=path.dirname(fileURLToPath(import.meta.url));
 const app=express();
 const PORT=process.env.PORT||3000;
+const {Pool}=pg;
+const db=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}}):null;
 app.use(express.json({limit:"250kb"}));
 app.use(express.static(path.join(__dirname,"public")));
 
 const rooms=new Map();
 const sessions=new Map();
+
+function sessionKey(raw){return crypto.createHash("sha256").update(String(raw||"")).digest("hex")}
+async function persistRoom(room){
+  if(!db||!room)return;
+  try{
+    await db.query(
+      `INSERT INTO game_rooms(code,data,state,updated_at,created_at)
+       VALUES($1,$2::jsonb,$3,now(),to_timestamp($4/1000.0))
+       ON CONFLICT(code) DO UPDATE SET data=EXCLUDED.data,state=EXCLUDED.state,updated_at=now()`,
+      [room.code,JSON.stringify(room),room.state,room.createdAt||Date.now()]
+    );
+  }catch(e){console.error("persistRoom",e.message)}
+}
+async function persistSession(rawToken,roomCode,playerId){
+  if(!db||!rawToken)return;
+  try{
+    await db.query(
+      `INSERT INTO game_sessions(token_hash,room_code,player_id)
+       VALUES($1,$2,$3)
+       ON CONFLICT(token_hash) DO UPDATE SET room_code=EXCLUDED.room_code,player_id=EXCLUDED.player_id`,
+      [sessionKey(rawToken),roomCode,playerId]
+    );
+  }catch(e){console.error("persistSession",e.message)}
+}
+async function persistAccess(a){
+  if(!db||!a?.id)return;
+  try{
+    await db.query(
+      `INSERT INTO access_passes(access_id,plan,role,room_code,expires_at,last_seen_at)
+       VALUES($1,$2,$3,$4,$5,now())
+       ON CONFLICT(access_id) DO UPDATE SET plan=EXCLUDED.plan,role=EXCLUDED.role,room_code=EXCLUDED.room_code,expires_at=EXCLUDED.expires_at,last_seen_at=now()`,
+      [a.id,a.plan,a.role||"customer",a.roomCode||null,a.exp?new Date(a.exp):null]
+    );
+  }catch(e){console.error("persistAccess",e.message)}
+}
+async function hydrateDatabase(){
+  if(!db){console.log("Persistence: memory fallback");return}
+  try{
+    const rr=await db.query("SELECT code,data FROM game_rooms");
+    rr.rows.forEach(row=>rooms.set(row.code,row.data));
+    const ss=await db.query("SELECT token_hash,player_id FROM game_sessions");
+    ss.rows.forEach(row=>sessions.set(row.token_hash,row.player_id));
+    console.log(`Persistence: loaded ${rr.rowCount} rooms and ${ss.rowCount} sessions`);
+  }catch(e){console.error("hydrateDatabase",e.message)}
+}
+
 const IMPLEMENTED_MODES=["quien_fue","lee_al_grupo","mentiroso","silla_caliente","todos_contra_uno","duo","ordena_al_grupo"];
 const AUTO_ADVANCE_MS=4200;
 const MODE_ROUND_CAPS={quien_fue:6,lee_al_grupo:3,mentiroso:6,silla_caliente:4,todos_contra_uno:3,duo:2,ordena_al_grupo:2};
@@ -32,7 +81,7 @@ function pick(a,n=1){return shuffle(a).slice(0,n)}
 function roomCode(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=c[crypto.randomInt(c.length)];return s}
 function bearer(req){const h=req.headers.authorization||"";return h.startsWith("Bearer ")?h.slice(7):""}
 function getRoom(code){return rooms.get(String(code||"").toUpperCase())}
-function auth(room,req){const pid=sessions.get(bearer(req));return room?.players.find(p=>p.id===pid)||null}
+function auth(room,req){const pid=sessions.get(sessionKey(bearer(req)));return room?.players.find(p=>p.id===pid)||null}
 function requireHost(room,req){const me=auth(room,req);return me&&me.id===room.hostPlayerId?me:null}
 function themePrompts(themeId){return PROMPTS[themeId]||PROMPTS.clasico}
 function cleanList(v,maxItems=40,maxLen=220){
@@ -586,6 +635,18 @@ function snapshot(room,viewer){
 }
 
 app.get("/api/health",(_req,res)=>res.json({ok:true,rooms:rooms.size}));
+app.use("/api/rooms/:code",(req,res,next)=>{
+  if(req.method!=="GET"){
+    res.on("finish",()=>{
+      if(res.statusCode<400){
+        const room=getRoom(req.params.code);
+        if(room)persistRoom(room);
+      }
+    });
+  }
+  next();
+});
+
 app.get("/api/config",(_req,res)=>res.json({
   themes:Object.values(THEMES),modes:Object.values(MODES),themeModes:THEME_MODES,
   implementedModes:IMPLEMENTED_MODES,accessPlans:ACCESS_PLANS,
@@ -601,7 +662,7 @@ app.post("/api/access/restore",(req,res)=>{
   const raw=clean(req.body?.accessToken,1200);
   const a=readAccessToken(raw);
   if(!a||a.expired)return res.status(401).json({error:a?.expired?"Este pase venció.":"La clave de acceso no es válida."});
-  res.json({access:accessPublic(a),accessToken:raw});
+  persistAccess(a);res.json({access:accessPublic(a),accessToken:raw});
 });
 
 app.post("/api/access/admin",(req,res)=>{
@@ -612,7 +673,8 @@ app.post("/api/access/admin",(req,res)=>{
     :constantTimeTextEqual(crypto.createHash("sha256").update(code).digest("hex"),DEV_ADMIN_CODE_HASH);
   if(!valid)return res.status(403).json({error:"Código de administrador incorrecto."});
   const accessToken=mintAccess({plan:"lifetime",role:"admin"});
-  res.json({access:accessPublic(readAccessToken(accessToken)),accessToken});
+  const access=readAccessToken(accessToken);persistAccess(access);
+  res.json({access:accessPublic(access),accessToken});
 });
 
 app.get("/api/qr/:code",async(req,res)=>{
@@ -650,7 +712,7 @@ app.post("/api/rooms",(req,res)=>{
     },
     createdAt:Date.now()
   };
-  rooms.set(code,room);sessions.set(sessionToken,hostId);res.json({code,sessionToken});
+  rooms.set(code,room);sessions.set(sessionKey(sessionToken),hostId);persistRoom(room);persistSession(sessionToken,code,hostId);res.json({code,sessionToken});
 });
 
 app.post("/api/rooms/:code/join",(req,res)=>{
@@ -660,7 +722,7 @@ app.post("/api/rooms/:code/join",(req,res)=>{
   if(room.players.some(p=>p.name.toLowerCase()===name.toLowerCase()))return res.status(409).json({error:"Ese nombre ya está en la sala."});
   const alreadyPlaying=["starting","playing","paywall"].includes(room.state);
   const p={id:id(),name,ready:alreadyPlaying,score:0},t=token();
-  room.players.push(p);sessions.set(t,p.id);
+  room.players.push(p);sessions.set(sessionKey(t),p.id);persistSession(t,room.code,p.id);
   if(alreadyPlaying&&room.state==="playing"&&room.roundPhase==="guess")finalizeRound(room);
   res.json({code:room.code,sessionToken:t,lateJoin:alreadyPlaying});
 });
@@ -781,7 +843,7 @@ app.post("/api/rooms/:code/unlock-test",(req,res)=>{
   if(process.env.ALLOW_TEST_PREMIUM!=="true")return res.status(404).json({error:"Checkout de prueba desactivado."});
   const accessPlan=ACCESS_PLANS.find(p=>p.id===req.body?.accessPlan)?.id||"single";
   const accessToken=mintAccess({plan:accessPlan,roomCode:accessPlan==="single"?room.code:null});
-  const access=readAccessToken(accessToken);
+  const access=readAccessToken(accessToken);persistAccess(access);
   room.accessPlan=accessPlan;room.unlocked=true;room.state="playing";
   room.currentRound=Math.min(1,room.rounds.length-1);room.roundPhase="guess";room.advanceAt=null;
   res.json({ok:true,accessPlan,access:accessPublic(access),accessToken});
@@ -804,4 +866,6 @@ app.post("/api/rooms/:code/restart",(req,res)=>{
 });
 
 app.use((_req,res)=>res.sendFile(path.join(__dirname,"public","index.html")));
-app.listen(PORT,"0.0.0.0",()=>console.log(`La Noche full game engine running on :${PORT}`));
+hydrateDatabase().finally(()=>{
+  app.listen(PORT,"0.0.0.0",()=>console.log(`La Noche full game engine running on :${PORT}`));
+});
