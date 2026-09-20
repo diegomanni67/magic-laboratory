@@ -1338,6 +1338,7 @@ app.post("/api/rooms/:code/unlock-test",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
   if(process.env.ALLOW_TEST_PREMIUM!=="true")return res.status(404).json({error:"Checkout de prueba desactivado."});
+  if(!requireAdminAccess(req))return res.status(403).json({error:"La simulación de pago es solo para ADMIN."});
   const accessPlan=ACCESS_PLANS.find(p=>p.id===req.body?.accessPlan)?.id||"single";
   const accessToken=mintAccess({plan:accessPlan,roomCode:accessPlan==="single"?room.code:null});
   const access=readAccessToken(accessToken);persistAccess(access);
