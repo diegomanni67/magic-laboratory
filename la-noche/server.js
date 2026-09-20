@@ -16,6 +16,7 @@ app.use(express.static(path.join(__dirname,"public")));
 
 const rooms=new Map();
 const sessions=new Map();
+const customPackStore=new Map();
 
 function sessionKey(raw){return crypto.createHash("sha256").update(String(raw||"")).digest("hex")}
 async function persistRoom(room){
@@ -51,6 +52,28 @@ async function persistAccess(a){
     );
   }catch(e){console.error("persistAccess",e.message)}
 }
+async function persistCustomPack(ownerAccessId,pack){
+  if(!db||!ownerAccessId||!pack?.id)return;
+  try{
+    await db.query(
+      `INSERT INTO custom_packs(id,owner_access_id,name,description,mix_mode,content,created_at,updated_at)
+       VALUES($1::uuid,$2,$3,$4,$5,$6::jsonb,now(),to_timestamp($7/1000.0))
+       ON CONFLICT(id) DO UPDATE SET owner_access_id=EXCLUDED.owner_access_id,name=EXCLUDED.name,description=EXCLUDED.description,mix_mode=EXCLUDED.mix_mode,content=EXCLUDED.content,updated_at=EXCLUDED.updated_at`,
+      [pack.id,ownerAccessId,pack.name,pack.description||"",pack.mixMode,JSON.stringify(pack.content||{}),pack.updatedAt||Date.now()]
+    );
+  }catch(e){console.error("persistCustomPack",e.message)}
+}
+async function deleteCustomPackPersisted(ownerAccessId,packId){
+  if(!db)return;
+  try{await db.query("DELETE FROM custom_packs WHERE id=$1::uuid AND owner_access_id=$2",[packId,ownerAccessId])}
+  catch(e){console.error("deleteCustomPack",e.message)}
+}
+function packOwnerAccess(req){
+  const a=accessFromReq(req);
+  if(!accessCanCreatePremium(a))return null;
+  return a;
+}
+
 async function hydrateDatabase(){
   if(!db){console.log("Persistence: memory fallback");return}
   try{
@@ -58,7 +81,11 @@ async function hydrateDatabase(){
     rr.rows.forEach(row=>rooms.set(row.code,row.data));
     const ss=await db.query("SELECT token_hash,player_id FROM game_sessions");
     ss.rows.forEach(row=>sessions.set(row.token_hash,row.player_id));
-    console.log(`Persistence: loaded ${rr.rowCount} rooms and ${ss.rowCount} sessions`);
+    const pp=await db.query("SELECT id,owner_access_id,name,description,mix_mode,content,extract(epoch from updated_at)*1000 AS updated_ms FROM custom_packs");
+    pp.rows.forEach(row=>customPackStore.set(row.owner_access_id+":"+row.id,{
+      id:row.id,name:row.name,description:row.description||"",mixMode:row.mix_mode||"mixed",content:row.content||{},updatedAt:Number(row.updated_ms)||Date.now()
+    }));
+    console.log(`Persistence: loaded ${rr.rowCount} rooms, ${ss.rowCount} sessions and ${pp.rowCount} custom packs`);
   }catch(e){console.error("hydrateDatabase",e.message)}
 }
 
@@ -96,7 +123,9 @@ function sanitizeCustomPack(raw){
   return {
     id:clean(raw.id,80)||id(),
     name:clean(raw.name,70)||"Mi pack",
+    description:clean(raw.description,180),
     mixMode:raw.mixMode==="custom_first"?"custom_first":"mixed",
+    updatedAt:Number(raw.updatedAt)||Date.now(),
     content:{
       prep_story:cleanList(content.prep_story,40,220),
       majority:cleanList(content.majority,40,180),
@@ -681,6 +710,38 @@ app.post("/api/access/admin",(req,res)=>{
   const accessToken=mintAccess({plan:"lifetime",role:"admin"});
   const access=readAccessToken(accessToken);persistAccess(access);
   res.json({access:accessPublic(access),accessToken});
+});
+
+app.get("/api/custom-packs",(req,res)=>{
+  const access=packOwnerAccess(req);
+  if(!access)return res.status(402).json({error:"Necesitás un pase activo para usar packs personalizados."});
+  const prefix=access.id+":";
+  const packs=[...customPackStore.entries()].filter(([k])=>k.startsWith(prefix)).map(([,v])=>v).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  res.json({packs});
+});
+
+app.post("/api/custom-packs/sync",(req,res)=>{
+  const access=packOwnerAccess(req);
+  if(!access)return res.status(402).json({error:"Necesitás un pase activo para sincronizar packs."});
+  const incoming=Array.isArray(req.body?.packs)?req.body.packs.slice(0,30):[];
+  for(const raw of incoming){
+    const pack=sanitizeCustomPack(raw);if(!pack)continue;
+    const key=access.id+":"+pack.id,current=customPackStore.get(key);
+    if(!current||(pack.updatedAt||0)>=(current.updatedAt||0)){
+      customPackStore.set(key,pack);persistCustomPack(access.id,pack);
+    }
+  }
+  const prefix=access.id+":";
+  const packs=[...customPackStore.entries()].filter(([k])=>k.startsWith(prefix)).map(([,v])=>v).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  res.json({packs});
+});
+
+app.delete("/api/custom-packs/:packId",(req,res)=>{
+  const access=packOwnerAccess(req);
+  if(!access)return res.status(402).json({error:"Necesitás un pase activo."});
+  const packId=clean(req.params.packId,80),key=access.id+":"+packId;
+  customPackStore.delete(key);deleteCustomPackPersisted(access.id,packId);
+  res.json({ok:true});
 });
 
 app.get("/api/qr/:code",async(req,res)=>{
