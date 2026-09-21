@@ -2909,3 +2909,13 @@ button{touch-action:manipulation}
   .duo-prep-footer{grid-template-columns:1fr}
   .duo-prep-footer .big-action{width:100%}
 }
+
+.duo-final-recap{margin:18px 0;padding:20px}
+.duo-final-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
+.duo-final-grid article{padding:16px;border-radius:18px;background:rgba(255,255,255,.025);border:1px solid rgba(239,191,153,.1);display:flex;flex-direction:column;gap:5px}
+.duo-final-grid small{font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:#dba989}
+.duo-final-grid strong{font-size:30px;line-height:1;color:#fff2e6}
+.duo-final-grid span,.duo-final-grid em{font-size:12px;color:rgba(255,255,255,.55);font-style:normal}
+.duo-final-grid i{height:7px;border-radius:99px;background:rgba(255,255,255,.05);overflow:hidden;margin:6px 0}
+.duo-final-grid i b{display:block;height:100%;background:linear-gradient(90deg,#e95f73,#f1a06e);border-radius:inherit}
+@media(max-width:700px){.duo-final-grid{grid-template-columns:1fr}.duo-final-recap{padding:15px}}
