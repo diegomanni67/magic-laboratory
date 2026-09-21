@@ -1170,6 +1170,14 @@ function openCreateWizard(initialTheme="clasico"){
 
         <section class="wizard-step active" data-wizard-step="1">
           <div class="wizard-copy"><div class="kicker">PRIMERO LO BÁSICO</div><h2>¿Cómo va a ser esta Juntada?</h2><p>Dos decisiones y seguimos.</p></div>
+          <div class="wizard-block player-count-block">
+            <label class="wizard-label">¿Cuántos van a jugar?</label>
+            <div class="choice-grid player-count-grid">
+              <label class="choice-card player-count-card"><input type="radio" name="playerCount" value="2"><strong>👥 Somos 2</strong><span><b>Modo Dúo</b> · pensado especialmente para dos personas.</span></label>
+              <label class="choice-card player-count-card"><input type="radio" name="playerCount" value="group"><strong>🎉 Somos 3 o más</strong><span>Modo grupal · preguntas, votaciones y rondas para toda la juntada.</span></label>
+            </div>
+            <div class="duo-clarity-note"><strong>Importante:</strong> “Parejas” es una <b>temática</b> de preguntas. No significa “jugar de a dos”. Para dos jugadores elegí <b>Somos 2 · Modo Dúo</b>.</div>
+          </div>
           <div class="wizard-block">
             <label class="wizard-label">¿Cuándo juegan?</label>
             <div class="choice-grid">
@@ -1233,6 +1241,8 @@ function openCreateWizard(initialTheme="clasico"){
   refreshBasics();refreshTheme();bindSurpriseSetup();bindCustomPackControls();bindGameSettings();
 
   document.querySelector("#wizardNext1").onclick=()=>{
+    const playerCount=document.querySelector('input[name="playerCount"]:checked')?.value;
+    if(!playerCount){toast("Elegí si van a jugar 2 personas o 3 o más.");return}
     const when=document.querySelector('input[name="when"]:checked')?.value||"now";
     if(when==="later"&&!document.querySelector("#eventDate")?.value){toast("Elegí la fecha.");return}
     const surprise=document.querySelector('input[name="partyKind"]:checked')?.value==="surprise";
@@ -1398,7 +1408,7 @@ async function createRoom(){
 
     const pack=selectedCustomPack();
     const d=await api("/api/rooms",{method:"POST",body:JSON.stringify({
-      name,hostName,themeId:themeInput.value,playWhen:when,eventDate,
+      name,hostName,themeId:themeInput.value,playWhen:when,eventDate,playerCount:document.querySelector('input[name="playerCount"]:checked')?.value||"group",
       ageConfirmed:!!document.querySelector("#ageConfirmed")?.checked,
       customPack:pack||null,
       surpriseMode,honoreeName,
