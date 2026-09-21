@@ -511,9 +511,9 @@ function gameSettingsHtml(){
   const isDuo=playerCount==="2";
   if(isDuo){
     const duoModes=[
-      ["duo_read","🎯","¿Cuánto me conocés?","Uno elige por sí mismo y el otro intenta anticipar su respuesta."],
-      ["duo_risk","🎲","Apuesta","Decisiones secretas diseñadas para que haya competencia y puntos distintos."],
-      ["duo_speed","⚡","Duelo relámpago","Rondas rápidas cara a cara; una sola persona se lleva los puntos."]
+      ["duo_read","🎯","¿Cuánto me conocés?","Uno responde por sí mismo y el otro intenta adivinar. Acierto: 100 puntos."],
+      ["duo_risk","🎲","Doble o nada","Adivinar la respuesta real vale 200 puntos."],
+      ["duo_speed","⚡","Instinto","Adivinar la respuesta real vale 125 puntos."]
     ];
     return `
       <details class="game-settings duo-game-settings">
@@ -912,8 +912,8 @@ function selectedThemeSummary(){
   const modeIds=isDuo?duoIds:(state.config.themeModes?.[id]||[]);
   const duoMeta={
     duo_read:["🎯","¿Cuánto me conocés?"],
-    duo_risk:["🎲","Apuesta"],
-    duo_speed:["⚡","Duelo relámpago"]
+    duo_risk:["🎲","Doble o nada"],
+    duo_speed:["⚡","Instinto"]
   };
   const modes=modeIds.slice(0,4).map(mid=>{
     if(isDuo){const m=duoMeta[mid];return `<span><i class="duo-summary-emoji">${m[0]}</i><b>${m[1]}</b></span>`}
@@ -1879,12 +1879,28 @@ function collecting(r){
 function playing(r){
   const x=r.round;if(!x)return;
   const locked=x.locked||r.roundPhase==="locked";
+  const isDuo=!!x.duoRole;
+  const duoHelp=isDuo
+    ?(x.duoRole==="target"
+      ?'<div class="duo-role-note target"><strong>Tu respuesta es la correcta de esta ronda.</strong><span>Elegí lo que vos realmente preferís. '+esc(x.otherName)+' está intentando adivinarte.</span></div>'
+      :'<div class="duo-role-note guesser"><strong>Estás jugando por '+Number(x.pointsAtStake||100)+' puntos.</strong><span>Elegí lo que pensás que va a responder '+esc(x.targetName)+'.</span></div>')
+    :"";
+  const lockedHtml=isDuo
+    ?'<div class="duo-round-reveal"><small>RESPUESTA REAL</small><strong>'+esc(x.reveal?.answer||"")+'</strong><span>'+(x.duoRole==="target"
+        ?"Vos definiste la respuesta. En esta ronda los puntos los disputó "+esc(x.otherName)+"."
+        :(Number(x.reveal?.ownPoints||0)>0?"Acertaste · +"+Number(x.reveal.ownPoints)+" puntos":"No coincidiste con su respuesta · +0 puntos"))+'</span></div>'
+    :'<div class="locked-round"><div class="big-num">✓</div><strong>Votos cerrados</strong><span>Los puntos ya fueron calculados. La respuesta queda guardada para el final.</span></div>';
+  const liveScore=isDuo
+    ?'<section class="duo-live-score">'+r.players.map(function(p){return '<div><small>'+esc(p.name)+'</small><strong>'+Number(p.score||0)+'</strong><span>pts</span></div>'}).join('<i>vs</i>')+'</section>'
+    :"";
   app.innerHTML=brand()+`<div class="statusbar"><div><div class="kicker">${x.modeEmoji} ${esc(x.modeTitle)}</div><div class="tiny muted">${esc(r.theme.title)} · Ronda ${r.currentRound+1}/${r.totalRounds}</div></div><span class="pill">${x.voteCount}/${x.eligibleVoters} votos</span></div>
+  ${liveScore}
   <section class="card prompt-card"><div class="tiny muted">${esc(x.prompt)}</div><div class="statement">“${esc(x.statement)}”</div>
-  ${locked?'<div class="locked-round"><div class="big-num">✓</div><strong>Votos cerrados</strong><span>Los puntos ya fueron calculados en secreto. La respuesta se revela al terminar La Juntada.</span></div>':x.skipVote?'<div class="example-box"><strong>Esta ronda habla de vos.</strong><small>No votás. El resto está intentando adivinarte.</small></div>':`<div class="options">${(x.options||[]).map(o=>`<button class="option ${x.ownVote===o.id?"selected":""}" data-choice="${esc(o.id)}">${esc(o.label)}</button>`).join("")}</div><div class="vote-count">${x.ownVote?"Tu voto quedó guardado. Podés cambiarlo hasta que cierre la ronda.":"Tocá una opción para votar."}</div>`}
+  ${duoHelp}
+  ${locked?lockedHtml:x.skipVote?'<div class="example-box"><strong>Esta ronda habla de vos.</strong><small>No votás. El resto está intentando adivinarte.</small></div>':`<div class="options">${(x.options||[]).map(o=>`<button class="option ${x.ownVote===o.id?"selected":""}" data-choice="${esc(o.id)}">${esc(o.label)}</button>`).join("")}</div><div class="vote-count">${x.ownVote?"Tu respuesta quedó guardada. Podés cambiarla hasta que cierre la ronda.":"Tocá una opción para responder."}</div>`}
   </section>
   ${r.mission?`<section class="card soft" style="margin-top:14px"><div class="kicker">💣 TU MISIÓN SECRETA</div><div class="section-title">${esc(r.mission.text)}</div></section>`:""}
-  <section class="card soft hidden-score" style="margin-top:14px"><div class="kicker">🏆 PUNTAJE SELLADO</div><div class="section-title">Nadie sabe quién va ganando.</div><div class="muted">El ranking y todas las respuestas se revelan juntos al final.</div></section>
+  ${isDuo?"":'<section class="card soft hidden-score" style="margin-top:14px"><div class="kicker">🏆 PUNTAJE SELLADO</div><div class="section-title">Nadie sabe quién va ganando.</div><div class="muted">El ranking y todas las respuestas se revelan juntos al final.</div></section>'}
   ${hostRoster(r)}`;
   if(!locked&&!x.skipVote)document.querySelectorAll(".option").forEach(b=>b.onclick=async()=>{
     if(b.disabled)return;
@@ -1899,6 +1915,7 @@ function playing(r){
   });
   bindHostRoster(r);
 }
+
 function paywall(r){
   app.innerHTML=`<div class="room-page"><section class="card center"><div class="kicker">CONTINUANDO</div><h2>La partida ahora es gratis completa.</h2><p>Actualizando esta sala…</p></section></div>`;
   setTimeout(refresh,600);
@@ -1942,8 +1959,9 @@ function finished(r){
     {n:f.totalPoints??ranking.reduce((n,p)=>n+(p.score||0),0),label:"puntos repartidos"}
   ].map(x=>`<div class="final-stat"><strong>${x.n}</strong><span>${x.label}</span></div>`).join("");
 
-  const winnerLine=ranking.length>1&&f.winnerMargin===0
-    ?`Empate en la cima con ${first?.score||0} puntos.`
+  const isTie=ranking.length>1&&(first?.score||0)===(second?.score||0);
+  const winnerLine=isTie
+    ?`Empate con ${first?.score||0} puntos. Los dos terminaron con el mismo puntaje.`
     :`${esc(first?.name||"")} terminó ${f.winnerMargin||0} puntos arriba del segundo puesto.`;
 
   app.innerHTML=`<div class="room-page finished-page">
@@ -1953,7 +1971,7 @@ function finished(r){
       <div class="confetti-field final-confetti" aria-hidden="true">${Array.from({length:32},(_,i)=>`<i style="--i:${i}"></i>`).join("")}</div>
       <div class="kicker">SE TERMINÓ ESTA JUNTADA</div>
       <div class="champion-crown">✦</div>
-      <h1><span class="grad">${esc(first?.name||"")}</span><br><small>CAMPEÓN DE LA JUNTADA</small></h1>
+      <h1><span class="grad">${isTie?"EMPATE":esc(first?.name||"")}</span><br><small>${isTie?"MISMO PUNTAJE":"CAMPEÓN DE LA JUNTADA"}</small></h1>
       <div class="champion-score"><strong>${first?.score||0}</strong><span>puntos</span></div>
       <p>${winnerLine}</p>
       <div class="final-share-row">
