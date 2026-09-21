@@ -2771,3 +2771,11 @@ body.launch-hit .launch-content h1{transform:scale(1.06);letter-spacing:.05em;co
 .player-count-card span b{color:#fff}
 .duo-clarity-note{margin-top:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.06);font-size:13px;line-height:1.45;color:rgba(255,255,255,.76)}
 .duo-clarity-note strong,.duo-clarity-note b{color:#fff}
+
+.player-count-first-copy{text-align:center;margin-bottom:18px}
+.player-count-first{padding:22px}
+.player-count-first .player-count-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.player-count-first .player-count-card{min-height:145px;display:flex;flex-direction:column;justify-content:center}
+.wizard-after-player-count{display:none}
+.wizard-after-player-count.show{display:block;animation:fadeUp .28s ease both}
+@media(max-width:700px){.player-count-first .player-count-grid{grid-template-columns:1fr}.player-count-first .player-count-card{min-height:112px}}
