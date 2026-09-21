@@ -435,30 +435,81 @@ function assignMissions(room){
   const shuffled=shuffle(bank);
   room.players.forEach((p,i)=>{room.missions[p.id]={text:shuffled[i%shuffled.length],status:"active",points:250}});
 }
-const DUO2_ROUNDS=[
-  {mode:"duo_coincidimos",prompt:"Coincidimos",statement:"¿Qué plan gana para una noche libre?",options:[{id:"a",label:"Salir sin plan"},{id:"b",label:"Casa, comida y algo para ver"}]},
-  {mode:"duo_coincidimos",prompt:"Coincidimos",statement:"¿Qué elegirían para escaparse un fin de semana?",options:[{id:"a",label:"Playa"},{id:"b",label:"Montaña"}]},
-  {mode:"duo_dilema",prompt:"¿Qué elegirías?",statement:"Si pudieras elegir una sola ventaja…",options:[{id:"a",label:"Viajar gratis para siempre"},{id:"b",label:"No volver a trabajar"}]},
-  {mode:"duo_dilema",prompt:"¿Qué elegirías?",statement:"¿Qué preferís perder durante un año?",options:[{id:"a",label:"Redes sociales"},{id:"b",label:"Series y películas"}]},
-  {mode:"duo_duelo",prompt:"Duelo",statement:"¿Cuál es el planeta más grande del Sistema Solar?",correct:"a",options:[{id:"a",label:"Júpiter"},{id:"b",label:"Saturno"},{id:"c",label:"Neptuno"}]},
-  {mode:"duo_duelo",prompt:"Duelo",statement:"¿Cuántos lados tiene un dodecágono?",correct:"b",options:[{id:"a",label:"10"},{id:"b",label:"12"},{id:"c",label:"14"}]},
-  {mode:"duo_duelo",prompt:"Duelo",statement:"¿En qué continente está Surinam?",correct:"c",options:[{id:"a",label:"África"},{id:"b",label:"Asia"},{id:"c",label:"América del Sur"}]},
-  {mode:"duo_5seg",prompt:"5 segundos",statement:"Decí 3 países que empiecen con la letra C antes de contar hasta cinco.",options:[{id:"yes",label:"Lo hice"},{id:"no",label:"No llegué"}]},
-  {mode:"duo_5seg",prompt:"5 segundos",statement:"Decí 3 cosas que llevarías a una isla desierta.",options:[{id:"yes",label:"Lo hice"},{id:"no",label:"No llegué"}]},
-  {mode:"duo_5seg",prompt:"5 segundos",statement:"Nombrá 3 futbolistas argentinos.",options:[{id:"yes",label:"Lo hice"},{id:"no",label:"No llegué"}]},
-  {mode:"duo_coincidimos",prompt:"Coincidimos",statement:"Si hoy les regalaran entradas, ¿qué eligen?",options:[{id:"a",label:"Recital"},{id:"b",label:"Partido / evento deportivo"}]},
-  {mode:"duo_dilema",prompt:"¿Qué elegirías?",statement:"¿Qué preferís saber?",options:[{id:"a",label:"Qué piensa la gente de vos"},{id:"b",label:"Qué va a pasar dentro de 10 años"}]}
-];
+const DUO_BANKS={
+  clasico:[
+    ["duo_read","¿Qué elegiría la otra persona para una noche libre?","Salir sin plan","Casa, comida y algo para ver"],
+    ["duo_read","Si pudiera escaparse mañana, ¿qué elegiría?","Playa","Montaña"],
+    ["duo_risk","¿Qué preferís perder durante un año?","Redes sociales","Series y películas"],
+    ["duo_risk","Si solo pudieras quedarte con una ventaja…","Viajar gratis","No volver a trabajar"],
+    ["duo_speed","¿Qué opción elegiría primero la otra persona?","Dormir hasta tarde","Arrancar temprano"]
+  ],
+  profundo:[
+    ["duo_read","¿Qué pesa más para la otra persona al tomar una decisión importante?","La tranquilidad","La oportunidad"],
+    ["duo_read","¿Qué necesita más cuando está pasando un mal momento?","Que la escuchen","Que la ayuden a resolverlo"],
+    ["duo_read","¿Qué le costaría más perder?","Estabilidad","Libertad"],
+    ["duo_risk","¿Qué preferís saber con certeza?","Cómo será tu vida en 10 años","Qué piensa de verdad la gente que querés"],
+    ["duo_risk","¿Qué elegirías si no pudieras tener las dos?","Una vida segura","Una vida impredecible pero intensa"],
+    ["duo_speed","¿Qué valor sentís más importante hoy?","Lealtad","Independencia"],
+    ["duo_speed","¿Qué te da más miedo?","Arrepentirte de no intentar","Equivocarte por arriesgar"]
+  ],
+  parejas:[
+    ["duo_read","¿Qué elegiría tu pareja para una cita ideal?","Plan afuera","Plan íntimo en casa"],
+    ["duo_read","¿Qué valora más tu pareja en la relación?","Sentirse acompañada","Tener espacio propio"],
+    ["duo_read","Después de una discusión, ¿qué necesita primero tu pareja?","Hablarlo enseguida","Un rato para bajar"],
+    ["duo_risk","¿Qué preferís recibir de tu pareja?","Una sorpresa grande","Un detalle inesperado"],
+    ["duo_speed","¿Qué recuerda mejor tu pareja?","Fechas y momentos","Frases y detalles"]
+  ],
+  picante18:[
+    ["duo_read","¿Qué elegiría la otra persona?","Una cita que sorprenda","Una noche sin ningún plan"],
+    ["duo_risk","¿Qué pesa más en la atracción?","La química","La confianza"],
+    ["duo_speed","¿Qué genera más tensión?","La anticipación","La espontaneidad"]
+  ],
+  cumple:[
+    ["duo_read","En su cumpleaños ideal, ¿qué elegiría la otra persona?","Fiesta grande","Pocos y cercanos"],
+    ["duo_risk","¿Qué regalo preferís?","Una experiencia","Algo que querías hace tiempo"],
+    ["duo_speed","¿Qué importa más en un cumpleaños?","La gente","El plan"]
+  ],
+  caos:[
+    ["duo_read","Si un plan se descontrola, ¿qué haría primero la otra persona?","Improvisar","Intentar ordenar todo"],
+    ["duo_risk","¿Qué elegís para una noche caótica?","Plan sorpresa","Decidir sobre la marcha"],
+    ["duo_speed","¿Quién sos cuando todo sale mal?","El que se ríe","El que lo arregla"]
+  ],
+  canceladisimos:[
+    ["duo_read","¿Qué tolera menos la otra persona?","La hipocresía","La falta de códigos"],
+    ["duo_risk","¿Qué preferís?","Decir una verdad incómoda","Callarte para evitar quilombo"],
+    ["duo_speed","¿Qué juzgás más?","Lo que alguien dice","Lo que alguien hace"]
+  ],
+  rompehielo:[
+    ["duo_read","¿Qué elegiría la otra persona para conocer gente?","Plan chico","Evento lleno de gente"],
+    ["duo_risk","¿Qué preferís al conocer a alguien?","Hablar mucho de entrada","Ir entrando en confianza"],
+    ["duo_speed","¿Qué te cae mejor primero?","Alguien gracioso","Alguien tranquilo"]
+  ]
+};
+function duoThemeBank(room){
+  const base=DUO_BANKS[room.themeId]||DUO_BANKS.clasico;
+  const expanded=[];
+  for(const q of base){
+    expanded.push(q);
+    expanded.push([q[0],q[1],q[3],q[2]]);
+  }
+  return expanded;
+}
 function buildDuo2Rounds(room){
-  // Clone every round deeply: votes/correct/reveal state must never leak between rooms or replays.
-  return shuffle(DUO2_ROUNDS).slice(0,Math.min(room.roundLimit||12,DUO2_ROUNDS.length)).map((r,i)=>({
-    ...r,
-    id:id(),
-    options:Array.isArray(r.options)?r.options.map(o=>({...o})):[],
-    votes:{},
-    scored:false,
-    position:i
-  }));
+  const bank=shuffle(duoThemeBank(room));
+  const players=shuffle(room.players);
+  const limit=Math.min(room.roundLimit||12,Math.max(8,bank.length));
+  const rounds=[];
+  for(let i=0;i<limit;i++){
+    const q=bank[i%bank.length],mode=q[0];
+    if(mode==="duo_read"){
+      const target=players[i%players.length];
+      const targetVote=room.submissions[target.id]?.majority?.[i%3]||null;
+      rounds.push({id:id(),mode:"duo_read",prompt:"¿Cuánto me conocés?",statement:q[1],targetId:target.id,targetName:target.name,correct:targetVote&&["a","b"].includes(targetVote)?targetVote:null,options:[{id:"a",label:q[2]},{id:"b",label:q[3]}],votes:{},scored:false,position:i});
+    }else{
+      rounds.push({id:id(),mode, prompt:mode==="duo_risk"?"Elegí distinto para ganar":"Duelo relámpago",statement:q[1],options:[{id:"a",label:q[2]},{id:"b",label:q[3]}],votes:{},scored:false,position:i});
+    }
+  }
+  return rounds;
 }
 function buildRounds(room){
   const disabled=new Set(room.disabledModes||[]);
@@ -604,7 +655,7 @@ function buildRounds(room){
   return mixed.slice(0,limit).map((r,i)=>({...r,position:i}));
 }
 function eligibleVoters(room,round){
-  if(["duo","ordena_al_grupo","duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"].includes(round.mode))return [...room.players];
+  if(["duo","ordena_al_grupo","duo_read","duo_risk","duo_speed"].includes(round.mode))return [...room.players];
   return room.players.filter(p=>p.id!==round.skipVoteFor);
 }
 function duoActual(room,round){
@@ -629,20 +680,24 @@ function rankDistance(order,consensus){
 function scoreRound(room,round){
   if(round.scored)return;
 
-  if(round.mode==="duo_coincidimos"||round.mode==="duo_dilema"){
+  if(["duo_read","duo_risk","duo_speed"].includes(round.mode)){
     const vals=room.players.map(p=>round.votes[p.id]);
     if(vals.some(v=>v===undefined))return;
-    round.correct=vals[0]===vals[1]?"same":"different";
-    if(round.correct==="same")room.players.forEach(p=>p.score+=100);
+    if(round.mode==="duo_read"){
+      const target=room.players.find(p=>p.id===round.targetId),other=room.players.find(p=>p.id!==round.targetId);
+      const actual=round.votes[round.targetId];round.correct=actual;
+      if(other&&round.votes[other.id]===actual)other.score+=150;
+      if(target)target.score+=25;
+    }else if(round.mode==="duo_risk"){
+      round.correct=vals[0]!==vals[1]?"different":"same";
+      if(vals[0]!==vals[1]){
+        const winner=room.players[crypto.randomInt(room.players.length)];winner.score+=125;round.bonusWinnerId=winner.id;
+      }
+    }else{
+      round.correct=vals[0]===vals[1]?"same":"different";
+      const winner=room.players[crypto.randomInt(room.players.length)];winner.score+=100;round.bonusWinnerId=winner.id;
+    }
     round.scored=true;return;
-  }
-  if(round.mode==="duo_duelo"){
-    for(const p of room.players)if(round.votes[p.id]===round.correct)p.score+=100;
-    round.scored=true;return;
-  }
-  if(round.mode==="duo_5seg"){
-    for(const p of room.players)if(round.votes[p.id]==="yes")p.score+=75;
-    round.correct="honor";round.scored=true;return;
   }
 
   if(round.mode==="duo"){
@@ -964,7 +1019,7 @@ function snapshot(room,viewer){
       inviteKey:viewer?.id===room.hostPlayerId?room.surprise.joinKey:null,
       quickQuestions:viewer?.isHonoree&&!viewer.ready?(room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS):null
     }:null,
-    prepPrompts:room.prepPrompts,availableModes:(isDuoRoom(room)?["duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"]:(THEME_MODES[room.themeId]||[])).map(modeInfo),
+    prepPrompts:room.prepPrompts,availableModes:(isDuoRoom(room)?["duo_read","duo_risk","duo_speed"]:(THEME_MODES[room.themeId]||[])).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
     me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,isHonoree:!!viewer.isHonoree,score:finished?viewer.score:null}:null,
     players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,isHonoree:!!p.isHonoree,score:finished?p.score:null,isHost:p.id===room.hostPlayerId})),
@@ -1431,7 +1486,7 @@ app.post("/api/rooms/:code/vote",(req,res)=>{
 
   const choice=clean(req.body.choice,300);
   // Dedicated two-player rounds always accept their own visible options directly.
-  if(["duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"].includes(r.mode)){
+  if(["duo_read","duo_risk","duo_speed"].includes(r.mode)){
     if(!(r.options||[]).some(o=>String(o.id)===choice))return res.status(400).json({error:"Opción inválida para esta ronda Dúo."});
   }else if(r.mode==="duo"){
     const inPair=(r.duoIds||[]).includes(me.id);
