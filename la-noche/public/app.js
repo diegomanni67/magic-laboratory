@@ -1252,9 +1252,20 @@ function openCreateWizard(initialTheme="clasico"){
   document.querySelectorAll('input[name="playerCount"]').forEach(x=>x.addEventListener("change",()=>{revealPlayerFlow();paintGameSettings()}));
   revealPlayerFlow();
   document.querySelectorAll('input[name="when"]').forEach(x=>x.addEventListener("change",refreshBasics));
+  // iOS Safari is inconsistent when a label contains another interactive button.
+  // Handle the whole theme card explicitly instead of relying on implicit label activation.
   document.querySelectorAll('input[name="theme"]').forEach(x=>x.addEventListener("change",refreshTheme));
+  document.querySelectorAll(".theme-card").forEach(card=>card.addEventListener("click",e=>{
+    if(e.target.closest("[data-theme-info]"))return;
+    e.preventDefault();
+    if(card.classList.contains("premium-locked")){openPremiumModal();return}
+    const input=card.querySelector('input[name="theme"]');
+    if(!input||input.disabled)return;
+    input.checked=true;
+    refreshTheme();
+    document.querySelectorAll(".theme-card").forEach(x=>x.classList.toggle("selected",x===card));
+  }));
   document.querySelectorAll("[data-theme-info]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();openThemeInfo(b.dataset.themeInfo)});
-  document.querySelectorAll(".theme-card.premium-locked").forEach(card=>card.addEventListener("click",e=>{e.preventDefault();openPremiumModal()}));
   refreshBasics();refreshTheme();bindSurpriseSetup();bindCustomPackControls();bindGameSettings();
 
   document.querySelector("#wizardNext1").onclick=()=>{
@@ -1267,7 +1278,12 @@ function openCreateWizard(initialTheme="clasico"){
     setCreateWizardStep(2);
   };
   document.querySelector("#wizardBack2").onclick=()=>setCreateWizardStep(1);
-  document.querySelector("#wizardNext2").onclick=()=>{paintSelectedTheme();paintGameSettings();setCreateWizardStep(3)};
+  document.querySelector("#wizardNext2").onclick=()=>{
+    const selected=document.querySelector('input[name="theme"]:checked');
+    if(!selected){toast("Elegí una temática para continuar.");return}
+    try{paintSelectedTheme();paintGameSettings();setCreateWizardStep(3)}
+    catch(e){console.error("theme continue",e);setCreateWizardStep(3)}
+  };
   document.querySelector("#wizardBack3").onclick=()=>setCreateWizardStep(2);
   document.querySelector("#createBtn")?.removeAttribute("disabled");
 }
