@@ -128,10 +128,9 @@ export const MODES = {
     minPlayers: 3,
     scoring: "100 por descubrirla. La persona protagonista gana 30 por cada jugador que falla, máximo 120."
   },
-  duo_coincidimos: {id:"duo_coincidimos",title:"Coincidimos",emoji:"👯",description:"Los dos eligen sin ver la respuesta del otro. Si coinciden, suman.",minPlayers:2,scoring:"100 puntos para cada uno si coinciden."},
-  duo_dilema: {id:"duo_dilema",title:"¿Qué elegirías?",emoji:"⚖️",description:"Dilemas A/B para descubrir si piensan igual.",minPlayers:2,scoring:"100 puntos para cada uno si coinciden."},
-  duo_duelo: {id:"duo_duelo",title:"Duelo",emoji:"⚡",description:"Preguntas rápidas de cultura general. Cada respuesta correcta suma.",minPlayers:2,scoring:"100 puntos por respuesta correcta."},
-  duo_5seg: {id:"duo_5seg",title:"5 segundos",emoji:"⏱️",description:"Cumplí la consigna antes de cinco segundos y marcá si llegaste.",minPlayers:2,scoring:"75 puntos si completás el desafío."},
+  duo_read: {id:"duo_read",title:"¿Cuánto me conocés?",emoji:"🎯",description:"Uno responde por sí mismo y el otro intenta leerle la cabeza.",minPlayers:2,scoring:"150 puntos para quien acierta a la otra persona."},
+  duo_risk: {id:"duo_risk",title:"Apuesta",emoji:"🎲",description:"Decisiones secretas con resultado competitivo.",minPlayers:2,scoring:"Rondas competitivas con un solo ganador de puntos."},
+  duo_speed: {id:"duo_speed",title:"Duelo relámpago",emoji:"⚡",description:"Decisiones rápidas cara a cara.",minPlayers:2,scoring:"Una sola persona se lleva los puntos de la ronda."},
   mision_secreta: {
     id: "mision_secreta",
     title: "Misión secreta",
