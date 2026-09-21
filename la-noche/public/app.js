@@ -894,26 +894,35 @@ function themeCards(){
 function selectedThemeSummary(){
   const id=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
   const t=state.config.themes.find(x=>x.id===id)||state.config.themes[0];
-  const stats=state.config.themeStats?.[id]||{},modeIds=state.config.themeModes?.[id]||[];
+  const isDuo=document.querySelector('input[name="playerCount"]:checked')?.value==="2";
+  const stats=state.config.themeStats?.[id]||{};
+  const duoIds=["duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"];
+  const modeIds=isDuo?duoIds:(state.config.themeModes?.[id]||[]);
+  const duoMeta={
+    duo_coincidimos:["🤝","Coincidimos"],
+    duo_dilema:["↔","¿Qué elegirías?"],
+    duo_duelo:["⚡","Duelo"],
+    duo_5seg:["⏱","5 segundos"]
+  };
   const modes=modeIds.slice(0,4).map(mid=>{
+    if(isDuo){const m=duoMeta[mid];return `<span><i class="duo-summary-emoji">${m[0]}</i><b>${m[1]}</b></span>`}
     const m=state.config.modes.find(x=>x.id===mid);
     return m?`<span>${assetImg("mode",mid,"selected-mode-icon")}<b>${esc(m.title)}</b></span>`:"";
   }).join("");
   return `
     <div class="selected-theme-art">${assetImg("theme",id,"selected-theme-image")}</div>
     <div class="selected-theme-copy">
-      <small>TEMÁTICA ELEGIDA</small>
+      <small>${isDuo?"MODO DÚO · TEMÁTICA":"TEMÁTICA ELEGIDA"}</small>
       <strong>${esc(t.title)}</strong>
-      <p>${esc(t.tagline||t.description)}</p>
+      <p>${isDuo?"La temática define el tono. La dinámica es exclusiva para dos personas y no usa votaciones grupales.":esc(t.tagline||t.description)}</p>
       <div class="selected-theme-stats">
-        <span><b>${stats.maxRounds||"—"}</b> rondas máx.</span>
-        <span><b>${stats.modeCount||modeIds.length}</b> modos</span>
+        <span><b>${isDuo?12:(stats.maxRounds||"—")}</b> rondas máx.</span>
+        <span><b>${modeIds.length}</b> modos ${isDuo?"Dúo":""}</span>
       </div>
       <div class="selected-theme-modes">${modes}</div>
     </div>
     <button type="button" class="change-theme" id="wizardChangeTheme">Cambiar</button>`;
 }
-
 function paintSelectedTheme(){
   const el=document.querySelector("#selectedThemeSummary");
   if(el)el.innerHTML=selectedThemeSummary();
@@ -1256,7 +1265,7 @@ function openCreateWizard(initialTheme="clasico"){
     setCreateWizardStep(2);
   };
   document.querySelector("#wizardBack2").onclick=()=>setCreateWizardStep(1);
-  document.querySelector("#wizardNext2").onclick=()=>setCreateWizardStep(3);
+  document.querySelector("#wizardNext2").onclick=()=>{paintSelectedTheme();paintGameSettings();setCreateWizardStep(3)};
   document.querySelector("#wizardBack3").onclick=()=>setCreateWizardStep(2);
   document.querySelector("#createBtn")?.removeAttribute("disabled");
 }
