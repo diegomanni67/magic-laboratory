@@ -1529,7 +1529,7 @@ function lobby(r){
 
       <div class="lobby-people-head">
         <div><span class="live-dot"></span><strong>${r.players.length} ${r.players.length===1?"persona":"personas"} en la sala</strong></div>
-        <small>${need?("Falta "+need+" persona para poder empezar"):(r.players.length===2?"Modo Dúo listo para empezar":"Ya pueden empezar la preparación")}</small>
+        <small>${need?("Falta "+need+" persona para poder empezar"):(r.playerCount==="2"?"Modo Dúo listo para empezar":"Ya pueden empezar la preparación")}</small>
       </div>
       <div class="lobby-player-grid">${r.players.map((p,i)=>`
         <div class="lobby-player-card ${p.isHonoree?"is-honoree":""}" style="--delay:${i*45}ms">
@@ -1544,8 +1544,8 @@ function lobby(r){
       <div class="lobby-bottom">
         <div class="lobby-next">
           <span>PRÓXIMO PASO</span>
-          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":(r.players.length===2?"Sin votaciones grupales: juegan Coincidimos, ¿Qué elegirías?, Duelo y 5 segundos.":"Cada persona responde 10 cosas en secreto.")}</strong>
-          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":(r.players.length===2?"Los dos responden en simultáneo y el resultado se revela cuando ambos eligieron.":"Eso construye las rondas personalizadas de esta juntada.")}</small>
+          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":(r.playerCount==="2"?"Sin votaciones grupales: juegan Coincidimos, ¿Qué elegirías?, Duelo y 5 segundos.":"Cada persona responde 10 cosas en secreto.")}</strong>
+          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":(r.playerCount==="2"?"Los dos responden en simultáneo y el resultado se revela cuando ambos eligieron.":"Eso construye las rondas personalizadas de esta juntada.")}</small>
         </div>
         ${r.isHost?`<button class="primary lobby-start" id="startCollect">Empezar preparación <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia la preparación.</div>'}
       </div>
@@ -1636,7 +1636,7 @@ function collecting(r){
         <div class="sealed-visual"><img src="/assets/premium-lock.svg" alt=""><span></span></div>
         <div class="kicker">${r.me?.isHonoree?"TU PERFIL QUEDÓ SELLADO":"RESPUESTAS SELLADAS"}</div>
         <h2>${r.me?.isHonoree?"No viste nada. Perfecto.":"Tus respuestas ya están adentro."}</h2>
-        <p class="muted">${r.me?.isHonoree?"El grupo preparó el resto antes de que entraras. Ahora solo falta que todos estén listos.":r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":(r.players.length===2?"Esperando a que la otra persona termine sus respuestas. En cuanto estén 2/2, la partida empieza sola.":"Esperando al resto. Nadie puede leer las respuestas antes del final.")}</p>
+        <p class="muted">${r.me?.isHonoree?"El grupo preparó el resto antes de que entraras. Ahora solo falta que todos estén listos.":r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":(r.playerCount==="2"?"Esperando a que la otra persona termine sus respuestas. En cuanto estén 2/2, la partida empieza sola.":"Esperando al resto. Nadie puede leer las respuestas antes del final.")}</p>
         ${waitingHonoree&&r.isHost?`<div class="waiting-honoree-card"><span>✦</span><div><strong>Falta ${esc(r.surprise.honoreeName)}</strong><small>Mandale su link exclusivo cuando llegue el momento.</small></div><button class="secondary" id="readyCopyHonoree">Copiar link sorpresa</button></div>`:""}
         <div class="ready-build-stats">
           <span><b>${r.roundLimit||15}</b> rondas elegidas</span>
@@ -1645,7 +1645,7 @@ function collecting(r){
         </div>
         <div class="ready-meter"><div><i style="width:${pct}%"></i></div><span>${readyCount}/${r.players.length} listos</span></div>
         <div class="players animated-players">${chips(r)}</div>
-        ${r.isHost?'<button class="primary wide lobby-start" id="startGame" '+(r.players.length<2||r.players.some(p=>!p.ready)||waitingHonoree?"disabled":"")+'>Armar y empezar la partida <span>→</span></button>':""}
+        ${r.isHost?'<button class="primary wide lobby-start" id="startGame" '+(((r.playerCount==="2"&&r.players.length!==2)||(r.playerCount!=="2"&&r.players.length<3)||r.players.some(p=>!p.ready)||waitingHonoree)?"disabled":"")+'>Armar y empezar la partida <span>→</span></button>':""}
         ${r.isHost&&(r.players.some(p=>!p.ready)||waitingHonoree)?'<div class="host-wait-note">'+(waitingHonoree?"La sorpresa se habilita cuando entre "+esc(r.surprise.honoreeName)+" y responda sus 3 preguntas rápidas.":"La partida se habilita cuando todos hayan sellado sus respuestas.")+'</div>':""}
       </section>
       ${hostRoster(r)}
@@ -1656,7 +1656,7 @@ function collecting(r){
   }
 
   const prepTotal=surprise?11:10;
-  const isDuo=r.players.length===2&&!surprise;
+  const isDuo=r.playerCount==="2"&&!surprise;
   const opts=r.players.filter(p=>!p.isHonoree&&(isDuo||p.id!==r.me?.id)).map(p=>`<option value="${p.id}">${esc(p.name)}${isDuo&&p.id===r.me?.id?" (vos)":""}</option>`).join("");
   app.innerHTML=`<div class="room-page prep-page">
     ${brand()}
