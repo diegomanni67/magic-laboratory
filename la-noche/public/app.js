@@ -251,7 +251,9 @@ async function api(url,o={}){
   const pass=accessToken();if(pass)h["X-La-Juntada-Access"]=pass;
   let r;try{r=await fetch(url,{...o,headers:h,cache:"no-store",credentials:"same-origin"})}catch(e){throw new Error("No se pudo conectar. Revisá la conexión e intentá nuevamente.")}
   const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}
-  if(!r.ok)throw new Error(d.error||"Algo salió mal");return d
+  if(!r.ok)throw new Error(d.error||("Error "+r.status+". Intentá nuevamente."));
+  if(raw&&!Object.keys(d).length)throw new Error("El servidor respondió de una forma inesperada. Recargá e intentá nuevamente.");
+  return d
 }
 async function loadAccess(){
   const pass=accessToken();
@@ -273,7 +275,7 @@ function getCustomPacks(){
   }catch{return []}
 }
 function saveCustomPacks(packs){
-  localStorage.setItem(customPackStorageKey(),JSON.stringify(packs));
+  try{localStorage.setItem(customPackStorageKey(),JSON.stringify(packs));return true}catch{return false}
 }
 
 async function syncCustomPacks(){
@@ -1441,15 +1443,19 @@ async function createRoom(){
     document.querySelector("#createRoomError")?.remove();
     if(btn){btn.dataset.busy="1";btn.disabled=true;btn.innerHTML='Creando sala… <span>✦</span>'}
 
-    const pack=selectedCustomPack();
-    const d=await api("/api/rooms",{method:"POST",body:JSON.stringify({
-      name,hostName,themeId:themeInput.value,playWhen:when,eventDate,playerCount:document.querySelector('input[name="playerCount"]:checked')?.value||"group",
+    // Keep the normal creation path deliberately small and Safari-safe.
+    // Advanced/Premium data is optional and must never be able to break room creation.
+    let pack=null;try{pack=selectedCustomPack()}catch{}
+    let disabledModes=[];try{disabledModes=Array.from(document.querySelectorAll("[data-mode-toggle]")).filter(x=>!x.checked).map(x=>x.dataset.modeToggle)}catch{}
+    let roundLimit=15;try{roundLimit=Number(document.querySelector('input[name="roundLimit"]:checked')?.value||15)}catch{}
+    const payload={
+      name:name.slice(0,80),hostName:hostName.slice(0,40),themeId:String(themeInput.value||"clasico"),
+      playWhen:when,eventDate:String(eventDate||""),playerCount:document.querySelector('input[name="playerCount"]:checked')?.value==="2"?"2":"group",
       ageConfirmed:!!document.querySelector("#ageConfirmed")?.checked,
-      customPack:pack||null,
-      surpriseMode,honoreeName,
-      roundLimit:Number(document.querySelector('input[name="roundLimit"]:checked')?.value||15),
-      disabledModes:[...document.querySelectorAll("[data-mode-toggle]")].filter(x=>!x.checked).map(x=>x.dataset.modeToggle)
-    })});
+      customPack:pack||null,surpriseMode:!!surpriseMode,honoreeName:String(honoreeName||"").slice(0,40),
+      roundLimit,disabledModes
+    };
+    const d=await api("/api/rooms",{method:"POST",body:JSON.stringify(payload)});
     closeCreateWizard();
     saveSession(d.code,d.sessionToken);
     startPoll();
