@@ -498,10 +498,9 @@ function gameSettingsHtml(){
   const isDuo=playerCount==="2";
   if(isDuo){
     const duoModes=[
-      ["duo_coincidimos","🤝","Coincidimos","Los dos responden lo mismo en secreto y se revela si coincidieron."],
-      ["duo_dilema","↔","¿Qué elegirías?","Los dos eligen entre dos opciones y comparan sus decisiones."],
-      ["duo_duelo","⚡","Duelo","Desafíos cara a cara: uno contra uno, sin votaciones grupales."],
-      ["duo_5seg","⏱","5 segundos","Retos rápidos alternados para los dos."]
+      ["duo_read","🎯","¿Cuánto me conocés?","Uno elige por sí mismo y el otro intenta anticipar su respuesta."],
+      ["duo_risk","🎲","Apuesta","Decisiones secretas diseñadas para que haya competencia y puntos distintos."],
+      ["duo_speed","⚡","Duelo relámpago","Rondas rápidas cara a cara; una sola persona se lleva los puntos."]
     ];
     return `
       <details class="game-settings duo-game-settings">
@@ -896,13 +895,12 @@ function selectedThemeSummary(){
   const t=state.config.themes.find(x=>x.id===id)||state.config.themes[0];
   const isDuo=document.querySelector('input[name="playerCount"]:checked')?.value==="2";
   const stats=state.config.themeStats?.[id]||{};
-  const duoIds=["duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"];
+  const duoIds=["duo_read","duo_risk","duo_speed"];
   const modeIds=isDuo?duoIds:(state.config.themeModes?.[id]||[]);
   const duoMeta={
-    duo_coincidimos:["🤝","Coincidimos"],
-    duo_dilema:["↔","¿Qué elegirías?"],
-    duo_duelo:["⚡","Duelo"],
-    duo_5seg:["⏱","5 segundos"]
+    duo_read:["🎯","¿Cuánto me conocés?"],
+    duo_risk:["🎲","Apuesta"],
+    duo_speed:["⚡","Duelo relámpago"]
   };
   const modes=modeIds.slice(0,4).map(mid=>{
     if(isDuo){const m=duoMeta[mid];return `<span><i class="duo-summary-emoji">${m[0]}</i><b>${m[1]}</b></span>`}
@@ -1544,8 +1542,8 @@ function lobby(r){
       <div class="lobby-bottom">
         <div class="lobby-next">
           <span>PRÓXIMO PASO</span>
-          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":(r.playerCount==="2"?"Sin votaciones grupales: juegan Coincidimos, ¿Qué elegirías?, Duelo y 5 segundos.":"Cada persona responde 10 cosas en secreto.")}</strong>
-          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":(r.playerCount==="2"?"Los dos responden en simultáneo y el resultado se revela cuando ambos eligieron.":"Eso construye las rondas personalizadas de esta juntada.")}</small>
+          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":(r.playerCount==="2"?"Sin votaciones grupales: juegan ¿Cuánto me conocés?, Apuesta y Duelo relámpago.":"Cada persona responde 10 cosas en secreto.")}</strong>
+          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":(r.playerCount==="2"?"Las rondas están pensadas para que puedan competir y terminar con puntajes distintos.":"Eso construye las rondas personalizadas de esta juntada.")}</small>
         </div>
         ${r.isHost?`<button class="primary lobby-start" id="startCollect">Empezar preparación <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia la preparación.</div>'}
       </div>
