@@ -450,7 +450,8 @@ const DUO2_ROUNDS=[
   {mode:"duo_dilema",prompt:"¿Qué elegirías?",statement:"¿Qué preferís saber?",options:[{id:"a",label:"Qué piensa la gente de vos"},{id:"b",label:"Qué va a pasar dentro de 10 años"}]}
 ];
 function buildDuo2Rounds(room){
-  return shuffle(DUO2_ROUNDS).slice(0,Math.min(room.roundLimit||15,DUO2_ROUNDS.length)).map((r,i)=>({id:id(),votes:{},scored:false,position:i,...r}));
+  // Duo has its own round bank and never falls back to group voting modes.
+  return shuffle(DUO2_ROUNDS).slice(0,Math.min(room.roundLimit||12,DUO2_ROUNDS.length)).map((r,i)=>({id:id(),votes:{},scored:false,position:i,...r}));
 }
 function buildRounds(room){
   const disabled=new Set(room.disabledModes||[]);
@@ -949,7 +950,7 @@ function snapshot(room,viewer){
       inviteKey:viewer?.id===room.hostPlayerId?room.surprise.joinKey:null,
       quickQuestions:viewer?.isHonoree&&!viewer.ready?(room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS):null
     }:null,
-    prepPrompts:room.prepPrompts,availableModes:(THEME_MODES[room.themeId]||[]).map(modeInfo),
+    prepPrompts:room.prepPrompts,availableModes:(room.playerCount==="2"||room.players.length===2?["duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"]:(THEME_MODES[room.themeId]||[])).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
     me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,isHonoree:!!viewer.isHonoree,score:finished?viewer.score:null}:null,
     players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,isHonoree:!!p.isHonoree,score:finished?p.score:null,isHost:p.id===room.hostPlayerId})),
