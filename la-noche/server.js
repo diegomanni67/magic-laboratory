@@ -175,6 +175,7 @@ function themeStats(themeId){
     playableModeCount:playable.length,
     maxRounds,
     promptCount,
+    duoQuestionCount:expandedDuoBank(themeId).length,
     hasMissions:modeIds.includes("mision_secreta"),
     missionCount:Array.isArray(tp.missions)?tp.missions.length:0
   };
