@@ -1156,7 +1156,78 @@ function setCreateWizardStep(step){
   const label=root.querySelector("#wizardStepLabel");if(label)label.textContent="Paso "+n+" de 3";
   var sh=root.querySelector(".wizard-sheet");if(sh){try{if(typeof sh.scrollTo==="function")sh.scrollTo(0,0);else sh.scrollTop=0}catch(e){sh.scrollTop=0}}
 }
+function useMobileSafeCreate(){
+  try{
+    var ua=navigator.userAgent||"";
+    return /iPhone|iPad|iPod|Android/i.test(ua)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  }catch(e){return false}
+}
+function openMobileSafeCreate(initialTheme){
+  closeLauncherOverlay();
+  closeCreateWizard();
+  var themes=(state.config&&state.config.themes)||[];
+  var options=themes.map(function(t){
+    var locked=t.premiumOnly&&!hasReusableAccess();
+    return '<option value="'+esc(t.id)+'" '+(locked?'disabled':'')+'>'+esc(t.title)+(locked?' · Premium':'')+'</option>';
+  }).join("");
+  document.body.insertAdjacentHTML("beforeend",
+    '<div class="create-wizard-overlay mobile-safe-create" data-selected-theme="'+esc(initialTheme||"clasico")+'" role="dialog" aria-modal="true" aria-label="Crear La Juntada">'+
+      '<button class="wizard-backdrop" data-close-wizard aria-label="Cerrar"></button>'+
+      '<article class="wizard-sheet mobile-safe-sheet">'+
+        '<header class="wizard-header"><div>'+brand()+'</div><div><small>CREAR JUNTADA</small></div><button class="rules-close" data-close-wizard aria-label="Cerrar">×</button></header>'+
+        '<section class="mobile-safe-body">'+
+          '<div class="wizard-copy"><div class="kicker">CONFIGURACIÓN SIMPLE</div><h2>Creá la juntada</h2><p>Controles nativos para máxima compatibilidad en celular.</p></div>'+
+          '<label class="field-label">¿Cuántos van a jugar?</label>'+
+          '<select id="mobilePlayerCount"><option value="">Elegir…</option><option value="2">Somos 2 · Modo Dúo</option><option value="group">Somos 3 o más</option></select>'+
+          '<label class="field-label">¿Cuándo juegan?</label>'+
+          '<select id="mobileWhen"><option value="now">Ahora</option><option value="later">Preparar antes</option></select>'+
+          '<div id="dateWrap" class="date-wrap"><label class="field-label">Fecha</label><input id="eventDate" type="date"></div>'+
+          '<label class="field-label">Temática</label>'+
+          '<select id="mobileTheme">'+options+'</select>'+
+          '<div class="form-two wizard-names">'+
+            '<div><label class="field-label" for="roomName">Nombre de la juntada</label><input id="roomName" type="text" autocomplete="off" autocapitalize="sentences" placeholder="Cumple de Sofi" maxlength="80"></div>'+
+            '<div><label class="field-label" for="hostName">Tu nombre</label><input id="hostName" type="text" autocomplete="name" autocapitalize="words" placeholder="Diego" maxlength="40"></div>'+
+          '</div>'+
+          '<label class="age-check wizard-age" id="ageWrap"><input id="ageConfirmed" type="checkbox"> Confirmo que los participantes son mayores de 18 años.</label>'+
+          '<div class="wizard-actions"><button class="ghost" data-close-wizard type="button">Cancelar</button><button class="primary big-action" id="createBtn" type="button">Crear La Juntada <span>→</span></button></div>'+
+        '</section>'+
+      '</article>'+
+    '</div>');
+  document.body.classList.add("rules-open");
+  document.querySelectorAll("[data-close-wizard]").forEach(function(b){b.onclick=closeCreateWizard});
+  var root=document.querySelector(".create-wizard-overlay");
+  var theme=document.querySelector("#mobileTheme");
+  if(theme){
+    var wanted=initialTheme||"clasico";
+    var opt=theme.querySelector('option[value="'+wanted+'"]');
+    if(opt&&!opt.disabled)theme.value=wanted;
+    else if(theme.querySelector('option[value="clasico"]'))theme.value="clasico";
+    if(root)root.dataset.selectedTheme=theme.value||"clasico";
+  }
+  function syncMobile(){
+    try{
+      var when=document.querySelector("#mobileWhen");
+      var dw=document.querySelector("#dateWrap");
+      if(dw)dw.classList.toggle("show",!!(when&&when.value==="later"));
+      if(root&&theme)root.dataset.selectedTheme=theme.value||"clasico";
+      var tid=(theme&&theme.value)||"clasico";
+      var meta=themes.find(function(t){return t.id===tid});
+      var age=document.querySelector("#ageWrap");
+      if(age)age.classList.toggle("show",!!(meta&&meta.age18));
+    }catch(e){reportClientError(e,"mobile_create.sync")}
+  }
+  if(theme)theme.onchange=syncMobile;
+  var when=document.querySelector("#mobileWhen");if(when)when.onchange=syncMobile;
+  syncMobile();
+  var create=document.querySelector("#createBtn");
+  if(create)create.onclick=function(){
+    var pc=document.querySelector("#mobilePlayerCount");
+    if(!pc||!pc.value){toast("Elegí cuántas personas van a jugar.");return}
+    createRoom();
+  };
+}
 function openCreateWizard(initialTheme="clasico"){
+  if(useMobileSafeCreate()){openMobileSafeCreate(initialTheme);return}
   closeLauncherOverlay();
   closeCreateWizard();
   document.body.insertAdjacentHTML("beforeend",`
@@ -1423,8 +1494,10 @@ async function createRoom(){
     if(!name){fail("Poné un nombre para la Juntada.");try{roomEl?.focus()}catch{}return}
     if(!hostName){fail("Escribí tu nombre.");try{hostEl?.focus()}catch{}return}
     if(!themeValue){fail("Elegí una temática.");return}
-    const when=document.querySelector('input[name="when"]:checked')?.value||"now";
-    const eventDate=document.querySelector("#eventDate")?.value||"";
+    const whenRadio=document.querySelector('input[name="when"]:checked'),mobileWhen=document.querySelector("#mobileWhen");
+    const when=(whenRadio&&whenRadio.value)||(mobileWhen&&mobileWhen.value)||"now";
+    const dateControl=document.querySelector("#eventDate");
+    const eventDate=(dateControl&&dateControl.value)||"";
     if(when==="later"&&!eventDate){fail("Elegí la fecha de la Juntada.");setCreateWizardStep(1);return}
     const surpriseMode=document.querySelector('input[name="partyKind"]:checked')?.value==="surprise";
     const honoreeName=document.querySelector("#honoreeName")?.value.trim()||"";
@@ -1440,7 +1513,7 @@ async function createRoom(){
     let roundLimit=15;try{roundLimit=Number(document.querySelector('input[name="roundLimit"]:checked')?.value||15)}catch{}
     const payload={
       name:name.slice(0,80),hostName:hostName.slice(0,40),themeId:String(themeValue||"clasico"),
-      playWhen:when,eventDate:String(eventDate||""),playerCount:document.querySelector('input[name="playerCount"]:checked')?.value==="2"?"2":"group",
+      playWhen:when,eventDate:String(eventDate||""),playerCount:((document.querySelector('input[name="playerCount"]:checked')&&document.querySelector('input[name="playerCount"]:checked').value)||((document.querySelector("#mobilePlayerCount")||{}).value))==="2"?"2":"group",
       ageConfirmed:!!document.querySelector("#ageConfirmed")?.checked,
       customPack:pack||null,surpriseMode:!!surpriseMode,honoreeName:String(honoreeName||"").slice(0,40),
       roundLimit,disabledModes
