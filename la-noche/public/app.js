@@ -494,38 +494,37 @@ function bindCustomPackControls(){
 }
 
 function gameSettingsHtml(){
+  const playerCount=document.querySelector('input[name="playerCount"]:checked')?.value||"group";
+  const isDuo=playerCount==="2";
+  if(isDuo){
+    const duoModes=[
+      ["duo_coincidimos","🤝","Coincidimos","Los dos responden lo mismo en secreto y se revela si coincidieron."],
+      ["duo_dilema","↔","¿Qué elegirías?","Los dos eligen entre dos opciones y comparan sus decisiones."],
+      ["duo_duelo","⚡","Duelo","Desafíos cara a cara: uno contra uno, sin votaciones grupales."],
+      ["duo_5seg","⏱","5 segundos","Retos rápidos alternados para los dos."]
+    ];
+    return `
+      <details class="game-settings duo-game-settings">
+        <summary><div><small>CONFIGURACIÓN MODO DÚO</small><strong>Dinámicas exclusivas para 2</strong></div><span>Ver</span></summary>
+        <div class="game-settings-body">
+          <div class="duo-settings-callout"><strong>Esto no usa los juegos grupales.</strong><span>No hay mayorías ni votaciones de grupo. La partida se arma con dinámicas 1 vs 1 y de coincidencia.</span></div>
+          <div class="settings-mode-grid">${duoModes.map(m=>`<div class="game-mode-toggle duo-mode-preview"><span class="mode-toggle-box">${m[1]}</span><div><strong>${m[2]}</strong><small>${m[3]}</small></div></div>`).join("")}</div>
+          <div class="setting-block"><div class="setting-head"><strong>Duración</strong><span>Se mezclan estas dinámicas durante la partida.</span></div>
+            <div class="length-options">
+              <label><input type="radio" name="roundLimit" value="8"><div><b>Corta</b><small>8 rondas</small></div></label>
+              <label><input type="radio" name="roundLimit" value="12" checked><div><b>Normal</b><small>12 rondas</small></div></label>
+            </div>
+          </div>
+        </div>
+      </details>`;
+  }
   const themeId=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
   const modeIds=state.config.themeModes?.[themeId]||[];
   const modeCards=modeIds.map(mid=>{
     const m=state.config.modes.find(x=>x.id===mid);if(!m)return "";
-    return `<label class="game-mode-toggle">
-      <input type="checkbox" data-mode-toggle="${mid}" checked>
-      <span class="mode-toggle-box">${assetImg("mode",mid,"setting-mode-icon")}</span>
-      <div><strong>${esc(m.title)}</strong><small>${mid==="mision_secreta"?"Puede durar toda la juntada.":"Incluido en la mezcla de rondas."}</small></div>
-      <i></i>
-    </label>`;
+    return `<label class="game-mode-toggle"><input type="checkbox" data-mode-toggle="${mid}" checked><span class="mode-toggle-box">${assetImg("mode",mid,"setting-mode-icon")}</span><div><strong>${esc(m.title)}</strong><small>${mid==="mision_secreta"?"Puede durar toda la juntada.":"Incluido en la mezcla de rondas."}</small></div><i></i></label>`;
   }).join("");
-  return `
-    <details class="game-settings">
-      <summary>
-        <div><small>CONFIGURACIÓN DE PARTIDA</small><strong>15 rondas · todos los modos</strong></div>
-        <span>Ajustar</span>
-      </summary>
-      <div class="game-settings-body">
-        <div class="setting-block">
-          <div class="setting-head"><strong>Duración</strong><span>Podés cambiarla sin afectar las respuestas.</span></div>
-          <div class="length-options">
-            <label><input type="radio" name="roundLimit" value="8"><div><b>Corta</b><small>8 rondas</small></div></label>
-            <label><input type="radio" name="roundLimit" value="15" checked><div><b>Normal</b><small>15 rondas</small></div></label>
-            <label><input type="radio" name="roundLimit" value="25"><div><b>Larga</b><small>Hasta 25 rondas</small></div></label>
-          </div>
-        </div>
-        <div class="setting-block">
-          <div class="setting-head"><strong>Modos incluidos</strong><span>Desactivá los que no quieran jugar hoy.</span></div>
-          <div class="settings-mode-grid">${modeCards}</div>
-        </div>
-      </div>
-    </details>`;
+  return `<details class="game-settings"><summary><div><small>CONFIGURACIÓN DE PARTIDA</small><strong>15 rondas · todos los modos</strong></div><span>Ajustar</span></summary><div class="game-settings-body"><div class="setting-block"><div class="setting-head"><strong>Duración</strong><span>Podés cambiarla sin afectar las respuestas.</span></div><div class="length-options"><label><input type="radio" name="roundLimit" value="8"><div><b>Corta</b><small>8 rondas</small></div></label><label><input type="radio" name="roundLimit" value="15" checked><div><b>Normal</b><small>15 rondas</small></div></label><label><input type="radio" name="roundLimit" value="25"><div><b>Larga</b><small>Hasta 25 rondas</small></div></label></div></div><div class="setting-block"><div class="setting-head"><strong>Modos incluidos</strong><span>Desactivá los que no quieran jugar hoy.</span></div><div class="settings-mode-grid">${modeCards}</div></div></div></details>`;
 }
 function paintGameSettings(){
   const holder=document.querySelector("#gameSettingsHolder");if(!holder)return;
@@ -1239,7 +1238,7 @@ function openCreateWizard(initialTheme="clasico"){
     const chosen=!!document.querySelector('input[name="playerCount"]:checked');
     document.querySelector("#afterPlayerCount")?.classList.toggle("show",chosen);
   };
-  document.querySelectorAll('input[name="playerCount"]').forEach(x=>x.addEventListener("change",revealPlayerFlow));
+  document.querySelectorAll('input[name="playerCount"]').forEach(x=>x.addEventListener("change",()=>{revealPlayerFlow();paintGameSettings()}));
   revealPlayerFlow();
   document.querySelectorAll('input[name="when"]').forEach(x=>x.addEventListener("change",refreshBasics));
   document.querySelectorAll('input[name="theme"]').forEach(x=>x.addEventListener("change",refreshTheme));
