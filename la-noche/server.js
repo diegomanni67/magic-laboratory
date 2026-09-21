@@ -129,7 +129,7 @@ function getRoom(code){
 }
 function auth(room,req){const pid=sessions.get(sessionKey(bearer(req)));return room?.players.find(p=>p.id===pid)||null}
 function requireHost(room,req){const me=auth(room,req);return me&&me.id===room.hostPlayerId?me:null}
-function themePrompts(themeId){return PROMPTS[themeId]||PROMPTS.clasico}
+function themePrompts(themeId){return expandedThemePrompts(themeId)}
 function cleanList(v,maxItems=40,maxLen=220){
   return Array.isArray(v)?v.map(x=>clean(x,maxLen)).filter(Boolean).slice(0,maxItems):[];
 }
@@ -168,8 +168,8 @@ function themeStats(themeId){
   const modeIds=THEME_MODES[themeId]||[];
   const playable=modeIds.filter(x=>IMPLEMENTED_MODES.includes(x));
   const maxRounds=Math.min(25,playable.reduce((n,id)=>n+(MODE_ROUND_CAPS[id]||0),0));
-  const tp=PROMPTS[themeId]||{};
-  const promptCount=Object.values(tp).reduce((n,val)=>n+(Array.isArray(val)?val.length:0),0)+(DUO_CHOICES[themeId]?.length||0);
+  const tp=themePrompts(themeId);
+  const promptCount=Object.values(tp).reduce((n,val)=>n+(Array.isArray(val)?val.length:0),0)+expandedDuoBank(themeId).length;
   return {
     modeCount:modeIds.length,
     playableModeCount:playable.length,
@@ -432,8 +432,8 @@ function assignMissions(room){
   if((room.disabledModes||[]).includes("mision_secreta")||!(THEME_MODES[room.themeId]||[]).includes("mision_secreta"))return;
   const bank=packBank(room,"missions",themePrompts(room.themeId).missions||[]);
   if(!bank.length)return;
-  const shuffled=shuffle(bank);
-  room.players.forEach((p,i)=>{room.missions[p.id]={text:shuffled[i%shuffled.length],status:"active",points:250}});
+  const chosen=freshPick(room,"missions",bank,Math.min(room.players.length,bank.length));
+  room.players.forEach((p,i)=>{room.missions[p.id]={text:chosen[i%chosen.length],status:"active",points:250}});
 }
 const DUO_BANKS={
   clasico:[
@@ -693,9 +693,174 @@ const DUO_BANKS={
     ["¿Qué te gustaría saber primero?","Qué le causa gracia","Qué le apasiona"]
   ]
 };
+const VARIETY_KITS={
+  clasico:{
+    moments:["una salida que terminó en cualquier cosa","un viaje con un imprevisto inolvidable","una compra de la que después te arrepentiste","un mensaje enviado a la persona equivocada","una mentira piadosa que se complicó","un momento en el que te hiciste el que entendías","una situación en la que llegaste demasiado tarde","un plan improvisado que salió mejor de lo esperado","una vergüenza pública que hoy te causa gracia","una vez que rompiste una regla por una pavada","un encuentro rarísimo con un desconocido","un favor que terminó siendo mucho más complicado de lo esperado"],
+    actions:["llegar tarde a algo importantísimo","perder el celular en una salida","hacerse amigo de un desconocido en cinco minutos","mudarse de país sin avisar demasiado","mandar un mensaje y arrepentirse al instante","quedarse dormido en el peor momento","convertirse en meme sin querer","sobrevivir mejor a un viaje sin plan","guardar un secreto durante años","gastar de más por impulso","cancelar un plan a último momento","hacerse famoso por accidente","terminar hablando con todo el mundo en una fiesta","olvidarse una fecha importante","resolver un problema improvisando"],
+    missions:["Conseguí que alguien cuente una anécdota del colegio sin preguntarle por el colegio.","Lográ que alguien diga que necesita vacaciones.","Conseguí que dos personas discutan amistosamente sobre comida.","Hacé que alguien muestre una foto vieja en el celular.","Lográ que alguien diga «yo nunca haría eso».","Conseguí que alguien proponga un próximo plan para el grupo.","Hacé que alguien mencione a una ex pareja o viejo amor sin preguntarle directamente.","Lográ que alguien admita una compra impulsiva.","Conseguí que alguien imite a otra persona del grupo.","Hacé que alguien cuente una anécdota que empiece con «una vez…»."]
+  },
+  profundo:{
+    moments:["una decisión que te cambió más de lo que esperabas","una etapa en la que tuviste que empezar de nuevo","un momento en el que cambiaste de opinión sobre algo importante","una conversación que todavía recordás","una situación en la que tuviste que elegir entre vos y otra persona","una oportunidad que dejaste pasar","un miedo que terminaste enfrentando","una despedida que te enseñó algo","una vez que pediste ayuda cuando no querías hacerlo","una promesa que te costó cumplir","un momento en el que te sorprendiste a vos mismo","algo que antes querías y hoy ya no"],
+    actions:["cambiar completamente de vida por una oportunidad","perdonar primero después de una pelea fuerte","renunciar a algo seguro por algo que le apasiona","guardar lo que siente para no preocupar al resto","pedir ayuda antes de tocar fondo","volver a empezar desde cero en otra ciudad","cambiar de opinión después de escuchar a alguien","elegir paz antes que tener razón","arriesgar una relación por ser sincero","dejar un trabajo que ya no le hace bien","tomarse un año para replantearse todo","hacer un sacrificio grande por alguien querido","soltar una amistad que ya no funciona","admitir un error aunque nadie se lo reclame","elegir tiempo por encima de plata"],
+    missions:["Conseguí que alguien diga algo que cambió de opinión en los últimos años.","Lográ que alguien cuente un miedo que ya superó.","Conseguí que alguien mencione una decisión de la que está orgulloso.","Hacé que alguien diga qué valora más hoy que hace cinco años.","Lográ que alguien cuente algo que aprendió de otra persona del grupo.","Conseguí que alguien diga qué le gustaría animarse a hacer.","Hacé que alguien nombre una etapa que no repetiría.","Lográ que alguien diga cuál fue un buen consejo que recibió.","Conseguí que alguien hable de algo que le costó soltar.","Hacé que alguien admita una meta que todavía tiene pendiente."]
+  },
+  parejas:{
+    moments:["una cita que no salió como esperabas","un viaje o escapada en pareja","una discusión que hoy parece absurda","un gesto pequeño que te quedó grabado","una sorpresa que salió muy bien o muy mal","un momento en el que te sentiste especialmente acompañado","una costumbre de pareja que nadie más entendería","una primera impresión que después cambió","una situación en la que tuvieron que hacer equipo","una decisión importante que tomaron juntos","un recuerdo cotidiano que te hace reír","una diferencia entre ustedes que terminó siendo positiva"],
+    actions:["recordar una fecha que el otro olvidó","organizar una sorpresa sin que se note","ceder primero después de una discusión","proponer un viaje impulsivo","notar que al otro le pasa algo sin que diga nada","guardar un regalo durante semanas sin contarlo","elegir el restaurante sin mirar el menú","pedir perdón primero","quedarse dormido durante una película elegida por el otro","hacer una compra para la casa sin consultar","convertir una pelea en un chiste","decir «no pasa nada» cuando sí pasa","planear todo con mucha anticipación","querer resolver una discusión en el momento","necesitar espacio antes de volver a hablar"],
+    missions:["Conseguí que alguien cuente cómo fue una primera cita.","Lográ que alguien diga una costumbre de su pareja que le causa gracia.","Conseguí que alguien recuerde un regalo que le haya encantado.","Hacé que alguien admita quién suele pedir perdón primero.","Lográ que alguien cuente una discusión absurda que hoy dé risa.","Conseguí que alguien diga un plan que quiere hacer en pareja.","Hacé que alguien mencione un detalle pequeño que para él vale mucho.","Lográ que alguien diga qué cosa hacen mejor como equipo.","Conseguí que alguien cuente algo que aprendió de su pareja.","Hacé que alguien nombre una canción, comida o lugar que asocie con la relación."]
+  },
+  picante18:{
+    moments:["una cita con mucha química","un mensaje que te hizo dudar qué responder","una primera impresión que te sorprendió","una situación de tensión romántica","una cita que terminó siendo muy distinta a lo esperado","una persona que te gustó contra todo pronóstico","un intento de conquista que salió mal","una vez que interpretaste mal una señal","una conversación que cambió el tono de una relación","una cita que quisiste que durara más","una situación en la que te dio vergüenza avanzar","una atracción que intentaste disimular"],
+    actions:["enamorarse de alguien que juró que no era su tipo","mandar un mensaje demasiado tarde y arrepentirse","confundir amabilidad con interés","dar el primer paso sin pensarlo mucho","investigar a una cita en redes antes de verla","quedarse enganchado con alguien inesperado","volver a hablarle a alguien después de jurar que no","hacer una declaración demasiado directa","cancelar una cita porque se puso nervioso","tener una historia secreta que nadie sospecha","besar primero en una cita","tener un crush con alguien poco conveniente","sobrepensar un mensaje durante una hora","aceptar una cita por pura curiosidad","cambiar de opinión sobre alguien después de conocerlo mejor"],
+    missions:["Conseguí que alguien cuente su peor cita.","Lográ que alguien diga qué detalle le resulta irresistible.","Conseguí que alguien admita haber investigado a una cita en redes.","Hacé que alguien cuente una historia de tensión romántica sin pedírsela directamente.","Lográ que alguien diga qué famoso le parece atractivo.","Conseguí que alguien diga si prefiere dar o recibir el primer paso.","Hacé que alguien recuerde un mensaje que lo descolocó.","Lográ que alguien diga qué arruina una cita al instante.","Conseguí que alguien admita una señal que alguna vez interpretó mal.","Hacé que alguien cuente una primera impresión que terminó cambiando."]
+  },
+  cumple:{
+    moments:["un cumpleaños que salió completamente distinto al plan","un regalo inolvidable","una sorpresa que casi se arruina","una fiesta de infancia","un brindis que todavía recordás","un cumpleaños en el que pasó algo inesperado","una torta o comida que salió mal","una foto de cumpleaños que da vergüenza","una vez que alguien olvidó una fecha importante","un festejo improvisado","un regalo rarísimo que recibiste","un cumpleaños que preferiste pasar tranquilo"],
+    actions:["organizar una fiesta sorpresa sin que se note","olvidarse del cumpleaños de alguien cercano","quedarse hasta el final de cualquier fiesta","emocionarse con un regalo hecho a mano","querer festejar durante toda la semana","preferir que nadie le cante el feliz cumpleaños","ser quien arma el brindis","llevar el regalo más original","llegar primero al festejo","aparecer con una torta improvisada","sacar más fotos que nadie","proponer seguirla después del festejo","guardar todas las tarjetas y recuerdos","elegir un plan chico antes que una fiesta enorme","hacer un discurso inesperado"],
+    missions:["Conseguí que alguien cuente su cumpleaños favorito.","Lográ que alguien recuerde un regalo que todavía conserva.","Conseguí que alguien diga qué torta elegiría hoy.","Hacé que alguien muestre una foto de un cumpleaños viejo.","Lográ que alguien proponga un brindis.","Conseguí que alguien diga qué regalo nunca quisiera recibir.","Hacé que alguien cuente una fiesta que salió mal.","Lográ que alguien diga si prefiere sorpresa o saber el plan.","Conseguí que alguien nombre a la persona que mejor hace regalos.","Hacé que alguien cuente qué cumpleaños le gustaría repetir."]
+  },
+  caos:{
+    moments:["un plan que se descontroló por completo","una noche que terminó en un lugar inesperado","una apuesta absurda","un viaje sin planificación","una situación en la que todo salió mal al mismo tiempo","una idea pésima que terminó siendo divertida","una decisión tomada en menos de un minuto","un problema que resolviste improvisando","una fiesta que cambió de plan cinco veces","una vez que te perdiste","una compra absurda hecha por impulso","una historia que empezó con «esto no puede salir mal»"],
+    actions:["aceptar una apuesta ridícula","proponer un viaje esa misma noche","perderse incluso usando mapas","convertir un problema en una anécdota","romper el plan apenas aparece algo mejor","hacer una compra absurda por impulso","terminar en un lugar al que nadie pensaba ir","ser el primero en decir «hagámoslo»","sobrevivir mejor sin ningún plan","convencer al resto de una idea malísima","improvisar una solución imposible","quedarse sin batería en el peor momento","cambiar de plan tres veces en una hora","hacer algo solo porque parecía divertido","reírse cuando todo está saliendo mal"],
+    missions:["Conseguí que alguien acepte una apuesta tonta.","Lográ que alguien proponga cambiar el plan de la noche.","Conseguí que dos personas inventen una teoría absurda juntas.","Hacé que alguien diga «¿qué puede salir mal?».","Lográ que alguien cuente la peor decisión impulsiva que tomó.","Conseguí que alguien se saque una foto ridícula.","Hacé que alguien proponga un desafío para otra persona.","Lográ que alguien cuente una historia en la que se perdió.","Conseguí que alguien imite un sonido o una voz.","Hacé que alguien diga que una idea es «una locura»."]
+  },
+  canceladisimos:{
+    moments:["una opinión que sabías que iba a generar discusión","una vez que dijiste una verdad que nadie quería escuchar","una situación en la que juzgaste demasiado rápido","un momento en el que cambiaste de opinión sobre alguien","una pelea por una pavada que escaló","una vez que te arrepentiste de opinar sin saber","una situación en la que alguien rompió un código del grupo","una vez que preferiste callarte para no generar quilombo","un comentario que salió peor de lo esperado","una vez que defendiste una postura impopular","una situación en la que te sentiste hipócrita","un momento en el que tuviste que elegir entre sinceridad y diplomacia"],
+    actions:["decir una verdad incómoda aunque arruine el clima","cancelar a alguien por una sola actitud","cambiar de opinión después de una discusión","dejar de seguir a alguien por lo que publica","confrontar a una persona en el momento","hacer de abogado del diablo solo por discutir","guardar bronca durante semanas","decir «te lo dije» en el peor momento","bloquear a alguien sin explicación","defender una opinión impopular delante de todos","juzgar a alguien por cómo trata a un mozo","perdonar algo que juró imperdonable","leer una conversación vieja para ganar una discusión","salirse de un grupo de chat por enojo","admitir que estaba completamente equivocado"],
+    missions:["Conseguí que alguien diga una opinión impopular.","Lográ que dos personas estén en desacuerdo sobre una regla social.","Conseguí que alguien diga qué conducta no perdonaría.","Hacé que alguien admita haber juzgado mal a otra persona.","Lográ que alguien diga «eso es de mala persona».","Conseguí que alguien defienda una postura con la que el resto no coincide.","Hacé que alguien cuente una vez que bloqueó o dejó de seguir a alguien.","Lográ que alguien diga qué cosa considera sobrevalorada.","Conseguí que alguien cambie de opinión durante una conversación.","Hacé que alguien diga qué código entre amigos no se rompe."]
+  },
+  rompehielo:{
+    moments:["una situación graciosa del trabajo o estudio","un viaje corto que recuerdes","una comida que salió especialmente bien o mal","una primera vez haciendo algo","un hobby raro o inesperado","una coincidencia difícil de creer","una película o serie que te sorprendió","una situación incómoda que terminó bien","un talento inútil que descubriste","un lugar que te encantó conocer","un pequeño logro reciente","una costumbre tuya que suele llamar la atención"],
+    actions:["empezar charla con un desconocido","probar una comida rara sin preguntar qué tiene","sumarse primero a un karaoke","recordar el nombre de todos","armar un plan con gente que recién conoce","hacer reír a un grupo nuevo","proponer un juego para romper el hielo","quedarse hablando hasta el final","descubrir un gusto en común con cualquiera","animarse primero a bailar","preguntar algo inesperado para conocer a alguien","llevar algo casero a una juntada","hacer de anfitrión aunque no sea su casa","contar una anécdota apenas llega","intercambiar contacto con alguien nuevo"],
+    missions:["Conseguí que alguien diga cuál es su comida favorita.","Lográ que alguien cuente un hobby que tiene o tuvo.","Conseguí que alguien recomiende una serie o película.","Hacé que alguien diga un lugar que quiere conocer.","Lográ que dos personas descubran un gusto en común.","Conseguí que alguien cuente una anécdota del trabajo o estudio.","Hacé que alguien diga qué canción pondría ahora.","Lográ que alguien cuente una habilidad inútil que tiene.","Conseguí que alguien diga qué elegiría para un viaje corto.","Hacé que alguien recomiende un lugar para comer."]
+  }
+};
+
+const OPEN_POOLS={
+  universal:[
+    "Si mañana tuvieras un día completamente libre, ¿qué harías primero?","¿Qué compra chica te mejora el día casi siempre?","¿Qué hábito tuyo te costaría más cambiar?","¿Qué lugar elegirías para desaparecer un fin de semana?","¿Qué comida podrías repetir toda una semana?","¿Qué talento te gustaría tener instantáneamente?","¿Qué aplicación borrarías para siempre si te obligaran a elegir una?","¿Qué objeto usás muchísimo más de lo que imaginabas?","¿Qué plan casi nunca rechazás?","¿Qué cosa pequeña te pone de mal humor demasiado rápido?","¿Qué harías con una semana sin obligaciones?","¿Qué famoso invitarías a una cena del grupo?","¿Qué trabajo totalmente distinto probarías un mes?","¿Qué gasto te cuesta más justificar pero igual hacés?","¿Qué cosa aprendiste tarde y te hubiera servido antes?","¿Qué ciudad volverías a visitar mañana?","¿Qué costumbre ajena te irrita más?","¿Qué te gustaría saber hacer sin tener que practicar?","¿Qué día de tu vida repetirías solo por diversión?","¿Qué cosa nunca compartirías aunque te la pidan?"
+  ],
+  deep:[
+    "¿Qué decisión te gustaría poder volver a pensar con lo que sabés hoy?","¿Qué valor no negociarías por plata?","¿Qué miedo te gustaría dejar atrás?","¿Qué parte de crecer te sorprendió más?","¿Qué conversación pendiente te gustaría poder tener?","¿Qué cosa de vos entendiste recién en los últimos años?","¿Qué necesitás para sentir que un lugar es tu casa?","¿Qué te gustaría que la gente recuerde de vos?","¿Qué tipo de fracaso te enseñó más?","¿Qué elegís proteger cuando todo se complica?","¿Qué consejo te hubiera gustado recibir antes?","¿Qué vínculo cambió tu manera de ver algo importante?","¿Qué te cuesta más pedir?","¿Qué te hace sentir realmente orgulloso de vos?","¿Qué cosa te gustaría dejar de postergar?","¿Qué significa para vos tener una buena vida?","¿Qué te resulta más difícil: empezar o terminar?","¿Qué te hace sentir que estás perdiendo el tiempo?","¿Qué parte de tu personalidad cambió más?","¿Qué te gustaría entender mejor de vos mismo?"
+  ],
+  relation:[
+    "¿Qué gesto cotidiano te hace sentir más querido?","¿Qué plan en pareja nunca te cansaría?","¿Qué detalle del otro notás aunque nadie más lo vea?","¿Qué diferencia entre ustedes terminó siendo buena?","¿Qué recuerdo juntos te hace reír más rápido?","¿Qué tema cuesta más hablar sin discutir?","¿Qué cosa te gustaría hacer juntos por primera vez?","¿Qué costumbre de la relación defenderías siempre?","¿Qué pequeña atención vale más que un regalo caro?","¿Qué aprendiste sobre vos estando en esta relación?","¿Qué lugar tiene un significado especial para ustedes?","¿Qué tipo de sorpresa sí te gustaría recibir?","¿Qué plan simple representa mejor a la pareja?","¿Qué cosa hace el otro que te calma?","¿Qué decisión importante preferís tomar siempre de a dos?","¿Qué canción podría estar en la banda sonora de la relación?","¿Qué momento hizo que confiaras más?","¿Qué tradición propia les gustaría inventar?","¿Qué parte de convivir o compartir tiempo requiere más paciencia?","¿Qué cosa del otro admirás más hoy que al principio?"
+  ],
+  chaos:[
+    "Si te dieran una hora para irte de viaje, ¿qué sería lo primero que agarrás?","¿Qué harías si mañana despertaras en otro país sin explicación?","¿Cuál es la apuesta absurda que sí aceptarías?","¿Qué objeto inútil llevarías a una isla solo por diversión?","Si pudieras prohibir una palabra por un día, ¿cuál sería?","¿Qué harías primero durante un apagón largo con amigos?","¿Qué plan improvisado te tentaría aunque sea mala idea?","Si el grupo ganara una camioneta por 24 horas, ¿a dónde irían?","¿Qué regla inventarías para una fiesta imposible?","¿Qué harías si te regalaran un pasaje que sale en dos horas?","¿Qué cosa absurda comprarías si costara un peso?","¿Qué desafío ridículo aceptarías por una cena gratis?","Si solo pudieras comunicarte con una frase por un día, ¿cuál sería?","¿Qué lugar sería pésimo pero divertido para una fiesta?","¿Qué harías si perdieras el celular durante toda una noche?","¿Qué personaje ficticio sería peor compañero de viaje?","¿Qué decisión tomarías al azar solo por una vez?","¿Qué cosa normal convertirías en competencia?","¿Qué premio ridículo te gustaría ganar?","¿Qué plan sería divertido precisamente porque puede salir mal?"
+  ],
+  adult:[
+    "¿Qué detalle te genera atracción antes de conocer bien a alguien?","¿Qué arruina una cita casi instantáneamente?","¿Qué tipo de mensaje te intriga más?","¿Qué primera impresión suele engañarte?","¿Qué gesto te parece más seductor sin ser obvio?","¿Qué te hace perder interés más rápido?","¿Qué tipo de cita te parece más divertida?","¿Qué señal te cuesta más interpretar?","¿Qué cosa preferís que alguien diga de frente?","¿Qué te hace sentir más química con alguien?","¿Qué te parece más atractivo: seguridad o misterio?","¿Qué historia de una cita contarías como comedia?","¿Qué te resulta más incómodo en una primera cita?","¿Qué detalle recordás más después de conocer a alguien?","¿Qué hace que quieras volver a ver a alguien?","¿Qué tipo de cumplido te llega más?","¿Qué cosa jamás pondrías en una app de citas?","¿Qué preferís saber antes de una cita?","¿Qué te parece más difícil: dar una señal o leerla?","¿Qué consejo sobre citas jamás seguirías?"
+  ],
+  edge:[
+    "¿Qué opinión tuya sabés que divide al grupo?","¿Qué conducta social te parece completamente sobrevalorada?","¿Qué cosa perdona demasiado fácil la gente?","¿Qué actitud te hace juzgar a alguien enseguida?","¿Qué verdad preferís que te digan aunque duela?","¿Qué regla social romperías sin culpa?","¿Qué cosa hace la gente por compromiso y debería dejar de hacer?","¿Qué opinión cambiaste después de discutir mucho?","¿Qué comportamiento en redes te resulta insoportable?","¿Qué código entre amigos te parece sagrado?","¿Qué cosa te parece peor de lo que la mayoría admite?","¿Qué defecto tolerás menos aunque sea pequeño?","¿Qué frase te hace desconfiar inmediatamente?","¿Qué cosa te parece injustamente cancelada?","¿Qué hábito ajeno te cuesta no juzgar?","¿Qué preferís: sinceridad brutal o diplomacia?","¿Qué cosa jamás publicarías en redes?","¿Qué tema evita el grupo porque siempre termina mal?","¿Qué promesa te parece imperdonable romper?","¿Qué postura defenderías aunque quedes solo?"
+  ]
+};
+
+const DUO_SHARED={
+  everyday:[
+    ["¿Qué preferís para un sábado libre?","Salir temprano","Quedarte sin horario"],["¿Qué elegís para viajar?","Ventana","Pasillo"],["¿Qué te compra más fácil?","Buena comida","Buen lugar"],["¿Qué te gustaría dominar?","Cocinar muy bien","Arreglar cualquier cosa"],["¿Qué preferís encontrar?","Un bar increíble","Un lugar tranquilo"],["¿Qué te salva más un día malo?","Dormir","Hablar con alguien"],["¿Qué elegís si solo podés tener uno?","Aire acondicionado","Internet rápido"],["¿Qué te molesta más en un viaje?","Esperar","Perderte"],["¿Qué te parece mejor regalo?","Algo útil","Algo inesperado"],["¿Qué preferís para escuchar música?","Auriculares","Parlante"],["¿Qué te cuesta más dejar?","Azúcar","Celular"],["¿Qué elegís para una noche de lluvia?","Película","Juego"],["¿Qué preferís descubrir en una ciudad?","Comida","Lugares"],["¿Qué te representa más?","Lista de pendientes","Vamos viendo"],["¿Qué te da más satisfacción?","Terminar algo","Empezar algo nuevo"],["¿Qué preferís recordar?","Fotos","Historias"],["¿Qué elegís para una espera larga?","Música","Leer"],["¿Qué te gustaría recibir gratis?","Comida por un año","Viajes por un año"],["¿Qué te sale más natural?","Preguntar","Contar"],["¿Qué preferís para aprender algo?","Probar","Mirar primero"],["¿Qué te cambia más el humor?","Hambre","Sueño"],["¿Qué plan te tienta más?","Feria o evento","Casa y comida"],["¿Qué te importa más en un hotel?","Cama","Desayuno"],["¿Qué preferís perder por un mes?","Delivery","Streaming"],["¿Qué te gustaría tener más?","Energía","Tiempo"],["¿Qué elegís si tenés que improvisar una cena?","Pedir","Cocinar con lo que hay"],["¿Qué te divierte más?","Trivia","Mímica"],["¿Qué preferís recibir?","Audio largo","Mensaje corto"],["¿Qué te parece más difícil?","Llegar temprano","Irte temprano"],["¿Qué elegís para bajar un cambio?","Caminar","Quedarte quieto"]
+  ],
+  deep:[
+    ["¿Qué pesa más?","Paz mental","Ambición"],["¿Qué elegirías preservar?","Libertad","Seguridad"],["¿Qué te cuesta más?","Pedir ayuda","Decir que no"],["¿Qué preferís saber?","Qué va a pasar","Por qué pasó"],["¿Qué valorás más?","Coherencia","Flexibilidad"],["¿Qué duele más?","Decepcionar","Ser decepcionado"],["¿Qué preferís cambiar?","El pasado","El futuro"],["¿Qué te parece más importante?","Ser entendido","Ser aceptado"],["¿Qué te cuesta más soltar?","Una persona","Un proyecto"],["¿Qué elegís en una crisis?","Hablar","Pensar solo"],["¿Qué te define más?","Tus decisiones","Tus intenciones"],["¿Qué preferís?","Estabilidad","Posibilidad"],["¿Qué te mueve más?","Curiosidad","Responsabilidad"],["¿Qué necesitás más?","Tiempo","Claridad"],["¿Qué te cuesta más admitir?","Miedo","Enojo"],["¿Qué te importa más al trabajar?","Sentido","Ingreso"],["¿Qué valorás más de un amigo?","Lealtad","Honestidad"],["¿Qué preferís recibir?","Un consejo","Que te escuchen"],["¿Qué te resulta más difícil?","Empezar de nuevo","Cerrar algo"],["¿Qué elegirías primero?","Cuidarte","Cumplir"],["¿Qué te pesa más?","Lo que hiciste","Lo que no hiciste"],["¿Qué preferís arriesgar?","Comodidad","Oportunidad"],["¿Qué te da más miedo?","Fracasar","No intentar"],["¿Qué te cuesta más?","Perdonarte","Perdonar"],["¿Qué valorás más?","Tiempo compartido","Espacio propio"],["¿Qué te gustaría tener más claro?","Lo que querés","Lo que sentís"],["¿Qué te parece más valioso?","Experiencia","Potencial"],["¿Qué elegís proteger?","Tu paz","Tu vínculo"],["¿Qué te marca más?","Una pérdida","Una oportunidad"],["¿Qué preferís cambiar primero?","Un hábito","Una relación"]
+  ],
+  connection:[
+    ["¿Qué te acerca más a alguien?","Humor","Sinceridad"],["¿Qué preferís compartir?","Planes","Conversaciones"],["¿Qué te hace confiar más?","Coherencia","Vulnerabilidad"],["¿Qué recordás más de alguien?","Lo que dijo","Cómo te hizo sentir"],["¿Qué te gusta más recibir?","Tiempo","Detalles"],["¿Qué te cuesta más en un vínculo?","Pedir espacio","Pedir atención"],["¿Qué preferís?","Hablar todo","Elegir el momento"],["¿Qué te hace sentir más acompañado?","Presencia","Mensajes"],["¿Qué valorás más?","Complicidad","Admiración"],["¿Qué te gustaría que adivinen?","Cuándo necesitás cariño","Cuándo necesitás espacio"],["¿Qué preferís para resolver algo?","Hablar en persona","Escribir primero"],["¿Qué te llega más?","Un abrazo","Una frase"],["¿Qué te parece más importante?","Tener gustos en común","Respetar diferencias"],["¿Qué hace más fuerte un vínculo?","Rutinas","Aventuras"],["¿Qué te cuesta más olvidar?","Una mentira","Una ausencia"],["¿Qué preferís compartir primero?","Un secreto","Un sueño"],["¿Qué te genera más cercanía?","Reír juntos","Hablar en serio"],["¿Qué te importa más?","Que te conozcan","Que te acepten"],["¿Qué preferís?","Sorpresa","Previsibilidad"],["¿Qué te gusta más?","Hacer equipo","Competir"],["¿Qué valorás más en una discusión?","Resolver","Sentirte escuchado"],["¿Qué te parece más íntimo?","Compartir silencios","Contar todo"],["¿Qué te gusta más planear?","Viajes","Proyectos"],["¿Qué te une más a alguien?","Recuerdos","Metas"],["¿Qué preferís recibir?","Una llamada","Una visita"],["¿Qué te hace sentir más cuidado?","Que se acuerden","Que pregunten"],["¿Qué preferís descubrir?","Algo del pasado","Un plan futuro"],["¿Qué cuesta más?","Confiar","Volver a confiar"],["¿Qué preferís construir?","Rutina","Tradiciones"],["¿Qué te importa más?","La intención","El gesto"]
+  ],
+  wild:[
+    ["¿Qué preferís probar una vez?","Karaoke","Stand up"],["¿Qué poder inútil elegirías?","Encontrar estacionamiento","No hacer fila"],["¿Qué te divertiría más?","Un viaje sin destino","Una fiesta sorpresa"],["¿Qué elegirías por 24 horas?","Ser invisible","Leer mentes"],["¿Qué riesgo tomarías?","Pasaje sin vuelta","Trabajo sin saber qué es"],["¿Qué preferís perder?","Llaves","Billetera"],["¿Qué harías primero en un apocalipsis?","Buscar comida","Buscar amigos"],["¿Qué sería peor?","Un mes sin música","Un mes sin memes"],["¿Qué elegís para una apuesta?","Comida picante","Karaoke público"],["¿Qué te parece más divertido?","Cambiar de nombre un día","Vestirte como otro"],["¿Qué preferís ganar?","Un viaje sorpresa","Dinero sorpresa"],["¿Qué sería mejor historia?","Perder un vuelo","Subirte al vuelo equivocado"],["¿Qué te gustaría poder pausar?","El tiempo","A la gente"],["¿Qué elegirías al azar?","Destino de viaje","Restaurante"],["¿Qué te parece peor?","Quedarte sin batería","Quedarte sin plata"],["¿Qué harías en una fiesta vacía?","Poner música","Irte"],["¿Qué preferís improvisar?","Una cena","Un viaje"],["¿Qué te gustaría borrar por un día?","Vergüenza","Sueño"],["¿Qué sería más útil?","Teletransportarte","Clonarte"],["¿Qué te animarías a hacer?","Viajar solo","Mudarte sin conocer a nadie"],["¿Qué te divertiría más ganar?","Un trofeo absurdo","Una corona ridícula"],["¿Qué preferís que pase?","Plan inesperado","Visita inesperada"],["¿Qué te parece más caótico?","Mudanza","Aeropuerto"],["¿Qué elegirías para sobrevivir?","Muchísima suerte","Muchísima paciencia"],["¿Qué preferís inventar?","Una excusa","Una tradición"],["¿Qué sería peor compañero?","Alguien que planifica todo","Alguien que no planifica nada"],["¿Qué te gustaría controlar?","El clima","El tránsito"],["¿Qué preferís que dure cinco minutos?","Una discusión","Una fila"],["¿Qué te parece más divertido romper?","Una rutina","Un récord"],["¿Qué elegirías como desafío?","24 h sin celular","24 h sin quejarte"]
+  ]
+};
+
+function uniqStrings(list){
+  const seen=new Set(),out=[];
+  for(const item of list||[]){const v=String(item||"").trim();if(!v)continue;const k=v.toLowerCase();if(seen.has(k))continue;seen.add(k);out.push(v)}
+  return out;
+}
+function expandedDuoBank(themeId){
+  const own=DUO_BANKS[themeId]||DUO_BANKS.clasico;
+  const map={
+    clasico:["everyday","wild"],profundo:["deep","connection"],parejas:["connection","deep"],picante18:["connection","wild"],
+    cumple:["everyday","connection"],caos:["wild","everyday"],canceladisimos:["deep","wild"],rompehielo:["everyday","connection"]
+  };
+  const extra=(map[themeId]||["everyday"]).flatMap(k=>DUO_SHARED[k]||[]);
+  const seen=new Set(),out=[];
+  for(const q of [...own,...extra]){
+    const key=[q[0],q[1],q[2]].join("|").toLowerCase();
+    if(seen.has(key))continue;seen.add(key);out.push(q);
+  }
+  return out;
+}
+function expandedThemePrompts(themeId){
+  const base=PROMPTS[themeId]||PROMPTS.clasico;
+  const kit=VARIETY_KITS[themeId]||VARIETY_KITS.clasico;
+  const storyGenerated=[];
+  for(const x of kit.moments){
+    storyGenerated.push("Contá una historia real sobre "+x+".");
+    storyGenerated.push("Recordá "+x+" y contá qué pasó.");
+    storyGenerated.push("¿Cuál es la anécdota que más recordás relacionada con "+x+"?");
+    storyGenerated.push("Contá algo que casi nadie del grupo sepa sobre "+x+".");
+  }
+  const majorityGenerated=[],rankGenerated=[];
+  for(const x of kit.actions){
+    majorityGenerated.push("¿Quién tiene más chances de "+x+"?");
+    majorityGenerated.push("Si hubiera que apostar, ¿quién sería el primero en "+x+"?");
+    majorityGenerated.push("¿A quién del grupo le ves más probable "+x+"?");
+    majorityGenerated.push("¿Quién sería capaz de "+x+" sin sorprender demasiado al resto?");
+    rankGenerated.push("Ordenalos según quién tiene más chances de "+x+".");
+    rankGenerated.push("Del más al menos probable: "+x+".");
+    rankGenerated.push("Ordená al grupo pensando en quién podría "+x+" antes que los demás.");
+  }
+  const truthGenerated=[],lieGenerated=[];
+  for(const x of kit.moments){
+    truthGenerated.push("Contá algo completamente real relacionado con "+x+".");
+    truthGenerated.push("Escribí una verdad sobre vos que encaje con "+x+" y pueda sorprender.");
+    lieGenerated.push("Inventá una historia creíble relacionada con "+x+".");
+    lieGenerated.push("Escribí una mentira posible sobre vos que tenga que ver con "+x+".");
+  }
+  const openMap={clasico:"universal",profundo:"deep",parejas:"relation",picante18:"adult",cumple:"universal",caos:"chaos",canceladisimos:"edge",rompehielo:"universal"};
+  const open=OPEN_POOLS[openMap[themeId]||"universal"]||OPEN_POOLS.universal;
+  return {
+    ...base,
+    prep_story:uniqStrings([...(base.prep_story||[]),...storyGenerated]),
+    majority:uniqStrings([...(base.majority||[]),...majorityGenerated]),
+    truth:uniqStrings(truthGenerated),
+    lie:uniqStrings(lieGenerated),
+    hot_seat:uniqStrings([...(base.hot_seat||[]),...open]),
+    one_vs_all:uniqStrings([...(base.one_vs_all||[]),...open.slice().reverse()]),
+    rank:uniqStrings([...(base.rank||[]),...rankGenerated]),
+    missions:uniqStrings([...(base.missions||[]),...(kit.missions||[])])
+  };
+}
+function contentFingerprint(v){
+  if(v&&typeof v==="object")return JSON.stringify(v);
+  return String(v||"");
+}
+function freshPick(room,key,bank,n=1){
+  const source=[...(bank||[])];if(!source.length)return [];
+  room.usedContent=room.usedContent&&typeof room.usedContent==="object"?room.usedContent:{};
+  let used=new Set(Array.isArray(room.usedContent[key])?room.usedContent[key]:[]);
+  let available=source.filter(x=>!used.has(contentFingerprint(x)));
+  if(available.length<n){used=new Set();available=source}
+  const chosen=pick(available,Math.min(n,available.length));
+  room.usedContent[key]=[...used,...chosen.map(contentFingerprint)].slice(-Math.max(source.length,80));
+  return chosen;
+}
+function makePrepPrompts(room){
+  const tp=themePrompts(room.themeId);
+  return {
+    storyPrompts:freshPick(room,"prep_story",packBank(room,"prep_story",tp.prep_story),3),
+    majorityPrompts:freshPick(room,"majority",packBank(room,"majority",tp.majority),3),
+    truthPrompt:freshPick(room,"truth",tp.truth||[],1)[0]||"Contá una verdad sorprendente sobre vos.",
+    liePrompt:freshPick(room,"lie",tp.lie||[],1)[0]||"Inventá una mentira creíble sobre vos.",
+    hotSeatPrompt:freshPick(room,"hot_seat",packBank(room,"hot_seat",tp.hot_seat),1)[0]||"",
+    oneVsAllPrompt:freshPick(room,"one_vs_all",packBank(room,"one_vs_all",tp.one_vs_all),1)[0]||""
+  };
+}
+
 function ensureDuoPrep(room){
   if(Array.isArray(room.duoPrepQuestions)&&room.duoPrepQuestions.length===10)return room.duoPrepQuestions;
-  const bank=DUO_BANKS[room.themeId]||DUO_BANKS.clasico;
+  const bank=expandedDuoBank(room.themeId);
   const used=new Set(Array.isArray(room.duoUsedQuestions)?room.duoUsedQuestions:[]);
   let pool=shuffle(bank.map(function(q){return {q:q,key:room.themeId+"|"+q[0]+"|"+q[1]+"|"+q[2]}}).filter(function(x){return !used.has(x.key)}));
   if(pool.length<10){room.duoUsedQuestions=[];pool=shuffle(bank.map(function(q){return {q:q,key:room.themeId+"|"+q[0]+"|"+q[1]+"|"+q[2]}}))}
@@ -788,8 +953,9 @@ function buildRounds(room){
   }
 
   if(allowed.includes("duo")&&room.players.length>=4){
-    const bank=packBank(room,"duo",DUO_CHOICES[room.themeId]||[]);
-    const qs=pick(bank,Math.min(2,bank.length));
+    const generated=expandedDuoBank(room.themeId).map(q=>({question:q[0],left:q[1],right:q[2]}));
+    const bank=packBank(room,"duo",[...(DUO_CHOICES[room.themeId]||[]),...generated]);
+    const qs=freshPick(room,"group_duo",bank,Math.min(2,bank.length));
     for(const q of qs){
       const pair=pick(room.players,2);
       if(pair.length<2)continue;
@@ -805,7 +971,7 @@ function buildRounds(room){
 
   if(allowed.includes("ordena_al_grupo")&&room.players.length>=4){
     const rankBank=packBank(room,"rank",themePrompts(room.themeId).rank||[]);
-    for(const prompt of pick(rankBank,Math.min(2,rankBank.length))){
+    for(const prompt of freshPick(room,"rank_round",rankBank,Math.min(2,rankBank.length))){
       const targets=pick(room.players,Math.min(4,room.players.length));
       add({
         mode:"ordena_al_grupo",
@@ -1604,15 +1770,12 @@ app.post("/api/rooms",(req,res)=>{
     }:null,
     roundLimit,
     disabledModes,
+    usedContent:{},
     duoPrepQuestions:req.body.playerCount==="2"?null:null,
-    prepPrompts:{
-      storyPrompts:pick(customPack?packBank({customPack},"prep_story",tp.prep_story):tp.prep_story,3),
-      majorityPrompts:pick(customPack?packBank({customPack},"majority",tp.majority):tp.majority,3),
-      hotSeatPrompt:pick(customPack?packBank({customPack},"hot_seat",tp.hot_seat):tp.hot_seat,1)[0]||"",
-      oneVsAllPrompt:pick(customPack?packBank({customPack},"one_vs_all",tp.one_vs_all):tp.one_vs_all,1)[0]||""
-    },
+    prepPrompts:null,
     createdAt:Date.now()
   };
+  room.prepPrompts=makePrepPrompts(room);
   if(isDuoRoom(room))ensureDuoPrep(room);
   rooms.set(code,room);sessions.set(sessionKey(sessionToken),hostId);persistRoom(room).then(()=>persistSession(sessionToken,code,hostId));res.json({code,sessionToken});
 });
@@ -1832,13 +1995,7 @@ app.post("/api/rooms/:code/restart",(req,res)=>{
   if(room.surprise){room.surprise.honoreePlayerId=null;delete room.surprise.honoreeAnswers;room.surprise.joinKey=token()}
   room.submissions={};room.missions={};room.rounds=[];room.duoPrepQuestions=null;
   if(isDuoRoom(room))ensureDuoPrep(room);
-  const tp=themePrompts(room.themeId);
-  room.prepPrompts={
-    storyPrompts:pick(packBank(room,"prep_story",tp.prep_story),3),
-    majorityPrompts:pick(packBank(room,"majority",tp.majority),3),
-    hotSeatPrompt:pick(packBank(room,"hot_seat",tp.hot_seat),1)[0]||"",
-    oneVsAllPrompt:pick(packBank(room,"one_vs_all",tp.one_vs_all),1)[0]||""
-  };
+  room.prepPrompts=makePrepPrompts(room);
   room.state=isDuoRoom(room)?"lobby":"collecting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=null;room.unlocked=true;
   res.json({ok:true});
 });
