@@ -1429,7 +1429,7 @@ async function joinRoom(){try{
 async function refresh(){if(!state.code)return;try{const r=await api("/api/rooms/"+state.code);state.room=r;const k=JSON.stringify(r);if(k!==state.lastKey){state.lastKey=k;renderRoom()}}catch(e){if(/inexistente|Sesión/.test(e.message)){home();toast(e.message)}}}
 
 function chips(r){return r.players.map(p=>`<span class="chip ${p.ready?"ready":""} ${p.isHonoree?"honoree-chip":""}"><span class="dot"></span>${esc(p.name)}${p.id===r.me?.id?" · vos":""}${p.isHost?" · host":""}${p.isHonoree?" · sorpresa":""}</span>`).join("")}
-function roomHeader(r){return `<div class="room-header"><div class="room-title-wrap">${assetImg("theme",r.themeId,"room-theme-art")}<div><div class="kicker">${esc(r.theme.title)}</div><div class="room-title">${esc(r.name)}</div></div></div><div class="room-meta"><button class="ghost small-btn leave-room" type="button">Salir de la sala</button>${r.surprise?.enabled?'<span class="pill surprise-pill">✦ Para '+esc(r.surprise.honoreeName)+'</span>':""}<span class="pill">${r.players.length} jugadores</span><span class="room-code-mini">${r.code}</span></div></div>`}
+function roomHeader(r){return `<div class="room-header"><div class="room-title-wrap">${assetImg("theme",r.themeId,"room-theme-art")}<div><div class="kicker">${esc(r.theme.title)}</div><div class="room-title">${esc(r.name)}</div></div></div><div class="room-meta"><button class="leave-room room-exit-btn" type="button">${r.isHost?"Terminar partida":"Salir del grupo"}</button>${r.surprise?.enabled?'<span class="pill surprise-pill">✦ Para '+esc(r.surprise.honoreeName)+'</span>':""}<span class="pill">${r.players.length} jugadores</span><span class="room-code-mini">${r.code}</span></div></div>`}
 function hostRoster(r){
   if(!r.isHost)return "";
   const ready=r.players.filter(p=>p.ready).length,pending=r.players.length-ready;
@@ -1860,10 +1860,10 @@ function finished(r){
 }
 async function leaveCurrentRoom(){
   const r=state.room;if(!r){stopPoll();clearSession();await home();return}
-  const msg=r.isHost?"Si salís, esta sala se cierra para todos. ¿Salir igualmente?":"¿Querés salir de esta sala?";
+  const msg=r.isHost?"¿Terminar esta partida? La sala se cerrará para todos.":"¿Salir de este grupo y volver al inicio?";
   if(!confirm(msg))return;
   try{await api("/api/rooms/"+r.code+"/leave",{method:"POST"})}catch(e){if(!/inexistente|Sesión/i.test(e.message||""))toast(e.message)}
-  stopPoll();clearSession();history.replaceState(null,"",location.pathname);await home();window.scrollTo({top:0,behavior:"smooth"});toast("Saliste de la sala");
+  stopPoll();clearSession();history.replaceState(null,"",location.pathname);await home();window.scrollTo({top:0,behavior:"smooth"});toast(r.isHost?"Partida terminada":"Saliste del grupo");
 }
 function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r);document.querySelectorAll(".leave-room").forEach(b=>b.onclick=leaveCurrentRoom)}
 document.addEventListener("click",e=>{
