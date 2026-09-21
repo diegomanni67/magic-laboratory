@@ -2779,3 +2779,10 @@ body.launch-hit .launch-content h1{transform:scale(1.06);letter-spacing:.05em;co
 .wizard-after-player-count{display:none}
 .wizard-after-player-count.show{display:block;animation:fadeUp .28s ease both}
 @media(max-width:700px){.player-count-first .player-count-grid{grid-template-columns:1fr}.player-count-first .player-count-card{min-height:112px}}
+
+/* Navigation must never become a dead end. */
+button.brand-home{appearance:none;border:0;background:transparent;padding:0;cursor:pointer}
+.room-home-btn{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(12,10,18,.66);color:rgba(255,255,255,.82);border-radius:999px;padding:8px 11px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+.room-home-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+.room-title-wrap{gap:10px;flex-wrap:wrap}
+@media(max-width:700px){.room-home-btn{order:-1;padding:7px 10px}.room-header{padding-top:48px}}
