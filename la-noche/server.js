@@ -876,13 +876,31 @@ function duoThemeBank(room){
 }
 function buildDuo2Rounds(room){
   const questions=ensureDuoPrep(room);
-  const values=[100,100,100,100,125,125,125,150,150,250];
+  const players=[...room.players];
+  const plan=[
+    {kind:"duel",points:100,label:"Cara a cara"},
+    {kind:"sync",points:125,label:"¿Coincidieron?"},
+    {kind:"spotlight",points:175,label:"Bajo la lupa"},
+    {kind:"duel",points:100,label:"Cara a cara"},
+    {kind:"sync",points:125,label:"¿Coincidieron?"},
+    {kind:"spotlight",points:175,label:"Bajo la lupa"},
+    {kind:"double",points:200,label:"Doble lectura"},
+    {kind:"sync",points:150,label:"¿Coincidieron?"},
+    {kind:"double",points:225,label:"Doble lectura"},
+    {kind:"final",points:300,label:"La definitiva"}
+  ];
   return questions.map(function(q,i){
+    const cfg=plan[i]||plan[0];
+    const spotlightTarget=cfg.kind==="spotlight"?players[i%players.length]:null;
+    const syncOptions=[{id:"same",label:"Sí, elegimos lo mismo"},{id:"different",label:"No, elegimos distinto"}];
     return {
-      id:id(),mode:"duo_read",
-      prompt:i===9?"La definitiva":i>=7?"Vale más":"¿Cuánto me conocés?",
-      statement:q.question,questionIndex:i,points:values[i]||100,
-      options:q.options,votes:{},scored:false,position:i
+      id:id(),mode:"duo_read",duoKind:cfg.kind,duoLabel:cfg.label,
+      prompt:cfg.label,statement:q.question,questionIndex:i,points:cfg.points,
+      targetId:spotlightTarget?spotlightTarget.id:null,
+      options:cfg.kind==="sync"?syncOptions:q.options,
+      originalOptions:q.options,
+      votes:{},scored:false,position:i,
+      revealMs:cfg.kind==="sync"||cfg.kind==="spotlight"||cfg.kind==="final"?6500:5000
     };
   });
 }
@@ -1032,6 +1050,7 @@ function buildRounds(room){
   return mixed.slice(0,limit).map((r,i)=>({...r,position:i}));
 }
 function eligibleVoters(room,round){
+  if(round.mode==="duo_read"&&round.duoKind==="spotlight"&&round.targetId)return room.players.filter(p=>p.id!==round.targetId);
   if(["duo","ordena_al_grupo","duo_read","duo_risk","duo_speed"].includes(round.mode))return [...room.players];
   return room.players.filter(p=>p.id!==round.skipVoteFor);
 }
@@ -1058,19 +1077,35 @@ function scoreRound(room,round){
   if(round.scored)return;
 
   if(round.mode==="duo_read"&&Number.isInteger(round.questionIndex)){
-    const idx=round.questionIndex;
+    const idx=round.questionIndex,kind=round.duoKind||"duel",pts=Number(round.points)||100;
     if(room.players.length!==2)return;
-    const a=room.players[0],b=room.players[1];
-    const va=round.votes[a.id],vb=round.votes[b.id];
-    if(va===undefined||vb===undefined)return;
-    const aa=room.submissions[a.id]?.duoAnswers?.[idx];
-    const ab=room.submissions[b.id]?.duoAnswers?.[idx];
-    if(!aa||!ab)return;
-    const pts=Number(round.points)||100;
-    round.actualAnswers={[a.id]:aa,[b.id]:ab};
-    round.pointsByPlayer={[a.id]:0,[b.id]:0};
-    if(va===ab){a.score+=pts;round.pointsByPlayer[a.id]=pts}
-    if(vb===aa){b.score+=pts;round.pointsByPlayer[b.id]=pts}
+    const p0=room.players[0],p1=room.players[1];
+    const a0=room.submissions[p0.id]?.duoAnswers?.[idx],a1=room.submissions[p1.id]?.duoAnswers?.[idx];
+    if(!a0||!a1)return;
+    round.actualAnswers={[p0.id]:a0,[p1.id]:a1};
+    round.pointsByPlayer={[p0.id]:0,[p1.id]:0};
+
+    if(kind==="sync"){
+      const actual=a0===a1?"same":"different";
+      round.correct=actual;
+      for(const p of room.players){
+        const vote=round.votes[p.id];if(vote===undefined)return;
+        if(vote===actual){p.score+=pts;round.pointsByPlayer[p.id]=pts}
+      }
+    }else if(kind==="spotlight"){
+      const target=room.players.find(p=>p.id===round.targetId),guesser=room.players.find(p=>p.id!==round.targetId);
+      if(!target||!guesser)return;
+      const guess=round.votes[guesser.id];if(guess===undefined)return;
+      const actual=room.submissions[target.id]?.duoAnswers?.[idx];if(!actual)return;
+      round.correct=actual;round.guesserId=guesser.id;
+      if(guess===actual){guesser.score+=pts;round.pointsByPlayer[guesser.id]=pts}
+      else{const defense=Math.max(50,Math.round(pts*.45));target.score+=defense;round.pointsByPlayer[target.id]=defense}
+    }else{
+      const v0=round.votes[p0.id],v1=round.votes[p1.id];
+      if(v0===undefined||v1===undefined)return;
+      if(v0===a1){p0.score+=pts;round.pointsByPlayer[p0.id]=pts}
+      if(v1===a0){p1.score+=pts;round.pointsByPlayer[p1.id]=pts}
+    }
     round.scored=true;return;
   }
 
@@ -1126,7 +1161,7 @@ function finalizeRound(room){
   if(!round||!allVotesIn(room,round))return;
   scoreRound(room,round);
   room.roundPhase="locked";
-  room.advanceAt=Date.now()+AUTO_ADVANCE_MS;
+  room.advanceAt=Date.now()+(Number(round.revealMs)||AUTO_ADVANCE_MS);
 }
 function maybeAdvance(room){
   let changed=false;
@@ -1196,17 +1231,30 @@ function removePlayerFromRoom(room,pid){
   return true;
 }
 function endArchive(room){
+  if(isDuoRoom(room)){
+    const qs=Array.isArray(room.duoPrepQuestions)?room.duoPrepQuestions:[];
+    return room.players.map(function(p){
+      const sub=room.submissions[p.id]||{},answers=Array.isArray(sub.duoAnswers)?sub.duoAnswers:[];
+      return {
+        playerId:p.id,name:p.name,isDuo:true,
+        duoAnswers:qs.map(function(q,i){
+          const v=answers[i],label=(q.options||[]).find(o=>o.id===v)?.label||"";
+          return {question:q.question,answer:label};
+        })
+      };
+    });
+  }
   return room.players.map(p=>{
-    const s=room.submissions[p.id]||{},mission=room.missions[p.id]||null;
+    const sub=room.submissions[p.id]||{},mission=room.missions[p.id]||null;
     return {
       playerId:p.id,name:p.name,
-      stories:(s.stories||[]).map((answer,i)=>({prompt:room.prepPrompts.storyPrompts[i]||"Historia",answer})),
-      truth:s.truth||"",lie:s.lie||"",
-      hotSeat:{prompt:room.prepPrompts.hotSeatPrompt,answer:s.hotSeatAnswer||""},
-      oneVsAll:{prompt:room.prepPrompts.oneVsAllPrompt,answer:s.oneVsAllAnswer||""},
-      majority:(room.prepPrompts.majorityPrompts||[]).map((prompt,i)=>({prompt,answer:s.majority?.[i]?playerName(room,s.majority[i]):"Sin voto"})),
+      stories:(sub.stories||[]).map((answer,i)=>({prompt:room.prepPrompts.storyPrompts[i]||"Historia",answer})),
+      truth:sub.truth||"",lie:sub.lie||"",
+      hotSeat:{prompt:room.prepPrompts.hotSeatPrompt,answer:sub.hotSeatAnswer||""},
+      oneVsAll:{prompt:room.prepPrompts.oneVsAllPrompt,answer:sub.oneVsAllAnswer||""},
+      majority:(room.prepPrompts.majorityPrompts||[]).map((prompt,i)=>({prompt,answer:sub.majority?.[i]?playerName(room,sub.majority[i]):"Sin voto"})),
       isHonoree:!!p.isHonoree,
-      surpriseMemory:s.surpriseMemory||"",
+      surpriseMemory:sub.surpriseMemory||"",
       surpriseQuick:p.isHonoree&&room.surprise?.honoreeAnswers
         ?(room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS).map((q,i)=>({
           question:q.question,
@@ -1216,12 +1264,20 @@ function endArchive(room){
     };
   });
 }
+
 function answerForRound(room,r){
   if(r.mode==="duo_read"&&r.actualAnswers){
-    return room.players.map(function(p){
-      const v=r.actualAnswers[p.id],label=(r.options||[]).find(o=>o.id===v)?.label||"";
-      return p.name+" eligió: "+label;
-    }).join(" · ");
+    const labels=room.players.map(function(p){
+      const v=r.actualAnswers[p.id],label=(r.originalOptions||r.options||[]).find(o=>o.id===v)?.label||"";
+      return p.name+" había elegido: "+label;
+    });
+    if(r.duoKind==="sync")return labels.join(" · ")+" · "+(r.correct==="same"?"COINCIDIERON":"ELIGIERON DISTINTO");
+    if(r.duoKind==="spotlight"){
+      const target=room.players.find(p=>p.id===r.targetId);
+      const v=target?r.actualAnswers[target.id]:null,label=(r.originalOptions||r.options||[]).find(o=>o.id===v)?.label||"";
+      return (target?.name||"La persona bajo la lupa")+" había elegido: "+label;
+    }
+    return labels.join(" · ");
   }
   if(r.mode==="duo_coincidimos"||r.mode==="duo_dilema")return r.correct==="same"?"¡Coincidieron!":"Eligieron distinto";
   if(r.mode==="duo_duelo")return (r.options||[]).find(o=>o.id===r.correct)?.label||"";
@@ -1293,13 +1349,25 @@ function finalAnalytics(room){
         else if(per[r.protagonistId])per[r.protagonistId].hardToRead++;
       }
     }else if(r.mode==="duo_read"&&Number.isInteger(r.questionIndex)){
-      for(const p of room.players){
-        const other=room.players.find(x=>x.id!==p.id);
-        const actual=other?room.submissions[other.id]?.duoAnswers?.[r.questionIndex]:null;
-        const guess=r.votes[p.id];
-        if(guess===undefined||!actual)continue;
-        directAttempts++;
-        if(guess===actual){directHits++;if(per[p.id])per[p.id].duoSync++}
+      const kind=r.duoKind||"duel";
+      if(kind==="sync"){
+        for(const p of room.players){
+          const guess=r.votes[p.id];if(guess===undefined)continue;
+          directAttempts++;if(guess===r.correct){directHits++;if(per[p.id])per[p.id].duoSync++}
+        }
+      }else if(kind==="spotlight"){
+        const guesser=room.players.find(p=>p.id!==r.targetId),target=room.players.find(p=>p.id===r.targetId);
+        const actual=target?room.submissions[target.id]?.duoAnswers?.[r.questionIndex]:null;
+        const guess=guesser?r.votes[guesser.id]:undefined;
+        if(guesser&&guess!==undefined&&actual){directAttempts++;if(guess===actual){directHits++;if(per[guesser.id])per[guesser.id].duoSync++}}
+      }else{
+        for(const p of room.players){
+          const other=room.players.find(x=>x.id!==p.id);
+          const actual=other?room.submissions[other.id]?.duoAnswers?.[r.questionIndex]:null;
+          const guess=r.votes[p.id];
+          if(guess===undefined||!actual)continue;
+          directAttempts++;if(guess===actual){directHits++;if(per[p.id])per[p.id].duoSync++}
+        }
       }
     }else if(r.mode==="duo"){
       const actual=r.correct||duoActual(room,r),pair=new Set(r.duoIds||[]);
@@ -1340,12 +1408,22 @@ function finalAnalytics(room){
     let hits=0,attempts=0,points=0;
     for(const r of played){
       if(r.mode!=="duo_read"||!Number.isInteger(r.questionIndex))continue;
-      const other=room.players.find(x=>x.id!==p.id);
-      const actual=other?room.submissions[other.id]?.duoAnswers?.[r.questionIndex]:null;
-      const guess=r.votes[p.id];
-      if(guess===undefined||!actual)continue;
-      attempts++;
-      if(guess===actual)hits++;
+      const kind=r.duoKind||"duel";
+      if(kind==="spotlight"&&p.id===r.targetId){
+        points+=Number(r.pointsByPlayer?.[p.id]||0);
+        continue;
+      }
+      let correct=false,attempted=false;
+      if(kind==="sync"){
+        attempted=r.votes[p.id]!==undefined;correct=attempted&&r.votes[p.id]===r.correct;
+      }else{
+        const other=room.players.find(x=>x.id!==p.id);
+        const actual=kind==="spotlight"
+          ?(room.players.find(x=>x.id===r.targetId)?room.submissions[r.targetId]?.duoAnswers?.[r.questionIndex]:null)
+          :(other?room.submissions[other.id]?.duoAnswers?.[r.questionIndex]:null);
+        attempted=r.votes[p.id]!==undefined;correct=attempted&&!!actual&&r.votes[p.id]===actual;
+      }
+      if(attempted){attempts++;if(correct)hits++}
       points+=Number(r.pointsByPlayer?.[p.id]||0);
     }
     return {playerId:p.id,name:p.name,hits,attempts,points};
@@ -1379,14 +1457,25 @@ function roundSnapshot(room,raw,viewer){
 
   if(raw.mode==="duo_read"&&Number.isInteger(raw.questionIndex)){
     const other=viewer?room.players.find(p=>p.id!==viewer.id):null;
+    const kind=raw.duoKind||"duel",isSpotTarget=kind==="spotlight"&&viewer?.id===raw.targetId;
+    const labels={
+      duel:"Cara a cara",
+      sync:"¿Coincidieron?",
+      spotlight:"Bajo la lupa",
+      double:"Doble lectura",
+      final:"La definitiva"
+    };
     return {
       ...base,
-      prompt:"¿Qué respondió "+(other?.name||"la otra persona")+"?",
-      options:raw.options||[],
+      modeTitle:labels[kind]||"¿Cuánto me conocés?",
+      prompt:kind==="sync"?"Sin mirar al otro: ¿habían elegido lo mismo?":isSpotTarget?"Ahora te toca ser difícil de leer":"¿Qué había respondido "+(kind==="spotlight"?(room.players.find(p=>p.id===raw.targetId)?.name||"la otra persona"):(other?.name||"la otra persona"))+"?",
+      options:isSpotTarget?[]:(raw.options||[]),
       ownVote:viewer?raw.votes[viewer.id]||null:null,
-      skipVote:false,
-      duoRole:"guesser",
+      skipVote:isSpotTarget,
+      duoRole:isSpotTarget?"target":"guesser",
+      duoKind:kind,
       otherName:other?.name||"",
+      targetName:raw.targetId?playerName(room,raw.targetId):"",
       pointsAtStake:Number(raw.points)||100,
       prepPowered:true
     };
@@ -1923,6 +2012,7 @@ app.post("/api/rooms/:code/vote",(req,res)=>{
 
   const choice=clean(req.body.choice,300);
   // Dedicated two-player rounds always accept their own visible options directly.
+  if(r.mode==="duo_read"&&r.duoKind==="spotlight"&&me.id===r.targetId)return res.status(409).json({error:"Esta ronda te pone bajo la lupa: la otra persona es quien responde."});
   if(["duo_read","duo_risk","duo_speed"].includes(r.mode)){
     if(!(r.options||[]).some(o=>String(o.id)===choice))return res.status(400).json({error:"Opción inválida para esta ronda Dúo."});
   }else if(r.mode==="duo"){
