@@ -2801,3 +2801,13 @@ button{touch-action:manipulation}
 .wizard-sheet,.rules-sheet,.theme-sheet,.access-sheet,.custom-studio-sheet,.donation-sheet{-webkit-overflow-scrolling:touch}
 @supports(padding:max(0px)){.wizard-sheet,.rules-sheet,.theme-sheet,.access-sheet,.custom-studio-sheet,.donation-sheet{padding-bottom:max(20px,env(safe-area-inset-bottom))}.site-header{padding-top:max(0px,env(safe-area-inset-top))}.room-exit-btn{margin-right:max(0px,env(safe-area-inset-right))}}
 @media(max-width:700px){.wizard-sheet,.rules-sheet,.theme-sheet,.access-sheet,.custom-studio-sheet,.donation-sheet{width:100%;max-width:100vw}.wizard-actions{position:sticky;bottom:0;z-index:5;background:linear-gradient(180deg,rgba(12,9,18,0),rgba(12,9,18,.96) 28%);padding-bottom:max(12px,env(safe-area-inset-bottom))}.choice-card,.theme-card,button{min-height:44px}}
+
+.mobile-safe-sheet{max-width:620px}
+.mobile-safe-body{display:grid;gap:14px;padding:18px}
+.mobile-safe-body select,.mobile-safe-body input{width:100%;min-height:48px;border-radius:14px}
+.mobile-safe-body .wizard-actions{margin-top:6px}
+@media(max-width:700px){
+  .mobile-safe-create .wizard-sheet{height:auto;max-height:calc(100dvh - 12px);overflow:auto}
+  .mobile-safe-create .form-two{grid-template-columns:1fr}
+  .mobile-safe-create .wizard-actions{position:static;background:none;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+}
