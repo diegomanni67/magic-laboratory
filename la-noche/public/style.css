@@ -2763,3 +2763,11 @@ body.launch-hit .launch-content h1{transform:scale(1.06);letter-spacing:.05em;co
 .room-exit-btn{appearance:none;border:1px solid rgba(255,255,255,.18);background:rgba(18,12,20,.82);color:#fff;border-radius:999px;padding:10px 15px;font:inherit;font-weight:800;cursor:pointer;white-space:nowrap;transition:.18s ease}
 .room-exit-btn:hover{background:rgba(122,38,58,.9);border-color:rgba(255,135,155,.55);transform:translateY(-1px)}
 @media(max-width:700px){.room-exit-btn{position:fixed;right:14px;top:14px;z-index:80;box-shadow:0 8px 28px rgba(0,0,0,.35);padding:9px 13px;font-size:13px}}
+
+/* Explicit player-count choice: Duo is a player format, not the Parejas theme. */
+.player-count-block{border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px;background:rgba(255,255,255,.035)}
+.player-count-grid .choice-card{min-height:112px}
+.player-count-card strong{font-size:18px}
+.player-count-card span b{color:#fff}
+.duo-clarity-note{margin-top:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.06);font-size:13px;line-height:1.45;color:rgba(255,255,255,.76)}
+.duo-clarity-note strong,.duo-clarity-note b{color:#fff}
