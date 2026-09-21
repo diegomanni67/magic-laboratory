@@ -883,7 +883,7 @@ function themeCards(){
     const stats=state.config.themeStats?.[t.id]||{},modes=state.config.themeModes?.[t.id]||[];
     const locked=t.premiumOnly&&!hasReusableAccess();
     return `
-    <label class="theme-card ${locked?"premium-locked":t.premiumOnly?"premium-owned":""}" data-theme="${t.id}">
+    <div class="theme-card ${locked?"premium-locked":t.premiumOnly?"premium-owned":""}" data-theme="${t.id}" role="button" tabindex="0">
       <input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""} ${locked?"disabled":""}>
       <div class="theme-art-wrap">
         ${assetImg("theme",t.id,"theme-asset")}
@@ -899,7 +899,7 @@ function themeCards(){
         </div>
         <button class="theme-details" type="button" data-theme-info="${t.id}">Qué incluye →</button>
       </div>
-    </label>`;
+    </div>`;
   }).join("");
 }
 
