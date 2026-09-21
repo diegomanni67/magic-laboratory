@@ -232,6 +232,11 @@ function closeRules(){
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function safeScrollTop(){try{window.scrollTo({top:0,left:0,behavior:"smooth"})}catch(e){try{window.scrollTo(0,0)}catch(_){}}}
 async function copyText(value){value=String(value||"");try{if(navigator.clipboard&&navigator.clipboard.writeText){await copyText(value);return true}}catch(e){}try{var ta=document.createElement("textarea");ta.value=value;ta.setAttribute("readonly","");ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();var ok=document.execCommand&&document.execCommand("copy");ta.remove();if(ok)return true}catch(e){}try{window.prompt("Copiá:",value)}catch(e){}return false}
+function reportClientError(err,action){
+  try{var message=err&&err.message?err.message:String(err||"Error desconocido");fetch("/api/client-error",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:message,action:action||"unknown",screen:document.querySelector(".create-wizard-overlay")?"create-wizard":location.pathname,version:"mobile25"})}).catch(function(){});}catch(_){}
+}
+window.addEventListener("error",function(e){reportClientError(e.error||e.message,"window.error")});
+window.addEventListener("unhandledrejection",function(e){reportClientError(e.reason,"unhandledrejection")});
 function toast(m){toastEl.textContent=m;toastEl.classList.add("show");setTimeout(()=>toastEl.classList.remove("show"),2500)}
 function brand(){return '<button type="button" class="brand brand-real brand-home" aria-label="Volver al inicio"><img src="/assets/logo-la-juntada.svg" alt="La Juntada"></button>'}
 function safeGet(k){try{return localStorage.getItem(k)||""}catch{return ""}}
@@ -1167,7 +1172,7 @@ function setCreateWizardStep(step){
   root.querySelectorAll("[data-wizard-step]").forEach(x=>x.classList.toggle("active",Number(x.dataset.wizardStep)===n));
   root.querySelectorAll("[data-wizard-dot]").forEach(x=>x.classList.toggle("active",Number(x.dataset.wizardDot)<=n));
   const label=root.querySelector("#wizardStepLabel");if(label)label.textContent="Paso "+n+" de 3";
-  try{root.querySelector(".wizard-sheet")?.scrollTo({top:0,behavior:"smooth"})}catch{const sh=root.querySelector(".wizard-sheet");if(sh)sh.scrollTop=0}
+  var sh=root.querySelector(".wizard-sheet");if(sh){try{if(typeof sh.scrollTo==="function")sh.scrollTo(0,0);else sh.scrollTop=0}catch(e){sh.scrollTop=0}}
 }
 function openCreateWizard(initialTheme="clasico"){
   closeLauncherOverlay();
@@ -1278,14 +1283,16 @@ function openCreateWizard(initialTheme="clasico"){
   document.querySelectorAll("[data-theme-info]").forEach(function(b){b.onclick=function(e){e.preventDefault();e.stopPropagation();openThemeInfo(b.getAttribute("data-theme-info"))}});
   refreshBasics();refreshTheme();bindSurpriseSetup();bindCustomPackControls();bindGameSettings();
 
-  document.querySelector("#wizardNext1").onclick=()=>{
-    const playerCount=document.querySelector('input[name="playerCount"]:checked')?.value;
-    if(!playerCount){toast("Elegí si van a jugar 2 personas o 3 o más.");return}
-    const when=document.querySelector('input[name="when"]:checked')?.value||"now";
-    if(when==="later"&&!document.querySelector("#eventDate")?.value){toast("Elegí la fecha.");return}
-    const surprise=document.querySelector('input[name="partyKind"]:checked')?.value==="surprise";
-    if(surprise&&!document.querySelector("#honoreeName")?.value.trim()){toast("Decinos para quién es la sorpresa.");return}
-    setCreateWizardStep(2);
+  document.querySelector("#wizardNext1").onclick=function(){
+    try{
+      var pc=document.querySelector('input[name="playerCount"]:checked'),playerCount=pc?pc.value:"";
+      if(!playerCount){toast("Elegí si van a jugar 2 personas o 3 o más.");return}
+      var wi=document.querySelector('input[name="when"]:checked'),when=wi?wi.value:"now",dateEl=document.querySelector("#eventDate");
+      if(when==="later"&&(!dateEl||!dateEl.value)){toast("Elegí la fecha.");return}
+      var pk=document.querySelector('input[name="partyKind"]:checked'),surprise=!!(pk&&pk.value==="surprise"),hn=document.querySelector("#honoreeName");
+      if(surprise&&(!hn||!String(hn.value||"").trim())){toast("Decinos para quién es la sorpresa.");return}
+      setCreateWizardStep(2);
+    }catch(e){reportClientError(e,"wizard.choose_theme");toast("No pudimos abrir las temáticas. Intentá nuevamente.");}
   };
   document.querySelector("#wizardBack2").onclick=()=>setCreateWizardStep(1);
   document.querySelector("#wizardNext2").onclick=()=>{
