@@ -939,7 +939,7 @@ function snapshot(room,viewer){
     code:room.code,name:room.name,state:room.state,roundPhase:room.roundPhase,currentRound:room.currentRound,totalRounds:room.rounds.length,startAt:room.startAt||null,advanceAt:room.advanceAt||null,
     unlocked:true,freeRounds:room.rounds.length,accessPlan:room.accessPlan||null,theme:THEMES[room.themeId],themeId:room.themeId,playWhen:room.playWhen,eventDate:room.eventDate,
     customPack:room.customPack?{id:room.customPack.id,name:room.customPack.name,mixMode:room.customPack.mixMode}:null,
-    roundLimit:room.roundLimit||15,disabledModes:room.disabledModes||[],
+    roundLimit:room.roundLimit||15,disabledModes:room.disabledModes||[],playerCount:room.playerCount||null,
     surprise:room.surprise?.enabled?{
       enabled:true,
       honoreeName:room.surprise.honoreeName,
@@ -1270,7 +1270,7 @@ app.post("/api/rooms",(req,res)=>{
   const hostId=id(),sessionToken=token(),tp=themePrompts(themeId),access=accessFromReq(req);
   const inheritedAccess=accessCanCreatePremium(access);
   const room={
-    code,name,themeId,playWhen,eventDate,state:playWhen==="later"?"collecting":"lobby",
+    code,name,themeId,playWhen,eventDate,playerCount:req.body.playerCount==="2"?"2":"group",state:playWhen==="later"?"collecting":"lobby",
     hostPlayerId:hostId,currentRound:0,roundPhase:"guess",advanceAt:null,startAt:null,unlocked:true,accessPlan:inheritedAccess?(access.role==="admin"?"admin":access.plan):null,
     players:[{id:hostId,name:hostName,ready:false,score:0}],submissions:{},missions:{},rounds:[],
     customPack,
