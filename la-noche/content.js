@@ -128,9 +128,9 @@ export const MODES = {
     minPlayers: 3,
     scoring: "100 por descubrirla. La persona protagonista gana 30 por cada jugador que falla, máximo 120."
   },
-  duo_read: {id:"duo_read",title:"¿Cuánto me conocés?",emoji:"🎯",description:"Uno responde por sí mismo y el otro intenta leerle la cabeza.",minPlayers:2,scoring:"150 puntos para quien acierta a la otra persona."},
-  duo_risk: {id:"duo_risk",title:"Apuesta",emoji:"🎲",description:"Decisiones secretas con resultado competitivo.",minPlayers:2,scoring:"Rondas competitivas con un solo ganador de puntos."},
-  duo_speed: {id:"duo_speed",title:"Duelo relámpago",emoji:"⚡",description:"Decisiones rápidas cara a cara.",minPlayers:2,scoring:"Una sola persona se lleva los puntos de la ronda."},
+  duo_read: {id:"duo_read",title:"¿Cuánto me conocés?",emoji:"🎯",description:"Una persona responde por sí misma y la otra intenta adivinar qué va a elegir.",minPlayers:2,scoring:"Adivinar la respuesta real vale 100 puntos."},
+  duo_risk: {id:"duo_risk",title:"Doble o nada",emoji:"🎲",description:"La misma lógica, pero con una predicción más valiosa.",minPlayers:2,scoring:"Adivinar la respuesta real vale 200 puntos."},
+  duo_speed: {id:"duo_speed",title:"Instinto",emoji:"⚡",description:"Una elección rápida: confiá en cuánto conocés a la otra persona.",minPlayers:2,scoring:"Adivinar la respuesta real vale 125 puntos."},
   mision_secreta: {
     id: "mision_secreta",
     title: "Misión secreta",
