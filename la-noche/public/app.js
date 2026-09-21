@@ -1925,11 +1925,27 @@ function playing(r){
   const x=r.round;if(!x)return;
   const locked=x.locked||r.roundPhase==="locked";
   const isDuo=!!x.duoRole;
-  const duoHelp=isDuo
-    ?'<div class="duo-role-note guesser"><strong>¿Qué respondió '+esc(x.otherName)+' cuando preparó la partida?</strong><span>Tu propia respuesta ya quedó sellada. Adiviná la de la otra persona. Acierto: +'+Number(x.pointsAtStake||100)+' puntos.</span></div>'
-    :"";
-  const lockedHtml=isDuo
-    ?'<div class="duo-round-reveal"><small>LO QUE HABÍAN RESPONDIDO</small><strong>'+esc(x.reveal?.answer||"")+'</strong><span>'+(Number(x.reveal?.ownPoints||0)>0?"La leíste bien · +"+Number(x.reveal.ownPoints)+" puntos":"Esta vez no la adivinaste · +0 puntos")+'</span></div>'
+  const duoHelp=isDuo?(function(){
+    if(x.duoKind==="sync")return '<div class="duo-role-note sync"><strong>Jugás por '+Number(x.pointsAtStake||125)+' puntos.</strong><span>Recordá qué respondiste vos y apostá si la otra persona había elegido lo mismo o no.</span></div>';
+    if(x.duoKind==="spotlight"&&x.duoRole==="target")return '<div class="duo-role-note target"><strong>Estás bajo la lupa.</strong><span>No tocás nada. Si '+esc(x.otherName)+' no logra leerte, vos sumás puntos por ser difícil de adivinar.</span></div>';
+    if(x.duoKind==="spotlight")return '<div class="duo-role-note guesser"><strong>Solo vos respondés esta vez · '+Number(x.pointsAtStake||175)+' puntos.</strong><span>Intentá recordar qué había elegido '+esc(x.targetName)+'. Si fallás, los puntos van para esa persona.</span></div>';
+    if(x.duoKind==="double")return '<div class="duo-role-note double"><strong>Doble lectura · '+Number(x.pointsAtStake||200)+' puntos.</strong><span>Los dos intentan adivinar la respuesta original del otro.</span></div>';
+    if(x.duoKind==="final")return '<div class="duo-role-note final"><strong>La definitiva · '+Number(x.pointsAtStake||300)+' puntos.</strong><span>Última lectura. Puede dar vuelta el resultado.</span></div>';
+    return '<div class="duo-role-note guesser"><strong>Cara a cara · '+Number(x.pointsAtStake||100)+' puntos.</strong><span>Adiviná qué había respondido '+esc(x.otherName)+' antes de empezar.</span></div>';
+  })():"";
+  const lockedHtml=isDuo?(function(){
+    const pts=Number(x.reveal?.ownPoints||0);
+    let spark="";
+    if(x.duoKind==="sync")spark=(x.reveal?.answer||"").includes("COINCIDIERON")
+      ?"🧠 Telepatía: habían elegido lo mismo."
+      :"🔥 Choque de gustos: habían elegido distinto. Tienen 15 segundos para defender su elección.";
+    else if(x.duoKind==="spotlight")spark=pts>0
+      ?(x.duoRole==="target"?"🎭 Fuiste difícil de leer y te llevaste los puntos.":"🎯 La leíste perfecto.")
+      :(x.duoRole==="target"?"Te descifraron esta vez.":"Esta vez no pudiste leerla.");
+    else if(x.duoKind==="final")spark=pts>0?"💥 Cerraste acertando la definitiva.":"💥 La definitiva se te escapó.";
+    else spark=pts>0?"🎯 Acierto.":"+0 puntos esta vez.";
+    return '<div class="duo-round-reveal"><small>'+esc(x.modeTitle||"REVELACIÓN")+'</small><strong>'+esc(x.reveal?.answer||"")+'</strong><span>'+esc(spark)+(pts>0?" · +"+pts+" puntos":"")+'</span></div>';
+  })()
     :'<div class="locked-round"><div class="big-num">✓</div><strong>Votos cerrados</strong><span>Los puntos ya fueron calculados. La respuesta queda guardada para el final.</span></div>';
   const liveScore=isDuo
     ?'<section class="duo-live-score">'+r.players.map(function(p){return '<div><small>'+esc(p.name)+'</small><strong>'+Number(p.score||0)+'</strong><span>pts</span></div>'}).join('<i>vs</i>')+'</section>'
@@ -1964,6 +1980,24 @@ function paywall(r){
 function scoreRows(ps){return[...ps].sort((a,b)=>(b.score||0)-(a.score||0)).map((p,i)=>`<div class="score-row"><div class="rank">#${i+1}</div><div class="score-name">${esc(p.name)}</div><div class="score">${p.score||0}</div></div>`).join("")}
 function answersArchive(r){
   if(!r.answers)return "";
+  if(r.playerCount==="2"){
+    const people=r.answers.filter(x=>x&&x.isDuo);
+    const total=people[0]?.duoAnswers?.length||0;
+    if(!people.length||!total)return "";
+    return `<section class="card answers-archive duo-answer-archive" style="margin-top:14px">
+      <div class="kicker">🔓 LAS 10 RESPUESTAS ORIGINALES</div>
+      <div class="section-title">Solo lo que respondieron antes de empezar.</div>
+      <p class="muted">Estas son exactamente las mismas 10 preguntas que alimentaron la partida. No hay preguntas extra ni contenido oculto.</p>
+      <div class="duo-answer-list">
+        ${Array.from({length:total},function(_,i){
+          const q=people[0]?.duoAnswers?.[i]?.question||"Pregunta "+(i+1);
+          return '<article><small>0'+(i+1)+'</small><strong>'+esc(q)+'</strong><div class="duo-answer-pair">'+people.map(function(p){
+            return '<span><b>'+esc(p.name)+'</b><em>'+esc(p.duoAnswers?.[i]?.answer||"—")+'</em></span>';
+          }).join("")+'</div></article>';
+        }).join("")}
+      </div>
+    </section>`;
+  }
   return `<section class="card answers-archive" style="margin-top:14px"><div class="kicker">🔓 RESPUESTAS DESBLOQUEADAS</div><div class="section-title">Ahora sí: todo lo que escribió el grupo</div><p class="muted">Hasta este momento estas respuestas nunca estuvieron disponibles para nadie.</p>
   ${r.answers.map(a=>`<details><summary>${esc(a.name)}</summary><div class="answer-body">
     ${a.stories.map(s=>`<div class="answer-item"><small>${esc(s.prompt)}</small><strong>${esc(s.answer)}</strong></div>`).join("")}
@@ -1974,6 +2008,7 @@ function answersArchive(r){
     ${a.majority.map(m=>`<div class="answer-item"><small>${esc(m.prompt)}</small><strong>${esc(m.answer)}</strong></div>`).join("")}
   </div></details>`).join("")}</section>`;
 }
+
 function finished(r){
   const ranking=[...r.players].sort((a,b)=>(b.score||0)-(a.score||0));
   const first=ranking[0],second=ranking[1],third=ranking[2],f=r.finale||{};
@@ -1991,14 +2026,21 @@ function finished(r){
     <p>${esc(aw.description||"")}</p>
   </article>`).join("");
 
-  const stats=[
+  const stats=(r.playerCount==="2"?[
+    {n:f.roundsPlayed??r.totalRounds,label:"duelos jugados"},
+    {n:"5",label:"mecánicas distintas"},
+    {n:f.totalVotes??"—",label:"predicciones"},
+    {n:(f.accuracy??0)+"%",label:"lecturas acertadas"},
+    {n:"10/10",label:"respuestas usadas"},
+    {n:f.totalPoints??ranking.reduce((n,p)=>n+(p.score||0),0),label:"puntos en juego"}
+  ]:[
     {n:f.roundsPlayed??r.totalRounds,label:"rondas jugadas"},
     {n:f.modesPlayed??"—",label:"modos distintos"},
     {n:f.totalVotes??"—",label:"votos enviados"},
     {n:(f.accuracy??0)+"%",label:"aciertos directos"},
     {n:f.missionsCompleted??0,label:"misiones cumplidas"},
     {n:f.totalPoints??ranking.reduce((n,p)=>n+(p.score||0),0),label:"puntos repartidos"}
-  ].map(x=>`<div class="final-stat"><strong>${x.n}</strong><span>${x.label}</span></div>`).join("");
+  ]).map(x=>`<div class="final-stat"><strong>${x.n}</strong><span>${x.label}</span></div>`).join("");
 
   const isTie=ranking.length>1&&(first?.score||0)===(second?.score||0);
   const winnerLine=isTie
@@ -2017,7 +2059,7 @@ function finished(r){
       <p>${winnerLine}</p>
       <div class="final-share-row">
         <button class="secondary" id="shareFinal">Compartir resultado</button>
-        <button class="ghost" id="jumpAnswers">Ver todas las respuestas ↓</button>
+        <button class="ghost" id="jumpAnswers">Ver las 10 respuestas reales ↓</button>
       </div>
     </section>
 
@@ -2062,7 +2104,7 @@ function finished(r){
       <div>
         <div class="kicker">¿OTRA?</div>
         <h2>Esta ya quedó en el archivo.</h2>
-        <p>Podés jugar una revancha con el mismo grupo y consignas nuevas, o arrancar una juntada completamente distinta.</p>
+        <p>Podés jugar una revancha con preguntas nuevas y otra mezcla de duelos, o arrancar una juntada completamente distinta.</p>
       </div>
       <div class="final-actions">
         ${r.isHost?'<button class="primary" id="restart">Revancha con este grupo <span>→</span></button>':""}
