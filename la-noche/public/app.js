@@ -880,8 +880,26 @@ function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
 async function loadConfig(){if(!state.config)state.config=await api("/api/config")}
 function themeCards(){
   return state.config.themes.map(function(t){
+    var stats=(state.config.themeStats&&state.config.themeStats[t.id])||{};
+    var modes=(state.config.themeModes&&state.config.themeModes[t.id])||[];
     var locked=t.premiumOnly&&!hasReusableAccess();
-    return '<button type="button" class="theme-card theme-card-simple '+(locked?"premium-locked":t.premiumOnly?"premium-owned":"")+'" data-theme="'+esc(t.id)+'" '+(locked?'data-locked="1"':'')+'><span class="theme-simple-title">'+esc(t.title)+'</span><span class="theme-simple-copy">'+esc(t.tagline||t.description||"")+'</span>'+(t.premiumOnly?'<span class="theme-lock">'+(locked?"PREMIUM +18":"INCLUIDO +18")+'</span>':"")+'</button>';
+    return `
+      <div class="theme-card ${locked?"premium-locked":t.premiumOnly?"premium-owned":""}" data-theme="${esc(t.id)}" role="button" tabindex="0" ${locked?'data-locked="1"':""}>
+        <div class="theme-art-wrap">
+          ${assetImg("theme",t.id,"theme-asset")}
+          ${t.premiumOnly?'<span class="theme-lock">'+(locked?"PREMIUM +18":"INCLUIDO +18")+'</span>':""}
+        </div>
+        <div class="theme-copy">
+          <strong>${esc(t.title)}</strong>
+          <small>${esc(t.tagline||t.description||"")}</small>
+          <div class="theme-facts">
+            <span>${stats.maxRounds||"—"} rondas máx.</span>
+            <span>${stats.modeCount||modes.length} modos</span>
+            <span>${stats.promptCount||"—"} consignas base</span>
+          </div>
+          <button class="theme-details" type="button" data-theme-info="${esc(t.id)}">Qué incluye →</button>
+        </div>
+      </div>`;
   }).join("");
 }
 
@@ -1294,6 +1312,9 @@ function openCreateWizard(initialTheme="clasico"){
 
   var wizardRoot=document.querySelector(".create-wizard-overlay");
   if(wizardRoot)wizardRoot.dataset.selectedTheme=initialTheme||"clasico";
+  document.querySelectorAll(".theme-card").forEach(function(card){
+    card.classList.toggle("selected",(card.getAttribute("data-theme")||"")===((wizardRoot&&wizardRoot.dataset.selectedTheme)||"clasico"));
+  });
 
   const refreshBasics=()=>{
     const when=document.querySelector('input[name="when"]:checked')?.value||"now";
