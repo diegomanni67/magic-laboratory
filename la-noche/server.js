@@ -1317,7 +1317,7 @@ app.get("/api/rooms/:code",(req,res)=>{
 app.post("/api/rooms/:code/start-collecting",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
-  if(room.players.length<2)return res.status(409).json({error:"Necesitan ser al menos 2."});
+  // The host can open preparation immediately. Players who join while collecting enter the same answer screen.
   // With two players both people must enter the answer/preparation screen first.
   // The Duo match starts only after both have submitted their answers.
   room.state="collecting";res.json({ok:true,duo:room.players.length===2});
