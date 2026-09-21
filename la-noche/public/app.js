@@ -1522,12 +1522,12 @@ function lobby(r){
           <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":(r.players.length===2?"Sin votaciones grupales: juegan Coincidimos, ¿Qué elegirías?, Duelo y 5 segundos.":"Cada persona responde 10 cosas en secreto.")}</strong>
           <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":(r.players.length===2?"Los dos responden en simultáneo y el resultado se revela cuando ambos eligieron.":"Eso construye las rondas personalizadas de esta juntada.")}</small>
         </div>
-        ${r.isHost?`<button class="primary lobby-start" id="startCollect" ${r.players.length<2?"disabled":""}>${r.players.length===2?"Empezar Modo Dúo":"Empezar preparación"} <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia cuando estén todos.</div>'}
+        ${r.isHost?`<button class="primary lobby-start" id="startCollect">Empezar preparación <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia la preparación.</div>'}
       </div>
     </section>
     ${hostRoster(r)}
   </div>`;
-  if(r.isHost)document.querySelector("#startCollect").onclick=async()=>{try{await api("/api/rooms/"+r.code+"/start-collecting",{method:"POST"});refresh()}catch(e){toast(e.message)}};
+  if(r.isHost)document.querySelector("#startCollect").onclick=async()=>{try{const btn=document.querySelector("#startCollect");btn.disabled=true;btn.textContent="Abriendo preguntas…";await api("/api/rooms/"+r.code+"/start-collecting",{method:"POST"});await refresh()}catch(e){toast(e.message);const btn=document.querySelector("#startCollect");if(btn){btn.disabled=false;btn.innerHTML='Empezar preparación <span>→</span>'}}};
   const copyInvite=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link del grupo copiado")}catch{prompt("Copiá:",u)}};
   document.querySelector("#copyLink").onclick=copyInvite;
   document.querySelector("#inviteCard").onclick=copyInvite;
