@@ -1938,7 +1938,7 @@ function playing(r){
     let spark="";
     if(x.duoKind==="sync")spark=(x.reveal?.answer||"").includes("COINCIDIERON")
       ?"🧠 Telepatía: habían elegido lo mismo."
-      :"🔥 Choque de gustos: habían elegido distinto. Tienen 15 segundos para defender su elección.";
+      :"🔥 Choque de gustos: habían elegido distinto. Defiendan su elección antes de que siga.";
     else if(x.duoKind==="spotlight")spark=pts>0
       ?(x.duoRole==="target"?"🎭 Fuiste difícil de leer y te llevaste los puntos.":"🎯 La leíste perfecto.")
       :(x.duoRole==="target"?"Te descifraron esta vez.":"Esta vez no pudiste leerla.");
