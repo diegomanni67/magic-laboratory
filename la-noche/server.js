@@ -1304,7 +1304,7 @@ app.post("/api/rooms/:code/join",(req,res)=>{
   const p={id:id(),name,ready:isHonoree?false:alreadyPlaying,score:0,isHonoree},t=token();
   room.players.push(p);
   if(isHonoree)room.surprise.honoreePlayerId=p.id;
-  sessions.set(sessionKey(t),p.id);persistSession(t,room.code,p.id);
+  sessions.set(sessionKey(t),p.id);persistSession(t,room.code,p.id);persistRoom(room);
   if(alreadyPlaying&&room.state==="playing"&&room.roundPhase==="guess")finalizeRound(room);
   res.json({code:room.code,sessionToken:t,lateJoin:alreadyPlaying,isHonoree});
 });
