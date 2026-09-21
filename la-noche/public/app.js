@@ -1192,22 +1192,32 @@ function openMobileSafeCreate(initialTheme){
     '<div class="create-wizard-overlay mobile-safe-create" data-selected-theme="'+esc(initialTheme||"clasico")+'" role="dialog" aria-modal="true" aria-label="Crear La Juntada">'+
       '<button class="wizard-backdrop" data-close-wizard aria-label="Cerrar"></button>'+
       '<article class="wizard-sheet mobile-safe-sheet">'+
-        '<header class="wizard-header"><div>'+brand()+'</div><div><small>CREAR JUNTADA</small></div><button class="rules-close" data-close-wizard aria-label="Cerrar">×</button></header>'+
+        '<header class="wizard-header mobile-safe-header"><div>'+brand()+'</div><div class="mobile-safe-badge">MODO MÓVIL</div><button class="rules-close" data-close-wizard aria-label="Cerrar">×</button></header>'+
         '<section class="mobile-safe-body">'+
-          '<div class="wizard-copy"><div class="kicker">CONFIGURACIÓN SIMPLE</div><h2>Creá la juntada</h2><p>Controles nativos para máxima compatibilidad en celular.</p></div>'+
-          '<label class="field-label">¿Cuántos van a jugar?</label>'+
-          '<select id="mobilePlayerCount"><option value="">Elegir…</option><option value="2">Somos 2 · Modo Dúo</option><option value="group">Somos 3 o más</option></select>'+
-          '<label class="field-label">¿Cuándo juegan?</label>'+
-          '<select id="mobileWhen"><option value="now">Ahora</option><option value="later">Preparar antes</option></select>'+
-          '<div id="dateWrap" class="date-wrap"><label class="field-label">Fecha</label><input id="eventDate" type="date"></div>'+
-          '<label class="field-label">Temática</label>'+
-          '<select id="mobileTheme">'+options+'</select>'+
-          '<div class="form-two wizard-names">'+
-            '<div><label class="field-label" for="roomName">Nombre de la juntada</label><input id="roomName" type="text" autocomplete="off" autocapitalize="sentences" placeholder="Cumple de Sofi" maxlength="80"></div>'+
-            '<div><label class="field-label" for="hostName">Tu nombre</label><input id="hostName" type="text" autocomplete="name" autocapitalize="words" placeholder="Diego" maxlength="40"></div>'+
+          '<div class="mobile-create-intro"><div class="kicker">CREÁ TU JUNTADA</div><h2>Todo listo en menos de un minuto.</h2><p>La misma experiencia visual, con controles nativos para que funcione bien en iPhone y Android.</p></div>'+
+          '<div class="mobile-theme-preview" id="mobileThemePreview"></div>'+
+          '<div class="mobile-create-card">'+
+            '<div class="mobile-create-card-head"><span>1</span><div><strong>¿Cuántos van a jugar?</strong><small>Esto adapta automáticamente la dinámica.</small></div></div>'+
+            '<select id="mobilePlayerCount" class="mobile-native-select"><option value="">Elegir cantidad…</option><option value="2">👥 Somos 2 · Modo Dúo</option><option value="group">🎉 Somos 3 o más</option></select>'+
           '</div>'+
-          '<label class="age-check wizard-age" id="ageWrap"><input id="ageConfirmed" type="checkbox"> Confirmo que los participantes son mayores de 18 años.</label>'+
-          '<div class="wizard-actions"><button class="ghost" data-close-wizard type="button">Cancelar</button><button class="primary big-action" id="createBtn" type="button">Crear La Juntada <span>→</span></button></div>'+
+          '<div class="mobile-create-card">'+
+            '<div class="mobile-create-card-head"><span>2</span><div><strong>¿Cuándo juegan?</strong><small>Ahora mismo o preparando la juntada antes.</small></div></div>'+
+            '<select id="mobileWhen" class="mobile-native-select"><option value="now">⚡ Ahora</option><option value="later">📅 Preparar antes</option></select>'+
+            '<div id="dateWrap" class="date-wrap mobile-date-wrap"><label class="field-label">Fecha de la juntada</label><input id="eventDate" type="date"></div>'+
+          '</div>'+
+          '<div class="mobile-create-card">'+
+            '<div class="mobile-create-card-head"><span>3</span><div><strong>Elegí la temática</strong><small>La vista previa cambia al instante.</small></div></div>'+
+            '<select id="mobileTheme" class="mobile-native-select">'+options+'</select>'+
+          '</div>'+
+          '<div class="mobile-create-card">'+
+            '<div class="mobile-create-card-head"><span>4</span><div><strong>¿Cómo se llama?</strong><small>Estos nombres se muestran dentro de la partida.</small></div></div>'+
+            '<div class="mobile-name-stack">'+
+              '<div><label class="field-label" for="roomName">Nombre de la juntada</label><input id="roomName" type="text" autocomplete="off" autocapitalize="sentences" placeholder="Cumple de Sofi" maxlength="80"></div>'+
+              '<div><label class="field-label" for="hostName">Tu nombre</label><input id="hostName" type="text" autocomplete="name" autocapitalize="words" placeholder="Diego" maxlength="40"></div>'+
+            '</div>'+
+          '</div>'+
+          '<label class="age-check wizard-age mobile-age-check" id="ageWrap"><input id="ageConfirmed" type="checkbox"> Confirmo que los participantes son mayores de 18 años.</label>'+
+          '<div class="mobile-create-submit"><button class="primary big-action" id="createBtn" type="button">Crear La Juntada <span>→</span></button><small>Sin descarga · invitados sin cuenta · partida completa gratis</small></div>'+
         '</section>'+
       '</article>'+
     '</div>');
@@ -1229,9 +1239,17 @@ function openMobileSafeCreate(initialTheme){
       if(dw)dw.classList.toggle("show",!!(when&&when.value==="later"));
       if(root&&theme)root.dataset.selectedTheme=theme.value||"clasico";
       var tid=(theme&&theme.value)||"clasico";
-      var meta=themes.find(function(t){return t.id===tid});
+      var meta=themes.find(function(t){return t.id===tid})||themes[0];
+      var stats=(state.config&&state.config.themeStats&&state.config.themeStats[tid])||{};
       var age=document.querySelector("#ageWrap");
       if(age)age.classList.toggle("show",!!(meta&&meta.age18));
+      var preview=document.querySelector("#mobileThemePreview");
+      if(preview&&meta){
+        preview.innerHTML=
+          '<div class="mobile-theme-art">'+assetImg("theme",tid,"mobile-theme-image")+'</div>'+
+          '<div class="mobile-theme-preview-copy"><div class="kicker">TEMÁTICA ELEGIDA</div><strong>'+esc(meta.title)+'</strong><p>'+esc(meta.tagline||meta.description||"")+'</p>'+
+          '<div class="mobile-theme-mini-facts"><span><b>'+(stats.maxRounds||"—")+'</b> rondas</span><span><b>'+(stats.modeCount||"—")+'</b> modos</span><span><b>'+(stats.promptCount||"—")+'</b> consignas</span></div></div>';
+      }
     }catch(e){reportClientError(e,"mobile_create.sync")}
   }
   if(theme)theme.onchange=syncMobile;
@@ -1244,6 +1262,7 @@ function openMobileSafeCreate(initialTheme){
     createRoom();
   };
 }
+
 function openCreateWizard(initialTheme="clasico"){
   if(useMobileSafeCreate()){openMobileSafeCreate(initialTheme);return}
   closeLauncherOverlay();
