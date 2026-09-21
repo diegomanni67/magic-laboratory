@@ -514,7 +514,7 @@ function gameSettingsHtml(){
       <details class="game-settings duo-game-settings">
         <summary><div><small>MODO DÚO</small><strong>10 preguntas · 10 duelos de memoria</strong></div><span>Ver</span></summary>
         <div class="game-settings-body">
-          <div class="duo-settings-callout"><strong>Objetivo: demostrar cuánto conocés a la otra persona.</strong><span>Primero ambos responden las mismas 10 preguntas en secreto. Después, pregunta por pregunta, cada uno intenta adivinar lo que respondió el otro. Cada respuesta previa se usa de verdad.</span></div>
+          <div class="duo-settings-callout"><strong>Objetivo: demostrar cuánto conocés a la otra persona.</strong><span>Primero ambos responden las mismas 10 preguntas en secreto. Después intentan adivinarse. El banco cambia entre partidas y las respuestas usadas quedan fuera de las revanchas hasta agotar la variedad.</span></div>
           <div class="settings-mode-grid"><div class="game-mode-toggle duo-mode-preview"><span class="mode-toggle-box">🎯</span><div><strong>¿Cuánto me conocés?</strong><small>Los primeros aciertos valen 100; las últimas rondas suben hasta 250 puntos.</small></div></div></div>
         </div>
       </details>`;
@@ -884,7 +884,7 @@ function themeCards(){
           <div class="theme-facts">
             <span>${stats.maxRounds||"—"} rondas máx.</span>
             <span>${stats.modeCount||modes.length} modos</span>
-            <span>${stats.promptCount||"—"} consignas base</span>
+            <span>${stats.promptCount||"—"} consignas</span>
           </div>
           <button class="theme-details" type="button" data-theme-info="${esc(t.id)}">Qué incluye →</button>
         </div>
@@ -916,8 +916,8 @@ function selectedThemeSummary(){
       <strong>${esc(t.title)}</strong>
       <p>${isDuo?"La temática define el tono. La dinámica es exclusiva para dos personas y no usa votaciones grupales.":esc(t.tagline||t.description)}</p>
       <div class="selected-theme-stats">
-        <span><b>${isDuo?12:(stats.maxRounds||"—")}</b> rondas máx.</span>
-        <span><b>${modeIds.length}</b> modos ${isDuo?"Dúo":""}</span>
+        <span><b>${isDuo?10:(stats.maxRounds||"—")}</b> rondas máx.</span>
+        <span><b>${isDuo?(stats.duoQuestionCount||"—"):modeIds.length}</b> ${isDuo?"preguntas posibles":"modos"}</span>
       </div>
       <div class="selected-theme-modes">${modes}</div>
     </div>
@@ -1638,7 +1638,7 @@ function lobby(r){
             <div class="lobby-theme-overlay">
               <small>${surprise?"SORPRESA PARA "+esc(r.surprise.honoreeName).toUpperCase():"ESTÁN ARMANDO"}</small>
               <strong>${esc(r.theme.title)}</strong>
-              <span>${r.roundLimit||15} rondas elegidas · ${stats.modeCount||r.availableModes?.length||"—"} modos disponibles</span>
+              <span>${r.roundLimit||15} rondas elegidas · ${stats.modeCount||r.availableModes?.length||"—"} modos · ${stats.promptCount||"—"} consignas posibles</span>
             </div>
           </div>
           <div class="lobby-mode-strip">${modeChips}</div>
@@ -1864,8 +1864,8 @@ function collecting(r){
 
       <div class="prep-block">
         <div class="prep-block-head"><span>02</span><div><strong>Verdad o mentira</strong><small>2 respuestas · alimentan El Mentiroso</small></div><em>2</em></div>
-        <label>Una verdad sorprendente sobre vos</label><textarea id="truth" data-prep-field placeholder="Algo real que pueda generar dudas…"></textarea>
-        <label>Una mentira creíble sobre vos</label><textarea id="lie" data-prep-field placeholder="Tiene que sonar perfectamente posible…"></textarea>
+        <label>${esc(r.prepPrompts.truthPrompt||"Una verdad sorprendente sobre vos")}</label><textarea id="truth" data-prep-field placeholder="Algo real, concreto y que pueda generar dudas…"></textarea>
+        <label>${esc(r.prepPrompts.liePrompt||"Una mentira creíble sobre vos")}</label><textarea id="lie" data-prep-field placeholder="Inventala para que suene perfectamente posible…"></textarea>
       </div>
 
       <div class="prep-block">
