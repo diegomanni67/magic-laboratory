@@ -230,6 +230,8 @@ function closeRules(){
 }
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function safeScrollTop(){try{window.scrollTo({top:0,left:0,behavior:"smooth"})}catch(e){try{window.scrollTo(0,0)}catch(_){}}}
+async function copyText(value){value=String(value||"");try{if(navigator.clipboard&&navigator.clipboard.writeText){await copyText(value);return true}}catch(e){}try{var ta=document.createElement("textarea");ta.value=value;ta.setAttribute("readonly","");ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();var ok=document.execCommand&&document.execCommand("copy");ta.remove();if(ok)return true}catch(e){}try{window.prompt("Copiá:",value)}catch(e){}return false}
 function toast(m){toastEl.textContent=m;toastEl.classList.add("show");setTimeout(()=>toastEl.classList.remove("show"),2500)}
 function brand(){return '<button type="button" class="brand brand-real brand-home" aria-label="Volver al inicio"><img src="/assets/logo-la-juntada.svg" alt="La Juntada"></button>'}
 function safeGet(k){try{return localStorage.getItem(k)||""}catch{return ""}}
@@ -343,7 +345,7 @@ function openCustomStudio(packId=null){
   const packs=getCustomPacks();
   const existing=packs.find(p=>p.id===packId)||null;
   const p=existing||{
-    id:(crypto?.randomUUID?.()||("pack_"+Date.now())),
+    id:((window.crypto&&typeof window.crypto.randomUUID==="function")?window.crypto.randomUUID():("pack_"+Date.now()+"_"+Math.random().toString(36).slice(2))),
     name:"",
     description:"",
     mixMode:"mixed",
@@ -664,7 +666,7 @@ async function openAccessPanel(){
   document.body.classList.add("rules-open");
   document.querySelectorAll("[data-close-access]").forEach(b=>b.onclick=closeAccessPanel);
   document.querySelector("#copyRecovery")?.addEventListener("click",async()=>{
-    try{await navigator.clipboard.writeText(accessToken());toast("Clave de recuperación copiada")}catch{prompt("Copiá tu clave:",accessToken())}
+    try{await copyText(accessToken());toast("Clave de recuperación copiada")}catch{prompt("Copiá tu clave:",accessToken())}
   });
   document.querySelector("#forgetAccess")?.addEventListener("click",async()=>{
     if(!confirm("Quitar Premium de este dispositivo? Si no guardaste la clave, después no vas a poder recuperarlo."))return;
@@ -808,7 +810,7 @@ async function openPaymentAdmin(){
   document.body.classList.add("rules-open");
   document.querySelectorAll("[data-close-payment-admin]").forEach(b=>b.onclick=closePaymentAdmin);
   document.querySelector("#copyWebhookUrl").onclick=async()=>{
-    try{await navigator.clipboard.writeText(cfg.webhookUrl);toast("URL de webhook copiada")}catch{}
+    try{await copyText(cfg.webhookUrl);toast("URL de webhook copiada")}catch{}
   };
   document.querySelector("#savePaymentAdmin").onclick=async()=>{
     const btn=document.querySelector("#savePaymentAdmin");
@@ -1391,8 +1393,10 @@ async function home(){
 
 function initHomeMotion(){
   const sections=[...document.querySelectorAll(".reveal-section")];
-  const io=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add("in-view")}),{threshold:.12});
-  sections.forEach(s=>io.observe(s));
+  if("IntersectionObserver" in window){
+    const io=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add("in-view")}),{threshold:.12});
+    sections.forEach(s=>io.observe(s));
+  }else sections.forEach(s=>s.classList.add("in-view"));
 
   const steps=[...document.querySelectorAll(".how-step")];
   const badge=document.querySelector("#demoBadge"),q=document.querySelector("#demoQuestion"),count=document.querySelector("#demoCount"),bar=document.querySelector("#demoProgress");
@@ -1408,7 +1412,7 @@ function initHomeMotion(){
   window.__homeDemoTimer=setInterval(()=>{i=(i+1)%demo.length;paint()},3800);
 
   const hero=document.querySelector(".hero-visual");
-  if(hero&&matchMedia("(pointer:fine)").matches){
+  if(hero&&window.matchMedia&&window.matchMedia("(pointer:fine)").matches){
     hero.addEventListener("pointermove",e=>{
       const r=hero.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
       hero.style.setProperty("--mx",x.toFixed(3));hero.style.setProperty("--my",y.toFixed(3));
@@ -1511,8 +1515,8 @@ function hostRoster(r){
 }
 function bindHostRoster(r){
   if(!r.isHost)return;
-  const copy=document.querySelector("#copyInvite");if(copy)copy.onclick=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link de invitación copiado")}catch{prompt("Copiá:",u)}};
-  const special=document.querySelector("#copyHonoreeInvite");if(special)special.onclick=async()=>{const u=honoreeInviteUrl(r);try{await navigator.clipboard.writeText(u);toast("Link sorpresa copiado")}catch{prompt("Copiá el link sorpresa:",u)}};
+  const copy=document.querySelector("#copyInvite");if(copy)copy.onclick=async()=>{const u=location.origin+"?code="+r.code;try{await copyText(u);toast("Link de invitación copiado")}catch{prompt("Copiá:",u)}};
+  const special=document.querySelector("#copyHonoreeInvite");if(special)special.onclick=async()=>{const u=honoreeInviteUrl(r);try{await copyText(u);toast("Link sorpresa copiado")}catch{prompt("Copiá el link sorpresa:",u)}};
   const qr=document.querySelector("#toggleHostQr");if(qr)qr.onclick=()=>{document.querySelector("#hostQr").classList.toggle("open")};
   document.querySelectorAll(".remove-player").forEach(b=>b.onclick=async()=>{if(!confirm("Quitar a "+b.dataset.name+"? También se eliminan sus respuestas y votos."))return;try{await api("/api/rooms/"+r.code+"/players/"+b.dataset.id,{method:"DELETE"});toast("Jugador eliminado");refresh()}catch(e){toast(e.message)}})
 }
@@ -1585,10 +1589,10 @@ function lobby(r){
     ${hostRoster(r)}
   </div>`;
   if(r.isHost)document.querySelector("#startCollect").onclick=async()=>{try{const btn=document.querySelector("#startCollect");btn.disabled=true;btn.textContent="Abriendo preguntas…";await api("/api/rooms/"+r.code+"/start-collecting",{method:"POST"});await refresh()}catch(e){toast(e.message);const btn=document.querySelector("#startCollect");if(btn){btn.disabled=false;btn.innerHTML='Empezar preparación <span>→</span>'}}};
-  const copyInvite=async()=>{const u=location.origin+"?code="+r.code;try{await navigator.clipboard.writeText(u);toast("Link del grupo copiado")}catch{prompt("Copiá:",u)}};
+  const copyInvite=async()=>{const u=location.origin+"?code="+r.code;try{await copyText(u);toast("Link del grupo copiado")}catch{prompt("Copiá:",u)}};
   document.querySelector("#copyLink").onclick=copyInvite;
   document.querySelector("#inviteCard").onclick=copyInvite;
-  document.querySelector("#copyCode").onclick=async()=>{try{await navigator.clipboard.writeText(r.code);toast("Código copiado")}catch{}};
+  document.querySelector("#copyCode").onclick=async()=>{try{await copyText(r.code);toast("Código copiado")}catch{}};
   document.querySelector("#showQr").onclick=()=>document.querySelector("#qrPanel").classList.toggle("open");
   bindHostRoster(r);
 }
@@ -1682,7 +1686,7 @@ function collecting(r){
       </section>
       ${hostRoster(r)}
     </div>`;
-    document.querySelector("#readyCopyHonoree")?.addEventListener("click",async()=>{const u=honoreeInviteUrl(r);try{await navigator.clipboard.writeText(u);toast("Link sorpresa copiado")}catch{prompt("Copiá:",u)}});
+    document.querySelector("#readyCopyHonoree")?.addEventListener("click",async()=>{const u=honoreeInviteUrl(r);try{await copyText(u);toast("Link sorpresa copiado")}catch{prompt("Copiá:",u)}});
     if(r.isHost&&document.querySelector("#startGame"))document.querySelector("#startGame").onclick=async()=>{try{const btn=document.querySelector("#startGame");btn.disabled=true;btn.innerHTML='Armando la partida… <span>✦</span>';await api("/api/rooms/"+r.code+"/start-game",{method:"POST"});refresh()}catch(e){toast(e.message);refresh()}};
     bindHostRoster(r);return;
   }
@@ -1915,11 +1919,11 @@ function finished(r){
     const text=`🏆 La Juntada · ${r.name}\nGanó ${first?.name||""} con ${first?.score||0} puntos.\n\n${top3}\n\n${f.roundsPlayed||r.totalRounds} rondas · ${f.totalVotes||0} votos · ${f.missionsCompleted||0} misiones cumplidas`;
     try{
       if(navigator.share)await navigator.share({title:"La Juntada",text});
-      else{await navigator.clipboard.writeText(text);toast("Resultado copiado")}
-    }catch(e){if(e?.name!=="AbortError")try{await navigator.clipboard.writeText(text);toast("Resultado copiado")}catch{}}
+      else{await copyText(text);toast("Resultado copiado")}
+    }catch(e){if(e?.name!=="AbortError")try{await copyText(text);toast("Resultado copiado")}catch{}}
   };
   document.querySelector("#jumpAnswers").onclick=()=>document.querySelector("#finalAnswers")?.scrollIntoView({behavior:"smooth",block:"start"});
-  document.querySelector("#newJuntada").onclick=async()=>{stopPoll();clearSession();history.replaceState(null,"",location.pathname);await home();window.scrollTo({top:0,behavior:"smooth"})};
+  document.querySelector("#newJuntada").onclick=async()=>{stopPoll();clearSession();history.replaceState(null,"",location.pathname);await home();safeScrollTop()};
   document.querySelector("#donateFinal")?.addEventListener("click",openDonationModal);
   if(r.isHost)document.querySelector("#restart").onclick=async()=>{try{
     const b=document.querySelector("#restart");b.disabled=true;b.innerHTML='Preparando revancha… <span>✦</span>';
@@ -1933,14 +1937,14 @@ async function goHomeFromAnywhere(){
     if(!confirm(msg))return;
     try{await api("/api/rooms/"+r.code+"/leave",{method:"POST"})}catch(e){if(!/inexistente|Sesión/i.test(e.message||""))toast(e.message)}
   }
-  stopPoll();clearSession();history.replaceState(null,"",location.pathname);closeCreateWizard();closeLauncherOverlay();await home();window.scrollTo({top:0,behavior:"smooth"});
+  stopPoll();clearSession();history.replaceState(null,"",location.pathname);closeCreateWizard();closeLauncherOverlay();await home();safeScrollTop();
 }
 async function leaveCurrentRoom(){
   const r=state.room;if(!r){stopPoll();clearSession();await home();return}
   const msg=r.isHost?"¿Terminar esta partida? La sala se cerrará para todos.":"¿Salir de este grupo y volver al inicio?";
   if(!confirm(msg))return;
   try{await api("/api/rooms/"+r.code+"/leave",{method:"POST"})}catch(e){if(!/inexistente|Sesión/i.test(e.message||""))toast(e.message)}
-  stopPoll();clearSession();history.replaceState(null,"",location.pathname);await home();window.scrollTo({top:0,behavior:"smooth"});toast(r.isHost?"Partida terminada":"Saliste del grupo");
+  stopPoll();clearSession();history.replaceState(null,"",location.pathname);await home();safeScrollTop();toast(r.isHost?"Partida terminada":"Saliste del grupo");
 }
 function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r);document.querySelectorAll(".leave-room").forEach(b=>b.onclick=leaveCurrentRoom)}
 document.addEventListener("click",e=>{
