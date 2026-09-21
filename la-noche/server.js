@@ -701,6 +701,12 @@ function finalizeRound(room){
 }
 function maybeAdvance(room){
   let changed=false;
+  // Self-heal Duo rooms that were already 2/2 ready before automatic start existed.
+  if(room.state==="collecting"&&isDuoRoom(room)&&room.players.length===2&&!room.surprise?.enabled&&room.players.every(p=>p.ready)){
+    room.players.forEach(p=>p.score=0);
+    room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;
+    persistRoom(room);return;
+  }
   if(room.state==="starting"){
     if(room.startAt&&Date.now()>=room.startAt){room.state="playing";room.startAt=null;changed=true}
     if(changed)persistRoom(room);
@@ -1504,7 +1510,7 @@ app.post("/api/rooms/:code/restart",(req,res)=>{
     hotSeatPrompt:pick(packBank(room,"hot_seat",tp.hot_seat),1)[0]||"",
     oneVsAllPrompt:pick(packBank(room,"one_vs_all",tp.one_vs_all),1)[0]||""
   };
-  room.state="collecting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=null;room.unlocked=false;
+  room.state=isDuoRoom(room)?"lobby":"collecting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=null;room.unlocked=true;
   res.json({ok:true});
 });
 
