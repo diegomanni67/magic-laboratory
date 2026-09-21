@@ -1631,7 +1631,8 @@ function collecting(r){
   }
 
   const prepTotal=surprise?11:10;
-  const opts=r.players.filter(p=>!p.isHonoree&&p.id!==r.me?.id).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  const isDuo=r.players.length===2&&!surprise;
+  const opts=r.players.filter(p=>!p.isHonoree&&(isDuo||p.id!==r.me?.id)).map(p=>`<option value="${p.id}">${esc(p.name)}${isDuo&&p.id===r.me?.id?" (vos)":""}</option>`).join("");
   app.innerHTML=`<div class="room-page prep-page">
     ${brand()}
     <section class="card prep-card">
@@ -1669,8 +1670,8 @@ function collecting(r){
       </div>
 
       <div class="prep-block">
-        <div class="prep-block-head"><span>03</span><div><strong>Leé al grupo</strong><small>3 votos secretos · construyen la mayoría real</small></div><em>3</em></div>
-        ${r.prepPrompts.majorityPrompts.map((q,i)=>`<label>${esc(q)}</label><select id="maj${i}" data-prep-field><option value="">Elegí a alguien…</option>${opts}</select>`).join("")}
+        <div class="prep-block-head"><span>03</span><div><strong>${isDuo?"¿Quién de los dos?":"Leé al grupo"}</strong><small>${isDuo?"3 elecciones secretas · después ven si coincidieron":"3 votos secretos · construyen la mayoría real"}</small></div><em>3</em></div>
+        ${r.prepPrompts.majorityPrompts.map((q,i)=>`<label>${isDuo?"¿Quién de los dos? "+esc(q):esc(q)}</label><select id="maj${i}" data-prep-field><option value="">${isDuo?"Elegí entre ustedes dos…":"Elegí a alguien…"}</option>${opts}</select>`).join("")}
       </div>
 
       <div class="prep-two">
