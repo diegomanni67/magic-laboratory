@@ -1757,7 +1757,17 @@ function playing(r){
   ${r.mission?`<section class="card soft" style="margin-top:14px"><div class="kicker">💣 TU MISIÓN SECRETA</div><div class="section-title">${esc(r.mission.text)}</div></section>`:""}
   <section class="card soft hidden-score" style="margin-top:14px"><div class="kicker">🏆 PUNTAJE SELLADO</div><div class="section-title">Nadie sabe quién va ganando.</div><div class="muted">El ranking y todas las respuestas se revelan juntos al final.</div></section>
   ${hostRoster(r)}`;
-  if(!locked&&!x.skipVote)document.querySelectorAll(".option").forEach(b=>b.onclick=async()=>{try{await api("/api/rooms/"+r.code+"/vote",{method:"POST",body:JSON.stringify({choice:b.dataset.choice})});refresh()}catch(e){toast(e.message)}});
+  if(!locked&&!x.skipVote)document.querySelectorAll(".option").forEach(b=>b.onclick=async()=>{
+    if(b.disabled)return;
+    try{
+      document.querySelectorAll(".option").forEach(x=>x.disabled=true);
+      await api("/api/rooms/"+r.code+"/vote",{method:"POST",body:JSON.stringify({choice:b.dataset.choice})});
+      await refresh();
+    }catch(e){
+      document.querySelectorAll(".option").forEach(x=>x.disabled=false);
+      toast(e.message||"No pudimos guardar esa respuesta. Intentá otra vez.");
+    }
+  });
   bindHostRoster(r);
 }
 function paywall(r){
