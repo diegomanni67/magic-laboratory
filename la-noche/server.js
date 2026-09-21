@@ -450,8 +450,15 @@ const DUO2_ROUNDS=[
   {mode:"duo_dilema",prompt:"¿Qué elegirías?",statement:"¿Qué preferís saber?",options:[{id:"a",label:"Qué piensa la gente de vos"},{id:"b",label:"Qué va a pasar dentro de 10 años"}]}
 ];
 function buildDuo2Rounds(room){
-  // Duo has its own round bank and never falls back to group voting modes.
-  return shuffle(DUO2_ROUNDS).slice(0,Math.min(room.roundLimit||12,DUO2_ROUNDS.length)).map((r,i)=>({id:id(),votes:{},scored:false,position:i,...r}));
+  // Clone every round deeply: votes/correct/reveal state must never leak between rooms or replays.
+  return shuffle(DUO2_ROUNDS).slice(0,Math.min(room.roundLimit||12,DUO2_ROUNDS.length)).map((r,i)=>({
+    ...r,
+    id:id(),
+    options:Array.isArray(r.options)?r.options.map(o=>({...o})):[],
+    votes:{},
+    scored:false,
+    position:i
+  }));
 }
 function buildRounds(room){
   const disabled=new Set(room.disabledModes||[]);
@@ -1411,11 +1418,14 @@ app.post("/api/rooms/:code/vote",(req,res)=>{
   if(me.id===r.skipVoteFor)return res.status(409).json({error:"Esta ronda habla de vos: no votás."});
 
   const choice=clean(req.body.choice,300);
-  if(r.mode==="duo"){
+  // Dedicated two-player rounds always accept their own visible options directly.
+  if(["duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"].includes(r.mode)){
+    if(!(r.options||[]).some(o=>String(o.id)===choice))return res.status(400).json({error:"Opción inválida para esta ronda Dúo."});
+  }else if(r.mode==="duo"){
     const inPair=(r.duoIds||[]).includes(me.id);
     const valid=inPair?["left","right"]:["same","different"];
     if(!valid.includes(choice))return res.status(400).json({error:"Opción inválida."});
-  }else if(!(r.options||[]).some(o=>o.id===choice)){
+  }else if(!(r.options||[]).some(o=>String(o.id)===choice)){
     return res.status(400).json({error:"Opción inválida."});
   }
 
