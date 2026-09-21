@@ -693,33 +693,30 @@ const DUO_BANKS={
     ["¿Qué te gustaría saber primero?","Qué le causa gracia","Qué le apasiona"]
   ]
 };
+function ensureDuoPrep(room){
+  if(Array.isArray(room.duoPrepQuestions)&&room.duoPrepQuestions.length===10)return room.duoPrepQuestions;
+  const bank=DUO_BANKS[room.themeId]||DUO_BANKS.clasico;
+  const used=new Set(Array.isArray(room.duoUsedQuestions)?room.duoUsedQuestions:[]);
+  let pool=shuffle(bank.map(function(q){return {q:q,key:room.themeId+"|"+q[0]+"|"+q[1]+"|"+q[2]}}).filter(function(x){return !used.has(x.key)}));
+  if(pool.length<10){room.duoUsedQuestions=[];pool=shuffle(bank.map(function(q){return {q:q,key:room.themeId+"|"+q[0]+"|"+q[1]+"|"+q[2]}}))}
+  const chosen=pool.slice(0,10);
+  room.duoPrepQuestions=chosen.map(function(x,i){return {id:"dq"+i,question:x.q[0],options:[{id:"a",label:x.q[1]},{id:"b",label:x.q[2]}]}})
+  room.duoUsedQuestions=(room.duoUsedQuestions||[]).concat(chosen.map(function(x){return x.key})).slice(-90);
+  room.duoEngineVersion=4;
+  return room.duoPrepQuestions;
+}
 function duoThemeBank(room){
   return DUO_BANKS[room.themeId]||DUO_BANKS.clasico;
 }
 function buildDuo2Rounds(room){
-  const bank=duoThemeBank(room);
-  const used=new Set(Array.isArray(room.duoUsedQuestions)?room.duoUsedQuestions:[]);
-  let pool=shuffle(bank.map((q,i)=>({q,key:room.themeId+"|"+q[0]+"|"+q[1]+"|"+q[2]})).filter(x=>!used.has(x.key)));
-  const limit=Math.min(room.roundLimit||12,12);
-  if(pool.length<limit){
-    room.duoUsedQuestions=[];
-    pool=shuffle(bank.map(q=>({q,key:room.themeId+"|"+q[0]+"|"+q[1]+"|"+q[2]})));
-  }
-  const chosen=pool.slice(0,Math.min(limit,pool.length));
-  room.duoUsedQuestions=(room.duoUsedQuestions||[]).concat(chosen.map(x=>x.key)).slice(-Math.max(60,bank.length));
-  room.duoEngineVersion=3;
-  const players=shuffle(room.players);
-  const modes=["duo_read","duo_risk","duo_speed"];
-  const points={duo_read:100,duo_risk:200,duo_speed:125};
-  return chosen.map((item,i)=>{
-    const target=players[i%players.length],mode=modes[i%modes.length],q=item.q;
+  const questions=ensureDuoPrep(room);
+  const values=[100,100,100,100,125,125,125,150,150,250];
+  return questions.map(function(q,i){
     return {
-      id:id(),mode,
-      prompt:mode==="duo_risk"?"Doble o nada":mode==="duo_speed"?"Instinto":"¿Cuánto me conocés?",
-      statement:q[0],targetId:target.id,targetName:target.name,
-      points:points[mode],
-      options:[{id:"a",label:q[1]},{id:"b",label:q[2]}],
-      votes:{},scored:false,position:i
+      id:id(),mode:"duo_read",
+      prompt:i===9?"La definitiva":i>=7?"Vale más":"¿Cuánto me conocés?",
+      statement:q.question,questionIndex:i,points:values[i]||100,
+      options:q.options,votes:{},scored:false,position:i
     };
   });
 }
@@ -893,20 +890,20 @@ function rankDistance(order,consensus){
 function scoreRound(room,round){
   if(round.scored)return;
 
-  if(["duo_read","duo_risk","duo_speed"].includes(round.mode)){
-    const target=room.players.find(p=>p.id===round.targetId);
-    const guesser=room.players.find(p=>p.id!==round.targetId);
-    if(!target||!guesser)return;
-    const actual=round.votes[target.id],guess=round.votes[guesser.id];
-    if(actual===undefined||guess===undefined)return;
-    round.correct=actual;
-    round.guesserId=guesser.id;
-    round.pointsAwarded=0;
-    if(guess===actual){
-      const pts=Number(round.points)||100;
-      guesser.score+=pts;
-      round.pointsAwarded=pts;
-    }
+  if(round.mode==="duo_read"&&Number.isInteger(round.questionIndex)){
+    const idx=round.questionIndex;
+    if(room.players.length!==2)return;
+    const a=room.players[0],b=room.players[1];
+    const va=round.votes[a.id],vb=round.votes[b.id];
+    if(va===undefined||vb===undefined)return;
+    const aa=room.submissions[a.id]?.duoAnswers?.[idx];
+    const ab=room.submissions[b.id]?.duoAnswers?.[idx];
+    if(!aa||!ab)return;
+    const pts=Number(round.points)||100;
+    round.actualAnswers={[a.id]:aa,[b.id]:ab};
+    round.pointsByPlayer={[a.id]:0,[b.id]:0};
+    if(va===ab){a.score+=pts;round.pointsByPlayer[a.id]=pts}
+    if(vb===aa){b.score+=pts;round.pointsByPlayer[b.id]=pts}
     round.scored=true;return;
   }
 
@@ -1053,9 +1050,11 @@ function endArchive(room){
   });
 }
 function answerForRound(room,r){
-  if(["duo_read","duo_risk","duo_speed"].includes(r.mode)){
-    const label=(r.options||[]).find(o=>o.id===r.correct)?.label||"";
-    return (r.targetName||playerName(room,r.targetId))+" eligió: "+label;
+  if(r.mode==="duo_read"&&r.actualAnswers){
+    return room.players.map(function(p){
+      const v=r.actualAnswers[p.id],label=(r.options||[]).find(o=>o.id===v)?.label||"";
+      return p.name+" eligió: "+label;
+    }).join(" · ");
   }
   if(r.mode==="duo_coincidimos"||r.mode==="duo_dilema")return r.correct==="same"?"¡Coincidieron!":"Eligieron distinto";
   if(r.mode==="duo_duelo")return (r.options||[]).find(o=>o.id===r.correct)?.label||"";
@@ -1068,9 +1067,8 @@ function answerForRound(room,r){
 }
 function roundPointsForViewer(room,r,viewer){
   if(!viewer||!r.scored)return 0;
-  if(["duo_read","duo_risk","duo_speed"].includes(r.mode)){
-    if(viewer.id===r.targetId)return 0;
-    return r.votes[viewer.id]===r.correct?(Number(r.points)||100):0;
+  if(r.mode==="duo_read"&&Number.isInteger(r.questionIndex)){
+    return Number(r.pointsByPlayer?.[viewer.id]||0);
   }
   if(r.mode==="duo_coincidimos"||r.mode==="duo_dilema")return r.correct==="same"?100:0;
   if(r.mode==="duo_duelo")return r.votes[viewer.id]===r.correct?100:0;
@@ -1127,11 +1125,14 @@ function finalAnalytics(room){
         directAttempts++;if(v===r.correct)directHits++;
         else if(per[r.protagonistId])per[r.protagonistId].hardToRead++;
       }
-    }else if(["duo_read","duo_risk","duo_speed"].includes(r.mode)){
-      const guesser=room.players.find(p=>p.id!==r.targetId);
-      if(guesser&&r.votes[guesser.id]!==undefined){
+    }else if(r.mode==="duo_read"&&Number.isInteger(r.questionIndex)){
+      for(const p of room.players){
+        const other=room.players.find(x=>x.id!==p.id);
+        const actual=other?room.submissions[other.id]?.duoAnswers?.[r.questionIndex]:null;
+        const guess=r.votes[p.id];
+        if(guess===undefined||!actual)continue;
         directAttempts++;
-        if(r.votes[guesser.id]===r.correct){directHits++;if(per[guesser.id])per[guesser.id].duoSync++}
+        if(guess===actual){directHits++;if(per[p.id])per[p.id].duoSync++}
       }
     }else if(r.mode==="duo"){
       const actual=r.correct||duoActual(room,r),pair=new Set(r.duoIds||[]);
@@ -1194,20 +1195,18 @@ function roundSnapshot(room,raw,viewer){
     reveal:room.roundPhase==="locked"?{answer:answerForRound(room,raw),ownPoints:roundPointsForViewer(room,raw,viewer)}:null
   };
 
-  if(["duo_read","duo_risk","duo_speed"].includes(raw.mode)){
-    const target=room.players.find(p=>p.id===raw.targetId);
-    const other=room.players.find(p=>p.id!==raw.targetId);
-    const isTarget=!!(viewer&&viewer.id===raw.targetId);
+  if(raw.mode==="duo_read"&&Number.isInteger(raw.questionIndex)){
+    const other=viewer?room.players.find(p=>p.id!==viewer.id):null;
     return {
       ...base,
-      prompt:isTarget?"Respondé por vos":"Adiviná a "+(target?.name||raw.targetName||"la otra persona"),
+      prompt:"¿Qué respondió "+(other?.name||"la otra persona")+"?",
       options:raw.options||[],
       ownVote:viewer?raw.votes[viewer.id]||null:null,
       skipVote:false,
-      duoRole:isTarget?"target":"guesser",
-      targetName:target?.name||raw.targetName||"",
+      duoRole:"guesser",
       otherName:other?.name||"",
-      pointsAtStake:Number(raw.points)||100
+      pointsAtStake:Number(raw.points)||100,
+      prepPowered:true
     };
   }
 
@@ -1260,7 +1259,7 @@ function snapshot(room,viewer){
       inviteKey:viewer?.id===room.hostPlayerId?room.surprise.joinKey:null,
       quickQuestions:viewer?.isHonoree&&!viewer.ready?(room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS):null
     }:null,
-    prepPrompts:room.prepPrompts,availableModes:(isDuoRoom(room)?["duo_read","duo_risk","duo_speed"]:(THEME_MODES[room.themeId]||[])).map(modeInfo),
+    prepPrompts:room.prepPrompts,duoPrepQuestions:isDuoRoom(room)?ensureDuoPrep(room):null,availableModes:(isDuoRoom(room)?["duo_read"]:(THEME_MODES[room.themeId]||[])).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
     me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,isHonoree:!!viewer.isHonoree,score:finished?viewer.score:null}:null,
     players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,isHonoree:!!p.isHonoree,score:(finished||isDuoRoom(room))?p.score:null,isHost:p.id===room.hostPlayerId})),
@@ -1590,6 +1589,7 @@ app.post("/api/rooms",(req,res)=>{
     }:null,
     roundLimit,
     disabledModes,
+    duoPrepQuestions:req.body.playerCount==="2"?null:null,
     prepPrompts:{
       storyPrompts:pick(customPack?packBank({customPack},"prep_story",tp.prep_story):tp.prep_story,3),
       majorityPrompts:pick(customPack?packBank({customPack},"majority",tp.majority):tp.majority,3),
@@ -1598,6 +1598,7 @@ app.post("/api/rooms",(req,res)=>{
     },
     createdAt:Date.now()
   };
+  if(isDuoRoom(room))ensureDuoPrep(room);
   rooms.set(code,room);sessions.set(sessionKey(sessionToken),hostId);persistRoom(room).then(()=>persistSession(sessionToken,code,hostId));res.json({code,sessionToken});
 });
 
@@ -1641,6 +1642,22 @@ app.post("/api/rooms/:code/submissions",(req,res)=>{
   if(!me)return res.status(401).json({error:"Volvé a entrar a la sala."});
   if(room.state!=="collecting")return res.status(409).json({error:"La preparación ya cerró."});
   if(me.isHonoree)return res.status(409).json({error:"Tu preparación sorpresa usa solo las 3 preguntas rápidas."});
+  if(isDuoRoom(room)&&!room.surprise?.enabled){
+    const questions=ensureDuoPrep(room);
+    const duoAnswers=Array.isArray(req.body.duoAnswers)?req.body.duoAnswers.map(x=>clean(x,10)):[];
+    if(duoAnswers.length!==questions.length)return res.status(400).json({error:"Respondé las 10 preguntas antes de sellar tu perfil."});
+    for(let i=0;i<questions.length;i++){
+      if(!questions[i].options.some(o=>o.id===duoAnswers[i]))return res.status(400).json({error:"Hay una respuesta inválida en tu perfil."});
+    }
+    room.submissions[me.id]={duoAnswers};
+    me.ready=true;
+    if(room.players.length===2&&room.players.every(p=>p.ready)){
+      room.players.forEach(p=>p.score=0);
+      room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;
+      return res.json({ok:true,duo:true,autoStarted:true,rounds:room.rounds.length,startAt:room.startAt});
+    }
+    return res.json({ok:true,duo:true});
+  }
   const stories=Array.isArray(req.body.stories)?req.body.stories.map(x=>clean(x,280)):[],
         truth=clean(req.body.truth,280),lie=clean(req.body.lie,280),
         majority=Array.isArray(req.body.majority)?req.body.majority:[],
@@ -1798,7 +1815,8 @@ app.post("/api/rooms/:code/restart",(req,res)=>{
   room.players=room.players.filter(p=>!p.isHonoree);
   room.players.forEach(p=>{p.ready=false;p.score=0});
   if(room.surprise){room.surprise.honoreePlayerId=null;delete room.surprise.honoreeAnswers;room.surprise.joinKey=token()}
-  room.submissions={};room.missions={};room.rounds=[];
+  room.submissions={};room.missions={};room.rounds=[];room.duoPrepQuestions=null;
+  if(isDuoRoom(room))ensureDuoPrep(room);
   const tp=themePrompts(room.themeId);
   room.prepPrompts={
     storyPrompts:pick(packBank(room,"prep_story",tp.prep_story),3),
