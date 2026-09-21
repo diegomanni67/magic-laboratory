@@ -1339,7 +1339,14 @@ app.post("/api/rooms/:code/submissions",(req,res)=>{
     return res.status(400).json({error:"Completá todo antes de enviar."});
   }
   room.submissions[me.id]={stories,truth,lie,majority,hotSeatAnswer,oneVsAllAnswer,surpriseMemory};
-  me.ready=true;res.json({ok:true});
+  me.ready=true;
+  // In Duo, once both people have answered there is nobody else to wait for: start automatically.
+  if(room.players.length===2&&!room.surprise?.enabled&&room.players.every(p=>p.ready)){
+    room.players.forEach(p=>p.score=0);
+    room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;
+    return res.json({ok:true,duo:true,autoStarted:true,rounds:room.rounds.length,startAt:room.startAt});
+  }
+  res.json({ok:true});
 });
 
 app.post("/api/rooms/:code/surprise-honoree",(req,res)=>{
