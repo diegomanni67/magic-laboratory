@@ -2919,3 +2919,22 @@ button{touch-action:manipulation}
 .duo-final-grid i{height:7px;border-radius:99px;background:rgba(255,255,255,.05);overflow:hidden;margin:6px 0}
 .duo-final-grid i b{display:block;height:100%;background:linear-gradient(90deg,#e95f73,#f1a06e);border-radius:inherit}
 @media(max-width:700px){.duo-final-grid{grid-template-columns:1fr}.duo-final-recap{padding:15px}}
+
+/* Duo: five distinct mini-game moods + truthful final archive */
+.duo-role-note.sync{background:rgba(98,132,255,.07);border-color:rgba(98,132,255,.2)}
+.duo-role-note.double{background:rgba(179,108,255,.08);border-color:rgba(179,108,255,.22)}
+.duo-role-note.final{background:linear-gradient(135deg,rgba(241,107,121,.14),rgba(240,148,107,.08));border-color:rgba(241,107,121,.28);box-shadow:0 12px 30px rgba(241,107,121,.08)}
+.duo-answer-archive{overflow:hidden}
+.duo-answer-list{display:grid;gap:10px;margin-top:16px}
+.duo-answer-list>article{display:grid;grid-template-columns:42px 1fr;gap:6px 12px;padding:15px;border-radius:17px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06)}
+.duo-answer-list>article>small{grid-row:1/3;display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:rgba(239,191,153,.08);color:#dda98b;font-weight:900;font-size:10px}
+.duo-answer-list>article>strong{font-size:14px;line-height:1.35;color:#fff2e8}
+.duo-answer-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.duo-answer-pair>span{display:flex;flex-direction:column;gap:3px;padding:10px 11px;border-radius:12px;background:#100b0f;border:1px solid rgba(239,191,153,.1)}
+.duo-answer-pair b{font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:#dba989}
+.duo-answer-pair em{font-style:normal;font-size:13px;color:rgba(255,255,255,.78)}
+@media(max-width:700px){
+  .duo-answer-list>article{grid-template-columns:34px 1fr;padding:12px;gap:6px 9px}
+  .duo-answer-list>article>small{width:30px;height:30px}
+  .duo-answer-pair{grid-template-columns:1fr}
+}
