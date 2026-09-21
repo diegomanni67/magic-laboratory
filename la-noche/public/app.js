@@ -1169,15 +1169,15 @@ function openCreateWizard(initialTheme="clasico"){
         </header>
 
         <section class="wizard-step active" data-wizard-step="1">
-          <div class="wizard-copy"><div class="kicker">PRIMERO LO BÁSICO</div><h2>¿Cómo va a ser esta Juntada?</h2><p>Dos decisiones y seguimos.</p></div>
-          <div class="wizard-block player-count-block">
-            <label class="wizard-label">¿Cuántos van a jugar?</label>
+          <div class="wizard-copy player-count-first-copy"><div class="kicker">ANTES QUE NADA</div><h2>¿Cuántos van a jugar?</h2><p>Elegí esto primero y adaptamos toda la experiencia.</p></div>
+          <div class="wizard-block player-count-block player-count-first">
             <div class="choice-grid player-count-grid">
-              <label class="choice-card player-count-card"><input type="radio" name="playerCount" value="2"><strong>👥 Somos 2</strong><span><b>Modo Dúo</b> · pensado especialmente para dos personas.</span></label>
-              <label class="choice-card player-count-card"><input type="radio" name="playerCount" value="group"><strong>🎉 Somos 3 o más</strong><span>Modo grupal · preguntas, votaciones y rondas para toda la juntada.</span></label>
+              <label class="choice-card player-count-card"><input type="radio" name="playerCount" value="2"><strong>👥 Somos 2</strong><span><b>Modo Dúo</b> · juego diseñado especialmente para dos personas.</span></label>
+              <label class="choice-card player-count-card"><input type="radio" name="playerCount" value="group"><strong>🎉 Somos 3 o más</strong><span>Modo grupal · preguntas, votaciones y rondas para todos.</span></label>
             </div>
-            <div class="duo-clarity-note"><strong>Importante:</strong> “Parejas” es una <b>temática</b> de preguntas. No significa “jugar de a dos”. Para dos jugadores elegí <b>Somos 2 · Modo Dúo</b>.</div>
+            <div class="duo-clarity-note">“Parejas” es una <b>temática</b>. Si son dos personas, elegí <b>Somos 2 · Modo Dúo</b>.</div>
           </div>
+          <div class="wizard-after-player-count" id="afterPlayerCount">
           <div class="wizard-block">
             <label class="wizard-label">¿Cuándo juegan?</label>
             <div class="choice-grid">
@@ -1188,6 +1188,7 @@ function openCreateWizard(initialTheme="clasico"){
           </div>
           <div class="wizard-block">${surpriseSetupHtml()}</div>
           <div class="wizard-actions"><span></span><button class="primary" id="wizardNext1">Elegir temática <span>→</span></button></div>
+          </div>
         </section>
 
         <section class="wizard-step" data-wizard-step="2">
@@ -1234,6 +1235,12 @@ function openCreateWizard(initialTheme="clasico"){
     paintSelectedTheme();paintGameSettings();
     document.querySelector("#wizardChangeTheme")?.addEventListener("click",()=>setCreateWizardStep(2));
   };
+  const revealPlayerFlow=()=>{
+    const chosen=!!document.querySelector('input[name="playerCount"]:checked');
+    document.querySelector("#afterPlayerCount")?.classList.toggle("show",chosen);
+  };
+  document.querySelectorAll('input[name="playerCount"]').forEach(x=>x.addEventListener("change",revealPlayerFlow));
+  revealPlayerFlow();
   document.querySelectorAll('input[name="when"]').forEach(x=>x.addEventListener("change",refreshBasics));
   document.querySelectorAll('input[name="theme"]').forEach(x=>x.addEventListener("change",refreshTheme));
   document.querySelectorAll("[data-theme-info]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();openThemeInfo(b.dataset.themeInfo)});
