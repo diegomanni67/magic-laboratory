@@ -1318,12 +1318,9 @@ app.post("/api/rooms/:code/start-collecting",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
   if(room.players.length<2)return res.status(409).json({error:"Necesitan ser al menos 2."});
-  if(room.players.length===2){
-    room.players.forEach(p=>{p.ready=true;p.score=0});
-    room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;
-    return res.json({ok:true,duo:true,rounds:room.rounds.length,startAt:room.startAt});
-  }
-  room.state="collecting";res.json({ok:true});
+  // With two players both people must enter the answer/preparation screen first.
+  // The Duo match starts only after both have submitted their answers.
+  room.state="collecting";res.json({ok:true,duo:room.players.length===2});
 });
 
 app.post("/api/rooms/:code/submissions",(req,res)=>{
