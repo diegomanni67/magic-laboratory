@@ -232,10 +232,13 @@ function closeRules(){
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(m){toastEl.textContent=m;toastEl.classList.add("show");setTimeout(()=>toastEl.classList.remove("show"),2500)}
 function brand(){return '<button type="button" class="brand brand-real brand-home" aria-label="Volver al inicio"><img src="/assets/logo-la-juntada.svg" alt="La Juntada"></button>'}
-function saveSession(c,t){localStorage.setItem("ln_code",c);localStorage.setItem("ln_token",t);state.code=c;state.token=t}
-function clearSession(){localStorage.removeItem("ln_code");localStorage.removeItem("ln_token");state.code=null;state.token=null;state.room=null}
-function accessToken(){return localStorage.getItem("lj_access_token")||""}
-function saveAccessToken(t){if(t)localStorage.setItem("lj_access_token",t);else localStorage.removeItem("lj_access_token")}
+function safeGet(k){try{return localStorage.getItem(k)||""}catch{return ""}}
+function safeSet(k,v){try{localStorage.setItem(k,v);return true}catch{return false}}
+function safeRemove(k){try{localStorage.removeItem(k)}catch{}}
+function saveSession(c,t){safeSet("ln_code",c);safeSet("ln_token",t);state.code=c;state.token=t}
+function clearSession(){safeRemove("ln_code");safeRemove("ln_token");state.code=null;state.token=null;state.room=null;state.lastKey=""}
+function accessToken(){return safeGet("lj_access_token")}
+function saveAccessToken(t){if(t)safeSet("lj_access_token",t);else safeRemove("lj_access_token")}
 function hasReusableAccess(){return !!state.access?.active&&(state.access.role==="admin"||["day","monthly","annual","lifetime"].includes(state.access.plan))}
 function accessLabel(){
   if(!state.access?.active)return "Mi acceso";
@@ -246,7 +249,8 @@ async function api(url,o={}){
   const h={"Content-Type":"application/json",...(o.headers||{})};
   if(state.token)h.Authorization="Bearer "+state.token;
   const pass=accessToken();if(pass)h["X-La-Juntada-Access"]=pass;
-  const r=await fetch(url,{...o,headers:h,cache:"no-store"});const d=await r.json().catch(()=>({}));
+  let r;try{r=await fetch(url,{...o,headers:h,cache:"no-store",credentials:"same-origin"})}catch(e){throw new Error("No se pudo conectar. Revisá la conexión e intentá nuevamente.")}
+  const raw=await r.text();let d={};try{d=raw?JSON.parse(raw):{}}catch{}
   if(!r.ok)throw new Error(d.error||"Algo salió mal");return d
 }
 async function loadAccess(){
@@ -289,7 +293,7 @@ async function syncCustomPacks(){
   }catch{return local}
 }
 function selectedCustomPack(){
-  const id=localStorage.getItem("lj_selected_pack_id")||"";
+  const id=safeGet("lj_selected_pack_id");
   return getCustomPacks().find(p=>p.id===id)||null;
 }
 function linesToList(v,max=40){
@@ -486,8 +490,8 @@ function bindCustomPackControls(){
   document.querySelector("#newCustomPack")?.addEventListener("click",()=>openCustomStudio());
   document.querySelector("#editSelectedPack")?.addEventListener("click",()=>openCustomStudio(selectedCustomPack()?.id));
   document.querySelector("#customPackSelect")?.addEventListener("change",e=>{
-    if(e.target.value)localStorage.setItem("lj_selected_pack_id",e.target.value);
-    else localStorage.removeItem("lj_selected_pack_id");
+    if(e.target.value)safeSet("lj_selected_pack_id",e.target.value);
+    else safeRemove("lj_selected_pack_id");
     const holder=document.querySelector("#customPackHolder");if(holder)holder.innerHTML=customPackSelectorHtml();
     bindCustomPackControls();
   });
@@ -1159,7 +1163,7 @@ function setCreateWizardStep(step){
   root.querySelectorAll("[data-wizard-step]").forEach(x=>x.classList.toggle("active",Number(x.dataset.wizardStep)===n));
   root.querySelectorAll("[data-wizard-dot]").forEach(x=>x.classList.toggle("active",Number(x.dataset.wizardDot)<=n));
   const label=root.querySelector("#wizardStepLabel");if(label)label.textContent="Paso "+n+" de 3";
-  root.querySelector(".wizard-sheet")?.scrollTo({top:0,behavior:"smooth"});
+  try{root.querySelector(".wizard-sheet")?.scrollTo({top:0,behavior:"smooth"})}catch{const sh=root.querySelector(".wizard-sheet");if(sh)sh.scrollTop=0}
 }
 function openCreateWizard(initialTheme="clasico"){
   closeLauncherOverlay();
@@ -1398,7 +1402,7 @@ async function createRoom(){
       box.className="create-room-error";
       btn.closest(".wizard-actions")?.insertAdjacentElement("beforebegin",box);
     }
-    if(box){box.textContent=message;box.scrollIntoView({behavior:"smooth",block:"center"})}
+    if(box){box.textContent=message;box.scrollIntoView({block:"center"})}
     toast(message);
   };
   try{
