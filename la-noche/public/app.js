@@ -231,7 +231,7 @@ function closeRules(){
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(m){toastEl.textContent=m;toastEl.classList.add("show");setTimeout(()=>toastEl.classList.remove("show"),2500)}
-function brand(){return '<div class="brand brand-real"><img src="/assets/logo-la-juntada.svg" alt="La Juntada"></div>'}
+function brand(){return '<button type="button" class="brand brand-real brand-home" aria-label="Volver al inicio"><img src="/assets/logo-la-juntada.svg" alt="La Juntada"></button>'}
 function saveSession(c,t){localStorage.setItem("ln_code",c);localStorage.setItem("ln_token",t);state.code=c;state.token=t}
 function clearSession(){localStorage.removeItem("ln_code");localStorage.removeItem("ln_token");state.code=null;state.token=null;state.room=null}
 function accessToken(){return localStorage.getItem("lj_access_token")||""}
@@ -1446,7 +1446,7 @@ async function joinRoom(){try{
 async function refresh(){if(!state.code)return;try{const r=await api("/api/rooms/"+state.code);state.room=r;const k=JSON.stringify(r);if(k!==state.lastKey){state.lastKey=k;renderRoom()}}catch(e){if(/inexistente|Sesión/.test(e.message)){home();toast(e.message)}}}
 
 function chips(r){return r.players.map(p=>`<span class="chip ${p.ready?"ready":""} ${p.isHonoree?"honoree-chip":""}"><span class="dot"></span>${esc(p.name)}${p.id===r.me?.id?" · vos":""}${p.isHost?" · host":""}${p.isHonoree?" · sorpresa":""}</span>`).join("")}
-function roomHeader(r){return `<div class="room-header"><div class="room-title-wrap">${assetImg("theme",r.themeId,"room-theme-art")}<div><div class="kicker">${esc(r.theme.title)}</div><div class="room-title">${esc(r.name)}</div></div></div><div class="room-meta"><button class="leave-room room-exit-btn" type="button">${r.isHost?"Terminar partida":"Salir del grupo"}</button>${r.surprise?.enabled?'<span class="pill surprise-pill">✦ Para '+esc(r.surprise.honoreeName)+'</span>':""}<span class="pill">${r.players.length} jugadores</span><span class="room-code-mini">${r.code}</span></div></div>`}
+function roomHeader(r){return `<div class="room-header"><div class="room-title-wrap"><button class="room-home-btn" type="button" title="Volver al inicio">← Inicio</button>${assetImg("theme",r.themeId,"room-theme-art")}<div><div class="kicker">${esc(r.theme.title)}</div><div class="room-title">${esc(r.name)}</div></div></div><div class="room-meta"><button class="leave-room room-exit-btn" type="button">${r.isHost?"Terminar partida":"Salir del grupo"}</button>${r.surprise?.enabled?'<span class="pill surprise-pill">✦ Para '+esc(r.surprise.honoreeName)+'</span>':""}<span class="pill">${r.players.length} jugadores</span><span class="room-code-mini">${r.code}</span></div></div>`}
 function hostRoster(r){
   if(!r.isHost)return "";
   const ready=r.players.filter(p=>p.ready).length,pending=r.players.length-ready;
@@ -1876,6 +1876,15 @@ function finished(r){
     await api("/api/rooms/"+r.code+"/restart",{method:"POST"});refresh()
   }catch(e){toast(e.message);refresh()}};
 }
+async function goHomeFromAnywhere(){
+  if(state.room){
+    const r=state.room;
+    const msg=r.isHost?"¿Volver al inicio y terminar esta sala para todos?":"¿Volver al inicio y salir de esta sala?";
+    if(!confirm(msg))return;
+    try{await api("/api/rooms/"+r.code+"/leave",{method:"POST"})}catch(e){if(!/inexistente|Sesión/i.test(e.message||""))toast(e.message)}
+  }
+  stopPoll();clearSession();history.replaceState(null,"",location.pathname);closeCreateWizard();closeLauncherOverlay();await home();window.scrollTo({top:0,behavior:"smooth"});
+}
 async function leaveCurrentRoom(){
   const r=state.room;if(!r){stopPoll();clearSession();await home();return}
   const msg=r.isHost?"¿Terminar esta partida? La sala se cerrará para todos.":"¿Salir de este grupo y volver al inicio?";
@@ -1885,6 +1894,12 @@ async function leaveCurrentRoom(){
 }
 function renderRoom(){const r=state.room;if(!r)return;if(r.state!=="starting"&&window.__launchTimer){clearInterval(window.__launchTimer);window.__launchTimer=null;document.body.classList.remove("launch-hit")}if(r.state==="lobby")lobby(r);else if(r.state==="collecting")collecting(r);else if(r.state==="starting")starting(r);else if(r.state==="playing")playing(r);else if(r.state==="paywall")paywall(r);else finished(r);document.querySelectorAll(".leave-room").forEach(b=>b.onclick=leaveCurrentRoom)}
 document.addEventListener("click",e=>{
+  const homeBtn=e.target.closest?.(".brand-home,.room-home-btn");
+  if(homeBtn){
+    e.preventDefault();e.stopPropagation();
+    if(state.room)goHomeFromAnywhere();else{closeCreateWizard();closeLauncherOverlay();home();}
+    return;
+  }
   const create=e.target.closest?.("#createBtn");
   if(create){
     e.preventDefault();
