@@ -530,7 +530,7 @@ function gameSettingsHtml(){
         </div>
       </details>`;
   }
-  const themeId=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
+  const root=document.querySelector(".create-wizard-overlay"),themeId=(root&&root.dataset.selectedTheme)||"clasico";
   const modeIds=state.config.themeModes?.[themeId]||[];
   const modeCards=modeIds.map(mid=>{
     const m=state.config.modes.find(x=>x.id===mid);if(!m)return "";
@@ -879,32 +879,14 @@ function stopPoll(){if(state.poll)clearInterval(state.poll);state.poll=null;if(w
 function startPoll(){stopPoll();refresh();state.poll=setInterval(refresh,850)}
 async function loadConfig(){if(!state.config)state.config=await api("/api/config")}
 function themeCards(){
-  return state.config.themes.map(t=>{
-    const stats=state.config.themeStats?.[t.id]||{},modes=state.config.themeModes?.[t.id]||[];
-    const locked=t.premiumOnly&&!hasReusableAccess();
-    return `
-    <div class="theme-card ${locked?"premium-locked":t.premiumOnly?"premium-owned":""}" data-theme="${t.id}" role="button" tabindex="0">
-      <input type="radio" name="theme" value="${t.id}" ${t.id==="clasico"?"checked":""} ${locked?"disabled":""}>
-      <div class="theme-art-wrap">
-        ${assetImg("theme",t.id,"theme-asset")}
-        ${t.premiumOnly?'<span class="theme-lock">'+(locked?"PREMIUM +18":"INCLUIDO +18")+'</span>':""}
-      </div>
-      <div class="theme-copy">
-        <strong>${esc(t.title)}</strong>
-        <small>${esc(t.tagline||t.description)}</small>
-        <div class="theme-facts">
-          <span>${stats.maxRounds||"—"} rondas máx.</span>
-          <span>${stats.modeCount||modes.length} modos</span>
-          <span>${stats.promptCount||"—"} consignas base</span>
-        </div>
-        <button class="theme-details" type="button" data-theme-info="${t.id}">Qué incluye →</button>
-      </div>
-    </div>`;
+  return state.config.themes.map(function(t){
+    var locked=t.premiumOnly&&!hasReusableAccess();
+    return '<button type="button" class="theme-card theme-card-simple '+(locked?"premium-locked":t.premiumOnly?"premium-owned":"")+'" data-theme="'+esc(t.id)+'" '+(locked?'data-locked="1"':'')+'><span class="theme-simple-title">'+esc(t.title)+'</span><span class="theme-simple-copy">'+esc(t.tagline||t.description||"")+'</span>'+(t.premiumOnly?'<span class="theme-lock">'+(locked?"PREMIUM +18":"INCLUIDO +18")+'</span>':"")+'</button>';
   }).join("");
 }
 
 function selectedThemeSummary(){
-  const id=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
+  const root=document.querySelector(".create-wizard-overlay"),id=(root&&root.dataset.selectedTheme)||"clasico";
   const t=state.config.themes.find(x=>x.id===id)||state.config.themes[0];
   const isDuo=document.querySelector('input[name="playerCount"]:checked')?.value==="2";
   const stats=state.config.themeStats?.[id]||{};
@@ -1239,16 +1221,16 @@ function openCreateWizard(initialTheme="clasico"){
   document.body.classList.add("rules-open");
   document.querySelectorAll("[data-close-wizard]").forEach(b=>b.onclick=closeCreateWizard);
 
-  const themeInput=document.querySelector('input[name="theme"][value="'+initialTheme+'"]');
-  const fallback=document.querySelector('input[name="theme"][value="clasico"]');
-  if(themeInput&&!themeInput.disabled)themeInput.checked=true;else if(fallback)fallback.checked=true;
+  var wizardRoot=document.querySelector(".create-wizard-overlay");
+  if(wizardRoot)wizardRoot.dataset.selectedTheme=initialTheme||"clasico";
 
   const refreshBasics=()=>{
     const when=document.querySelector('input[name="when"]:checked')?.value||"now";
     document.querySelector("#dateWrap")?.classList.toggle("show",when==="later");
   };
   const refreshTheme=()=>{
-    const themeId=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
+    const root=document.querySelector(".create-wizard-overlay");
+    const themeId=(root&&root.dataset.selectedTheme)||"clasico";
     const theme=state.config.themes.find(t=>t.id===themeId);
     const age=document.querySelector("#ageWrap");if(age)age.classList.toggle("show",!!(theme&&theme.age18));
   };
@@ -1261,26 +1243,17 @@ function openCreateWizard(initialTheme="clasico"){
   document.querySelectorAll('input[name="when"]').forEach(x=>x.addEventListener("change",refreshBasics));
   // iOS Safari is inconsistent when a label contains another interactive button.
   // Handle the whole theme card explicitly instead of relying on implicit label activation.
-  document.querySelectorAll('input[name="theme"]').forEach(function(x){x.addEventListener("change",refreshTheme)});
-  function chooseThemeCard(card){
-    if(!card)return;
-    if(card.classList.contains("premium-locked")){openPremiumModal();return}
-    const input=card.querySelector('input[name="theme"]');
-    if(!input||input.disabled)return;
-    input.checked=true;
-    refreshTheme();
-    document.querySelectorAll(".theme-card").forEach(function(x){x.classList.toggle("selected",x===card)});
-  }
   document.querySelectorAll(".theme-card").forEach(function(card){
-    card.addEventListener("click",function(e){
-      let node=e.target,isInfo=false;
-      while(node&&node!==card){if(node.getAttribute&&node.getAttribute("data-theme-info")){isInfo=true;break}node=node.parentNode}
-      if(isInfo)return;
-      e.preventDefault();chooseThemeCard(card);
-    });
-    card.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();chooseThemeCard(card)}});
+    card.onclick=function(){
+      try{
+        if(card.getAttribute("data-locked")==="1"){openPremiumModal();return}
+        var root=document.querySelector(".create-wizard-overlay");
+        if(root)root.dataset.selectedTheme=card.getAttribute("data-theme")||"clasico";
+        document.querySelectorAll(".theme-card").forEach(function(x){x.classList.toggle("selected",x===card)});
+        refreshTheme();
+      }catch(e){reportClientError(e,"theme.tap");}
+    };
   });
-  document.querySelectorAll("[data-theme-info]").forEach(function(b){b.onclick=function(e){e.preventDefault();e.stopPropagation();openThemeInfo(b.getAttribute("data-theme-info"))}});
   refreshBasics();refreshTheme();bindSurpriseSetup();bindCustomPackControls();bindGameSettings();
 
   document.querySelector("#wizardNext1").onclick=function(){
@@ -1296,8 +1269,8 @@ function openCreateWizard(initialTheme="clasico"){
   };
   document.querySelector("#wizardBack2").onclick=()=>setCreateWizardStep(1);
   document.querySelector("#wizardNext2").onclick=()=>{
-    const selected=document.querySelector('input[name="theme"]:checked');
-    if(!selected){toast("Elegí una temática para continuar.");return}
+    var root=document.querySelector(".create-wizard-overlay");
+    if(!root||!root.dataset.selectedTheme){toast("Elegí una temática para continuar.");return}
     try{paintSelectedTheme();paintGameSettings();setCreateWizardStep(3)}
     catch(e){console.error("theme continue",e);setCreateWizardStep(3)}
   };
@@ -1446,10 +1419,10 @@ async function createRoom(){
     const roomEl=document.querySelector("#roomName"),hostEl=document.querySelector("#hostName");
     const name=String(roomEl?.value??"").replace(/\s+/g," ").trim();
     const hostName=String(hostEl?.value??"").replace(/\s+/g," ").trim();
-    const themeInput=document.querySelector('input[name="theme"]:checked');
+    const themeRoot=document.querySelector(".create-wizard-overlay"),themeValue=(themeRoot&&themeRoot.dataset.selectedTheme)||"clasico";
     if(!name){fail("Poné un nombre para la Juntada.");try{roomEl?.focus()}catch{}return}
     if(!hostName){fail("Escribí tu nombre.");try{hostEl?.focus()}catch{}return}
-    if(!themeInput){fail("Elegí una temática.");return}
+    if(!themeValue){fail("Elegí una temática.");return}
     const when=document.querySelector('input[name="when"]:checked')?.value||"now";
     const eventDate=document.querySelector("#eventDate")?.value||"";
     if(when==="later"&&!eventDate){fail("Elegí la fecha de la Juntada.");setCreateWizardStep(1);return}
@@ -1466,7 +1439,7 @@ async function createRoom(){
     let disabledModes=[];try{disabledModes=Array.from(document.querySelectorAll("[data-mode-toggle]")).filter(x=>!x.checked).map(x=>x.dataset.modeToggle)}catch{}
     let roundLimit=15;try{roundLimit=Number(document.querySelector('input[name="roundLimit"]:checked')?.value||15)}catch{}
     const payload={
-      name:name.slice(0,80),hostName:hostName.slice(0,40),themeId:String(themeInput.value||"clasico"),
+      name:name.slice(0,80),hostName:hostName.slice(0,40),themeId:String(themeValue||"clasico"),
       playWhen:when,eventDate:String(eventDate||""),playerCount:document.querySelector('input[name="playerCount"]:checked')?.value==="2"?"2":"group",
       ageConfirmed:!!document.querySelector("#ageConfirmed")?.checked,
       customPack:pack||null,surpriseMode:!!surpriseMode,honoreeName:String(honoreeName||"").slice(0,40),
