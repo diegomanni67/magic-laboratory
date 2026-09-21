@@ -1099,7 +1099,7 @@ function scoreRound(room,round){
       const actual=room.submissions[target.id]?.duoAnswers?.[idx];if(!actual)return;
       round.correct=actual;round.guesserId=guesser.id;
       if(guess===actual){guesser.score+=pts;round.pointsByPlayer[guesser.id]=pts}
-      else{const defense=Math.max(50,Math.round(pts*.45));target.score+=defense;round.pointsByPlayer[target.id]=defense}
+      else{const defense=75;target.score+=defense;round.pointsByPlayer[target.id]=defense}
     }else{
       const v0=round.votes[p0.id],v1=round.votes[p1.id];
       if(v0===undefined||v1===undefined)return;
@@ -1399,7 +1399,7 @@ function finalAnalytics(room){
     award("liarFooled","Mejor mentiroso","◐","El que consiguió que más personas compraran una mentira.",v=>v+" persona"+(v===1?"":"s")+" engañada"+(v===1?"":"s")),
     award("groupReader","Leyó al grupo","◎","El que mejor anticipó lo que había elegido la mayoría.",v=>v+" mayoría"+(v===1?"":"s")+" acertada"+(v===1?"":"s")),
     award("hardToRead","Más difícil de descifrar","◇","El que más hizo fallar al resto cuando la ronda hablaba de él.",v=>v+" voto"+(v===1?"":"s")+" errado"+(v===1?"":"s")+" contra él"),
-    award("duoSync","Modo telepatía","∞","Integrante de dúo que más veces coincidió con su pareja.",v=>v+" coincidencia"+(v===1?"":"s")),
+    award("duoSync","Mejor lectura","🎯","La persona que más veces logró anticipar correctamente al otro.",v=>v+" lectura"+(v===1?"":"s")+" acertada"+(v===1?"":"s")),
     award("mission","Misión cumplida","✦","Completó su objetivo secreto durante la juntada.",v=>v+" misión cumplida")
   ].filter(Boolean);
 
