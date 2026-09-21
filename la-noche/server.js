@@ -1169,6 +1169,20 @@ function finalAnalytics(room){
   ].filter(Boolean);
 
   const ranking=[...room.players].sort((a,b)=>(b.score||0)-(a.score||0));
+  const duoBreakdown=isDuoRoom(room)?room.players.map(function(p){
+    let hits=0,attempts=0,points=0;
+    for(const r of played){
+      if(r.mode!=="duo_read"||!Number.isInteger(r.questionIndex))continue;
+      const other=room.players.find(x=>x.id!==p.id);
+      const actual=other?room.submissions[other.id]?.duoAnswers?.[r.questionIndex]:null;
+      const guess=r.votes[p.id];
+      if(guess===undefined||!actual)continue;
+      attempts++;
+      if(guess===actual)hits++;
+      points+=Number(r.pointsByPlayer?.[p.id]||0);
+    }
+    return {playerId:p.id,name:p.name,hits,attempts,points};
+  }):null;
   return {
     roundsPlayed:played.length,
     modesPlayed:new Set(played.map(r=>r.mode)).size,
@@ -1179,6 +1193,7 @@ function finalAnalytics(room){
     missionsCompleted:room.players.filter(p=>room.missions[p.id]?.status==="completed").length,
     totalPoints,
     winnerMargin:ranking.length>1?Math.max(0,(ranking[0].score||0)-(ranking[1].score||0)):0,
+    duoBreakdown,
     awards
   };
 }
