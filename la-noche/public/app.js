@@ -1566,24 +1566,6 @@ function collecting(r){
   const themeStats=state.config?.themeStats?.[r.themeId]||{};
   const surprise=r.surprise?.enabled;
 
-  // A room with exactly two people is a Duo game: no group-prep readiness gate.
-  if(r.players.length===2&&!surprise){
-    app.innerHTML=`<div class="room-page prep-ready-page duo-ready-page">
-      ${brand()}
-      <section class="card prep-ready-card">
-        ${roomHeader(r)}
-        <div class="sealed-visual"><span style="font-size:42px">2</span></div>
-        <div class="kicker">MODO DÚO</div>
-        <h2>Ya están los dos. Pueden empezar.</h2>
-        <p class="muted">En Modo Dúo no hace falta completar la preparación grupal. Juegan directamente Coincidimos, ¿Qué elegirías?, Duelo y 5 segundos.</p>
-        <div class="players animated-players">${chips(r)}</div>
-        ${r.isHost?'<button class="primary wide lobby-start" id="startDuoNow">Empezar Modo Dúo <span>→</span></button>':'<div class="waiting-host"><span class="waiting-pulse"></span>Los dos ya están adentro. Esperando que el host empiece.</div>'}
-      </section>
-    </div>`;
-    if(r.isHost)document.querySelector("#startDuoNow").onclick=async()=>{try{const btn=document.querySelector("#startDuoNow");btn.disabled=true;btn.innerHTML='Armando Modo Dúo… <span>✦</span>';await api("/api/rooms/"+r.code+"/start-game",{method:"POST"});refresh()}catch(e){toast(e.message);refresh()}};
-    return;
-  }
-
   if(r.me?.isHonoree&&!r.me?.ready){
     const qs=r.surprise?.quickQuestions||[];
     app.innerHTML=`<div class="room-page honoree-prep-page">
@@ -1638,7 +1620,7 @@ function collecting(r){
         </div>
         <div class="ready-meter"><div><i style="width:${pct}%"></i></div><span>${readyCount}/${r.players.length} listos</span></div>
         <div class="players animated-players">${chips(r)}</div>
-        ${r.isHost?'<button class="primary wide lobby-start" id="startGame" '+(r.players.length<3||r.players.some(p=>!p.ready)||waitingHonoree?"disabled":"")+'>Armar y empezar la partida <span>→</span></button>':""}
+        ${r.isHost?'<button class="primary wide lobby-start" id="startGame" '+(r.players.length<2||r.players.some(p=>!p.ready)||waitingHonoree?"disabled":"")+'>Armar y empezar la partida <span>→</span></button>':""}
         ${r.isHost&&(r.players.some(p=>!p.ready)||waitingHonoree)?'<div class="host-wait-note">'+(waitingHonoree?"La sorpresa se habilita cuando entre "+esc(r.surprise.honoreeName)+" y responda sus 3 preguntas rápidas.":"La partida se habilita cuando todos hayan sellado sus respuestas.")+'</div>':""}
       </section>
       ${hostRoster(r)}
