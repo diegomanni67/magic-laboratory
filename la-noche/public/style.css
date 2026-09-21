@@ -2786,3 +2786,7 @@ button.brand-home{appearance:none;border:0;background:transparent;padding:0;curs
 .room-home-btn:hover{background:rgba(255,255,255,.1);color:#fff}
 .room-title-wrap{gap:10px;flex-wrap:wrap}
 @media(max-width:700px){.room-home-btn{order:-1;padding:7px 10px}.room-header{padding-top:48px}}
+
+.duo-game-settings .duo-settings-callout{display:flex;flex-direction:column;gap:5px;padding:14px 16px;margin-bottom:14px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.duo-settings-callout strong{font-size:15px}.duo-settings-callout span{font-size:13px;color:rgba(255,255,255,.7);line-height:1.4}
+.duo-mode-preview{cursor:default}.duo-mode-preview .mode-toggle-box{display:grid;place-items:center;font-size:24px}
