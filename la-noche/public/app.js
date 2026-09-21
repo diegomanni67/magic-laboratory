@@ -1631,7 +1631,7 @@ function collecting(r){
   }
 
   const prepTotal=surprise?11:10;
-  const opts=r.players.filter(p=>!p.isHonoree).map(p=>`<option value="${p.id}">${esc(p.name)}${p.id===r.me?.id?" (vos)":""}</option>`).join("");
+  const opts=r.players.filter(p=>!p.isHonoree&&p.id!==r.me?.id).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
   app.innerHTML=`<div class="room-page prep-page">
     ${brand()}
     <section class="card prep-card">
