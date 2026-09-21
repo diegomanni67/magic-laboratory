@@ -510,23 +510,12 @@ function gameSettingsHtml(){
   const playerCount=document.querySelector('input[name="playerCount"]:checked')?.value||"group";
   const isDuo=playerCount==="2";
   if(isDuo){
-    const duoModes=[
-      ["duo_read","🎯","¿Cuánto me conocés?","Uno responde por sí mismo y el otro intenta adivinar. Acierto: 100 puntos."],
-      ["duo_risk","🎲","Doble o nada","Adivinar la respuesta real vale 200 puntos."],
-      ["duo_speed","⚡","Instinto","Adivinar la respuesta real vale 125 puntos."]
-    ];
     return `
       <details class="game-settings duo-game-settings">
-        <summary><div><small>CONFIGURACIÓN MODO DÚO</small><strong>Dinámicas exclusivas para 2</strong></div><span>Ver</span></summary>
+        <summary><div><small>MODO DÚO</small><strong>10 preguntas · 10 duelos de memoria</strong></div><span>Ver</span></summary>
         <div class="game-settings-body">
-          <div class="duo-settings-callout"><strong>Esto no usa los juegos grupales.</strong><span>No hay mayorías ni votaciones de grupo. La partida se arma con dinámicas 1 vs 1 y de coincidencia.</span></div>
-          <div class="settings-mode-grid">${duoModes.map(m=>`<div class="game-mode-toggle duo-mode-preview"><span class="mode-toggle-box">${m[1]}</span><div><strong>${m[2]}</strong><small>${m[3]}</small></div></div>`).join("")}</div>
-          <div class="setting-block"><div class="setting-head"><strong>Duración</strong><span>Se mezclan estas dinámicas durante la partida.</span></div>
-            <div class="length-options">
-              <label><input type="radio" name="roundLimit" value="8"><div><b>Corta</b><small>8 rondas</small></div></label>
-              <label><input type="radio" name="roundLimit" value="12" checked><div><b>Normal</b><small>12 rondas</small></div></label>
-            </div>
-          </div>
+          <div class="duo-settings-callout"><strong>Objetivo: demostrar cuánto conocés a la otra persona.</strong><span>Primero ambos responden las mismas 10 preguntas en secreto. Después, pregunta por pregunta, cada uno intenta adivinar lo que respondió el otro. Cada respuesta previa se usa de verdad.</span></div>
+          <div class="settings-mode-grid"><div class="game-mode-toggle duo-mode-preview"><span class="mode-toggle-box">🎯</span><div><strong>¿Cuánto me conocés?</strong><small>Los primeros aciertos valen 100; las últimas rondas suben hasta 250 puntos.</small></div></div></div>
         </div>
       </details>`;
   }
@@ -908,7 +897,7 @@ function selectedThemeSummary(){
   const t=state.config.themes.find(x=>x.id===id)||state.config.themes[0];
   const isDuo=document.querySelector('input[name="playerCount"]:checked')?.value==="2";
   const stats=state.config.themeStats?.[id]||{};
-  const duoIds=["duo_read","duo_risk","duo_speed"];
+  const duoIds=["duo_read"];
   const modeIds=isDuo?duoIds:(state.config.themeModes?.[id]||[]);
   const duoMeta={
     duo_read:["🎯","¿Cuánto me conocés?"],
@@ -1673,8 +1662,8 @@ function lobby(r){
       <div class="lobby-bottom">
         <div class="lobby-next">
           <span>PRÓXIMO PASO</span>
-          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":(r.playerCount==="2"?"Sin votaciones grupales: juegan ¿Cuánto me conocés?, Apuesta y Duelo relámpago.":"Cada persona responde 10 cosas en secreto.")}</strong>
-          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":(r.playerCount==="2"?"Las rondas están pensadas para que puedan competir y terminar con puntajes distintos.":"Eso construye las rondas personalizadas de esta juntada.")}</small>
+          <strong>${surprise?"El grupo responde y deja recuerdos sobre "+esc(r.surprise.honoreeName)+".":(r.playerCount==="2"?"Los dos responden las mismas 10 preguntas en secreto. Después intentan adivinar qué respondió el otro.":"Cada persona responde 10 cosas en secreto.")}</strong>
+          <small>${surprise?"Después invitás a "+esc(r.surprise.honoreeName)+" con su link exclusivo.":(r.playerCount==="2"?"Las 10 respuestas de cada uno se usan en la partida. Cada acierto suma puntos y las últimas preguntas valen más.":"Eso construye las rondas personalizadas de esta juntada.")}</small>
         </div>
         ${r.isHost?`<button class="primary lobby-start" id="startCollect">Empezar preparación <span>→</span></button>`:'<div class="waiting-host"><span class="waiting-pulse"></span>El host inicia la preparación.</div>'}
       </div>
@@ -1764,12 +1753,12 @@ function collecting(r){
         ${roomHeader(r)}
         <div class="sealed-visual"><img src="/assets/premium-lock.svg" alt=""><span></span></div>
         <div class="kicker">${r.me?.isHonoree?"TU PERFIL QUEDÓ SELLADO":"RESPUESTAS SELLADAS"}</div>
-        <h2>${r.me?.isHonoree?"No viste nada. Perfecto.":"Tus respuestas ya están adentro."}</h2>
+        <h2>${r.me?.isHonoree?"No viste nada. Perfecto.":(r.playerCount==="2"?"Tus 10 respuestas quedaron selladas.":"Tus respuestas ya están adentro.")}</h2>
         <p class="muted">${r.me?.isHonoree?"El grupo preparó el resto antes de que entraras. Ahora solo falta que todos estén listos.":r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":(r.playerCount==="2"?"Esperando a que la otra persona termine sus respuestas. En cuanto estén 2/2, la partida empieza sola.":"Esperando al resto. Nadie puede leer las respuestas antes del final.")}</p>
         ${waitingHonoree&&r.isHost?`<div class="waiting-honoree-card"><span>✦</span><div><strong>Falta ${esc(r.surprise.honoreeName)}</strong><small>Mandale su link exclusivo cuando llegue el momento.</small></div><button class="secondary" id="readyCopyHonoree">Copiar link sorpresa</button></div>`:""}
         <div class="ready-build-stats">
-          <span><b>${r.roundLimit||15}</b> rondas elegidas</span>
-          <span><b>${r.availableModes?.length||"—"}</b> modos posibles</span>
+          <span><b>${r.playerCount==="2"?10:(r.roundLimit||15)}</b> rondas</span>
+          <span><b>${r.playerCount==="2"?"10/10":(r.availableModes?.length||"—")}</b> respuestas usadas</span>
           <span><b>100%</b> respuestas privadas</span>
         </div>
         <div class="ready-meter"><div><i style="width:${pct}%"></i></div><span>${readyCount}/${r.players.length} listos</span></div>
@@ -1784,8 +1773,64 @@ function collecting(r){
     bindHostRoster(r);return;
   }
 
-  const prepTotal=surprise?11:10;
   const isDuo=r.playerCount==="2"&&!surprise;
+  if(isDuo){
+    const qs=Array.isArray(r.duoPrepQuestions)?r.duoPrepQuestions:[];
+    app.innerHTML=`<div class="room-page prep-page duo-prep-page">
+      ${brand()}
+      <section class="card prep-card duo-prep-card">
+        ${roomHeader(r)}
+        <div class="duo-prep-hero">
+          <div class="kicker">ANTES DE JUGAR</div>
+          <h2>Estas 10 respuestas son el juego.</h2>
+          <p>Los dos reciben exactamente las mismas preguntas. Respondé por vos, sin consultar a la otra persona. Después van a intentar adivinarse mutuamente.</p>
+          <div class="duo-prep-how">
+            <span><b>1</b> Respondés 10 preguntas</span>
+            <span><b>2</b> Se sellan tus respuestas</span>
+            <span><b>3</b> Cada uno intenta adivinar al otro</span>
+          </div>
+        </div>
+        <div class="duo-prep-progress"><strong id="duoPrepProgress">0 / ${qs.length}</strong><span>respondidas</span><i><b id="duoPrepBar"></b></i></div>
+        <div class="duo-prep-list">
+          ${qs.map((q,i)=>`<section class="duo-prep-question">
+            <div class="duo-prep-number">${String(i+1).padStart(2,"0")}</div>
+            <strong>${esc(q.question)}</strong>
+            <div class="duo-prep-options">
+              ${q.options.map(o=>`<label><input type="radio" name="duoq${i}" value="${esc(o.id)}"><span>${esc(o.label)}</span></label>`).join("")}
+            </div>
+          </section>`).join("")}
+        </div>
+        <div class="duo-prep-footer">
+          <div><strong>No hay preguntas de relleno.</strong><span>Las 10 vuelven durante la partida y sirven para definir los puntos.</span></div>
+          <button class="primary big-action" id="submitDuoPrep" disabled>Sellar mis 10 respuestas <span>→</span></button>
+        </div>
+      </section>
+      ${hostRoster(r)}
+    </div>`;
+    const updateDuoPrep=function(){
+      const done=qs.filter((_,i)=>document.querySelector('input[name="duoq'+i+'"]:checked')).length;
+      const label=document.querySelector("#duoPrepProgress"),bar=document.querySelector("#duoPrepBar"),btn=document.querySelector("#submitDuoPrep");
+      if(label)label.textContent=done+" / "+qs.length;
+      if(bar)bar.style.width=(qs.length?Math.round(done/qs.length*100):0)+"%";
+      if(btn)btn.disabled=done!==qs.length;
+    };
+    qs.forEach((_,i)=>document.querySelectorAll('input[name="duoq'+i+'"]').forEach(x=>x.addEventListener("change",updateDuoPrep)));
+    updateDuoPrep();
+    const submit=document.querySelector("#submitDuoPrep");
+    if(submit)submit.onclick=async function(){
+      try{
+        submit.disabled=true;submit.innerHTML='Sellando respuestas… <span>✦</span>';
+        const duoAnswers=qs.map((_,i)=>document.querySelector('input[name="duoq'+i+'"]:checked')?.value||"");
+        const result=await api("/api/rooms/"+r.code+"/submissions",{method:"POST",body:JSON.stringify({duoAnswers})});
+        if(result.autoStarted)toast("Listo. Los dos terminaron: empieza el desafío.");
+        await refresh();
+      }catch(e){submit.disabled=false;submit.innerHTML='Sellar mis 10 respuestas <span>→</span>';toast(e.message)}
+    };
+    bindHostRoster(r);
+    return;
+  }
+
+  const prepTotal=surprise?11:10;
   const opts=r.players.filter(p=>!p.isHonoree&&(isDuo||p.id!==r.me?.id)).map(p=>`<option value="${p.id}">${esc(p.name)}${isDuo&&p.id===r.me?.id?" (vos)":""}</option>`).join("");
   app.innerHTML=`<div class="room-page prep-page">
     ${brand()}
@@ -1881,14 +1926,10 @@ function playing(r){
   const locked=x.locked||r.roundPhase==="locked";
   const isDuo=!!x.duoRole;
   const duoHelp=isDuo
-    ?(x.duoRole==="target"
-      ?'<div class="duo-role-note target"><strong>Tu respuesta es la correcta de esta ronda.</strong><span>Elegí lo que vos realmente preferís. '+esc(x.otherName)+' está intentando adivinarte.</span></div>'
-      :'<div class="duo-role-note guesser"><strong>Estás jugando por '+Number(x.pointsAtStake||100)+' puntos.</strong><span>Elegí lo que pensás que va a responder '+esc(x.targetName)+'.</span></div>')
+    ?'<div class="duo-role-note guesser"><strong>¿Qué respondió '+esc(x.otherName)+' cuando preparó la partida?</strong><span>Tu propia respuesta ya quedó sellada. Adiviná la de la otra persona. Acierto: +'+Number(x.pointsAtStake||100)+' puntos.</span></div>'
     :"";
   const lockedHtml=isDuo
-    ?'<div class="duo-round-reveal"><small>RESPUESTA REAL</small><strong>'+esc(x.reveal?.answer||"")+'</strong><span>'+(x.duoRole==="target"
-        ?"Vos definiste la respuesta. En esta ronda los puntos los disputó "+esc(x.otherName)+"."
-        :(Number(x.reveal?.ownPoints||0)>0?"Acertaste · +"+Number(x.reveal.ownPoints)+" puntos":"No coincidiste con su respuesta · +0 puntos"))+'</span></div>'
+    ?'<div class="duo-round-reveal"><small>LO QUE HABÍAN RESPONDIDO</small><strong>'+esc(x.reveal?.answer||"")+'</strong><span>'+(Number(x.reveal?.ownPoints||0)>0?"La leíste bien · +"+Number(x.reveal.ownPoints)+" puntos":"Esta vez no la adivinaste · +0 puntos")+'</span></div>'
     :'<div class="locked-round"><div class="big-num">✓</div><strong>Votos cerrados</strong><span>Los puntos ya fueron calculados. La respuesta queda guardada para el final.</span></div>';
   const liveScore=isDuo
     ?'<section class="duo-live-score">'+r.players.map(function(p){return '<div><small>'+esc(p.name)+'</small><strong>'+Number(p.score||0)+'</strong><span>pts</span></div>'}).join('<i>vs</i>')+'</section>'
