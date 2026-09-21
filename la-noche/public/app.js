@@ -1243,9 +1243,7 @@ function openCreateWizard(initialTheme="clasico"){
   const refreshTheme=()=>{
     const themeId=document.querySelector('input[name="theme"]:checked')?.value||"clasico";
     const theme=state.config.themes.find(t=>t.id===themeId);
-    const age=document.querySelector("#ageWrap");if(age)age.classList.toggle("show",!!theme?.age18);
-    paintSelectedTheme();paintGameSettings();
-    document.querySelector("#wizardChangeTheme")?.addEventListener("click",()=>setCreateWizardStep(2));
+    const age=document.querySelector("#ageWrap");if(age)age.classList.toggle("show",!!(theme&&theme.age18));
   };
   const revealPlayerFlow=()=>{
     const chosen=!!document.querySelector('input[name="playerCount"]:checked');
@@ -1256,18 +1254,26 @@ function openCreateWizard(initialTheme="clasico"){
   document.querySelectorAll('input[name="when"]').forEach(x=>x.addEventListener("change",refreshBasics));
   // iOS Safari is inconsistent when a label contains another interactive button.
   // Handle the whole theme card explicitly instead of relying on implicit label activation.
-  document.querySelectorAll('input[name="theme"]').forEach(x=>x.addEventListener("change",refreshTheme));
-  document.querySelectorAll(".theme-card").forEach(card=>card.addEventListener("click",e=>{
-    if(e.target.closest("[data-theme-info]"))return;
-    e.preventDefault();
+  document.querySelectorAll('input[name="theme"]').forEach(function(x){x.addEventListener("change",refreshTheme)});
+  function chooseThemeCard(card){
+    if(!card)return;
     if(card.classList.contains("premium-locked")){openPremiumModal();return}
     const input=card.querySelector('input[name="theme"]');
     if(!input||input.disabled)return;
     input.checked=true;
     refreshTheme();
-    document.querySelectorAll(".theme-card").forEach(x=>x.classList.toggle("selected",x===card));
-  }));
-  document.querySelectorAll("[data-theme-info]").forEach(b=>b.onclick=e=>{e.preventDefault();e.stopPropagation();openThemeInfo(b.dataset.themeInfo)});
+    document.querySelectorAll(".theme-card").forEach(function(x){x.classList.toggle("selected",x===card)});
+  }
+  document.querySelectorAll(".theme-card").forEach(function(card){
+    card.addEventListener("click",function(e){
+      let node=e.target,isInfo=false;
+      while(node&&node!==card){if(node.getAttribute&&node.getAttribute("data-theme-info")){isInfo=true;break}node=node.parentNode}
+      if(isInfo)return;
+      e.preventDefault();chooseThemeCard(card);
+    });
+    card.addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();chooseThemeCard(card)}});
+  });
+  document.querySelectorAll("[data-theme-info]").forEach(function(b){b.onclick=function(e){e.preventDefault();e.stopPropagation();openThemeInfo(b.getAttribute("data-theme-info"))}});
   refreshBasics();refreshTheme();bindSurpriseSetup();bindCustomPackControls();bindGameSettings();
 
   document.querySelector("#wizardNext1").onclick=()=>{
