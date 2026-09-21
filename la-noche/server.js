@@ -939,6 +939,7 @@ function roundSnapshot(room,raw,viewer){
     skipVote:viewer?.id===raw.skipVoteFor
   };
 }
+function isDuoRoom(room){return room.playerCount?room.playerCount==="2":room.players.length===2}
 function snapshot(room,viewer){
   maybeAdvance(room);
   const raw=room.rounds[room.currentRound]||null;
@@ -957,7 +958,7 @@ function snapshot(room,viewer){
       inviteKey:viewer?.id===room.hostPlayerId?room.surprise.joinKey:null,
       quickQuestions:viewer?.isHonoree&&!viewer.ready?(room.surprise.quickQuestions||SURPRISE_QUICK_QUESTIONS):null
     }:null,
-    prepPrompts:room.prepPrompts,availableModes:(room.playerCount==="2"||room.players.length===2?["duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"]:(THEME_MODES[room.themeId]||[])).map(modeInfo),
+    prepPrompts:room.prepPrompts,availableModes:(isDuoRoom(room)?["duo_coincidimos","duo_dilema","duo_duelo","duo_5seg"]:(THEME_MODES[room.themeId]||[])).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
     me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,isHonoree:!!viewer.isHonoree,score:finished?viewer.score:null}:null,
     players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,isHonoree:!!p.isHonoree,score:finished?p.score:null,isHost:p.id===room.hostPlayerId})),
@@ -1308,6 +1309,7 @@ app.post("/api/rooms/:code/join",(req,res)=>{
   const name=isHonoree?room.surprise.honoreeName:clean(req.body.name,40);
   if(!name)return res.status(400).json({error:"Escribí tu nombre."});
   if(room.players.some(p=>p.name.toLowerCase()===name.toLowerCase()))return res.status(409).json({error:"Ese nombre ya está en la sala."});
+  if(isDuoRoom(room)&&!isHonoree&&room.players.filter(p=>!p.isHonoree).length>=2)return res.status(409).json({error:"Esta sala es Modo Dúo y ya están las 2 personas."});
   const alreadyPlaying=["starting","playing","paywall"].includes(room.state);
   const p={id:id(),name,ready:isHonoree?false:alreadyPlaying,score:0,isHonoree},t=token();
   room.players.push(p);
@@ -1328,7 +1330,7 @@ app.post("/api/rooms/:code/start-collecting",(req,res)=>{
   // The host can open preparation immediately. Players who join while collecting enter the same answer screen.
   // With two players both people must enter the answer/preparation screen first.
   // The Duo match starts only after both have submitted their answers.
-  room.state="collecting";res.json({ok:true,duo:room.players.length===2});
+  room.state="collecting";res.json({ok:true,duo:isDuoRoom(room)});
 });
 
 app.post("/api/rooms/:code/submissions",(req,res)=>{
@@ -1349,7 +1351,7 @@ app.post("/api/rooms/:code/submissions",(req,res)=>{
   room.submissions[me.id]={stories,truth,lie,majority,hotSeatAnswer,oneVsAllAnswer,surpriseMemory};
   me.ready=true;
   // In Duo, once both people have answered there is nobody else to wait for: start automatically.
-  if(room.players.length===2&&!room.surprise?.enabled&&room.players.every(p=>p.ready)){
+  if(isDuoRoom(room)&&room.players.length===2&&!room.surprise?.enabled&&room.players.every(p=>p.ready)){
     room.players.forEach(p=>p.score=0);
     room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;
     return res.json({ok:true,duo:true,autoStarted:true,rounds:room.rounds.length,startAt:room.startAt});
@@ -1378,7 +1380,7 @@ app.post("/api/rooms/:code/leave",(req,res)=>{
   const me=auth(room,req);if(!me)return res.status(401).json({error:"Sesión inválida."});
   if(me.id===room.hostPlayerId){
     rooms.delete(room.code);
-    if(db)db.query("DELETE FROM rooms WHERE code=$1",[room.code]).catch(e=>console.error("delete room",e.message));
+    if(db){db.query("DELETE FROM game_rooms WHERE code=$1",[room.code]).catch(e=>console.error("delete room",e.message));db.query("DELETE FROM game_sessions WHERE room_code=$1",[room.code]).catch(e=>console.error("delete sessions",e.message));}
     return res.json({ok:true,closed:true});
   }
   removePlayerFromRoom(room,me.id);
@@ -1396,8 +1398,12 @@ app.delete("/api/rooms/:code/players/:playerId",(req,res)=>{
 app.post("/api/rooms/:code/start-game",(req,res)=>{
   const room=getRoom(req.params.code);if(!room)return res.status(404).json({error:"Sala inexistente."});
   if(!requireHost(room,req))return res.status(403).json({error:"Solo el host."});
-  if(room.players.length<2)return res.status(409).json({error:"Necesitan ser al menos 2."});
-  if(room.players.length===2){room.players.forEach(p=>{p.ready=true;p.score=0});room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;return res.json({ok:true,duo:true,rounds:room.rounds.length,startAt:room.startAt});}
+  if(isDuoRoom(room)){
+    if(room.players.length!==2)return res.status(409).json({error:"El Modo Dúo necesita exactamente 2 personas."});
+    if(room.players.some(p=>!p.ready))return res.status(409).json({error:"Falta que ambos terminen de responder."});
+    room.players.forEach(p=>p.score=0);room.rounds=buildDuo2Rounds(room);room.state="starting";room.currentRound=0;room.roundPhase="guess";room.advanceAt=null;room.startAt=Date.now()+3200;return res.json({ok:true,duo:true,rounds:room.rounds.length,startAt:room.startAt});
+  }
+  if(room.players.length<3)return res.status(409).json({error:"El modo grupal necesita al menos 3 personas."});
   if(room.surprise?.enabled&&!room.surprise.honoreePlayerId)return res.status(409).json({error:"Todavía falta que entre "+room.surprise.honoreeName+" con su link sorpresa."});
   if(room.players.some(p=>!p.ready))return res.status(409).json({error:"Todavía falta gente por responder."});
   room.players.forEach(p=>p.score=0);
