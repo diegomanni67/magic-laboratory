@@ -1611,7 +1611,7 @@ function collecting(r){
         <div class="sealed-visual"><img src="/assets/premium-lock.svg" alt=""><span></span></div>
         <div class="kicker">${r.me?.isHonoree?"TU PERFIL QUEDÓ SELLADO":"RESPUESTAS SELLADAS"}</div>
         <h2>${r.me?.isHonoree?"No viste nada. Perfecto.":"Tus respuestas ya están adentro."}</h2>
-        <p class="muted">${r.me?.isHonoree?"El grupo preparó el resto antes de que entraras. Ahora solo falta que todos estén listos.":r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":"Esperando al resto. Nadie puede leer las respuestas antes del final."}</p>
+        <p class="muted">${r.me?.isHonoree?"El grupo preparó el resto antes de que entraras. Ahora solo falta que todos estén listos.":r.playWhen==="later"?"Podés cerrar la página y volver el día de la juntada. Nadie puede leerlas antes de jugar.":(r.players.length===2?"Esperando a que la otra persona termine sus respuestas. En cuanto estén 2/2, la partida empieza sola.":"Esperando al resto. Nadie puede leer las respuestas antes del final.")}</p>
         ${waitingHonoree&&r.isHost?`<div class="waiting-honoree-card"><span>✦</span><div><strong>Falta ${esc(r.surprise.honoreeName)}</strong><small>Mandale su link exclusivo cuando llegue el momento.</small></div><button class="secondary" id="readyCopyHonoree">Copiar link sorpresa</button></div>`:""}
         <div class="ready-build-stats">
           <span><b>${r.roundLimit||15}</b> rondas elegidas</span>
@@ -1717,7 +1717,7 @@ function collecting(r){
       hotSeatAnswer:document.querySelector("#hotSeat").value,oneVsAllAnswer:document.querySelector("#oneVsAll").value,
       surpriseMemory:document.querySelector("#surpriseMemory")?.value||""
     };
-    await api("/api/rooms/"+r.code+"/submissions",{method:"POST",body:JSON.stringify(body)});try{localStorage.removeItem(draftKey)}catch{}refresh()
+    const submitted=await api("/api/rooms/"+r.code+"/submissions",{method:"POST",body:JSON.stringify(body)});try{localStorage.removeItem(draftKey)}catch{}if(submitted.autoStarted)toast("Los dos terminaron. Arranca el Modo Dúo.");await refresh()
   }catch(e){toast(e.message)}};
   bindHostRoster(r);
 }
