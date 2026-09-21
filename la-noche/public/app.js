@@ -1211,8 +1211,8 @@ function openCreateWizard(initialTheme="clasico"){
           <div class="wizard-copy"><div class="kicker">ÚLTIMO PASO</div><h2>Poné los nombres y listo.</h2><p>Después recibís el link, QR y código para invitar.</p></div>
           <div class="selected-theme-summary wizard-selected-theme" id="selectedThemeSummary"></div>
           <div class="form-two wizard-names">
-            <div><label class="field-label">Nombre de la juntada</label><input id="roomName" placeholder="Cumple de Sofi" maxlength="80"></div>
-            <div><label class="field-label">Tu nombre</label><input id="hostName" placeholder="Diego" maxlength="40"></div>
+            <div><label class="field-label" for="roomName">Nombre de la juntada</label><input id="roomName" name="roomName" type="text" inputmode="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="next" placeholder="Cumple de Sofi" maxlength="80"></div>
+            <div><label class="field-label" for="hostName">Tu nombre</label><input id="hostName" name="hostName" type="text" inputmode="text" autocomplete="name" autocapitalize="words" enterkeyhint="done" placeholder="Diego" maxlength="40"></div>
           </div>
           <label class="age-check wizard-age" id="ageWrap"><input id="ageConfirmed" type="checkbox"> Confirmo que los participantes son mayores de 18 años.</label>
           <details class="wizard-advanced">
@@ -1423,11 +1423,13 @@ async function createRoom(){
   };
   try{
     if(btn?.dataset.busy==="1")return;
-    const name=document.querySelector("#roomName")?.value.trim()||"";
-    const hostName=document.querySelector("#hostName")?.value.trim()||"";
+    // Read text fields defensively for iOS Safari (autofill/composition can lag behind DOM state).
+    const roomEl=document.querySelector("#roomName"),hostEl=document.querySelector("#hostName");
+    const name=String(roomEl?.value??"").replace(/\s+/g," ").trim();
+    const hostName=String(hostEl?.value??"").replace(/\s+/g," ").trim();
     const themeInput=document.querySelector('input[name="theme"]:checked');
-    if(!name){fail("Poné un nombre para la Juntada.");document.querySelector("#roomName")?.focus();return}
-    if(!hostName){fail("Escribí tu nombre.");document.querySelector("#hostName")?.focus();return}
+    if(!name){fail("Poné un nombre para la Juntada.");try{roomEl?.focus()}catch{}return}
+    if(!hostName){fail("Escribí tu nombre.");try{hostEl?.focus()}catch{}return}
     if(!themeInput){fail("Elegí una temática.");return}
     const when=document.querySelector('input[name="when"]:checked')?.value||"now";
     const eventDate=document.querySelector("#eventDate")?.value||"";
