@@ -1688,8 +1688,8 @@ function starting(r){
       ${brand()}
       <div class="kicker">TODO LISTO</div>
       <div class="launch-count" id="launchCount">3</div>
-      <h1 id="launchTitle">Prepárense.</h1>
-      <p>${r.players.length} jugadores · ${r.totalRounds} rondas armadas · ${esc(r.theme.title)}</p>
+      <h1 id="launchTitle">${r.playerCount==="2"?"Ahora sí: a leerse la cabeza.":"Prepárense."}</h1>
+      <p>${r.playerCount==="2"?"10 respuestas selladas · en cada ronda adivinás qué había respondido el otro":(r.players.length+" jugadores · "+r.totalRounds+" rondas armadas · "+esc(r.theme.title))}</p>
       <div class="launch-player-row">${r.players.map((p,i)=>`<span style="--i:${i}">${esc(p.name).slice(0,1).toUpperCase()}</span>`).join("")}</div>
     </div>
   </div>`;
@@ -1699,7 +1699,7 @@ function starting(r){
     const count=document.querySelector("#launchCount"),title=document.querySelector("#launchTitle");
     if(!count)return;
     if(ms<=700){count.textContent="✦";title.textContent="LA JUNTADA";document.body.classList.add("launch-hit")}
-    else{count.textContent=String(Math.min(3,n));title.textContent=n<=1?"Ahora sí.":n===2?"Todos con el celular.":"Prepárense."}
+    else{count.textContent=String(Math.min(3,n));title.textContent=r.playerCount==="2"?(n<=1?"Adiviná al otro.":n===2?"No vale mirar su pantalla.":"¿Cuánto se conocen?"):(n<=1?"Ahora sí.":n===2?"Todos con el celular.":"Prepárense.")}
   };
   paint();window.__launchTimer=setInterval(paint,120);
 }
@@ -2020,6 +2020,15 @@ function finished(r){
         <button class="ghost" id="jumpAnswers">Ver todas las respuestas ↓</button>
       </div>
     </section>
+
+    ${r.playerCount==="2"&&Array.isArray(f.duoBreakdown)?`<section class="card duo-final-recap">
+      <div class="final-section-head"><div><div class="kicker">¿CUÁNTO SE CONOCEN?</div><h2>Esto fue lo que realmente pasó.</h2></div><span>10 preguntas privadas</span></div>
+      <div class="duo-final-grid">${f.duoBreakdown.map(function(d){
+        const pct=d.attempts?Math.round(d.hits/d.attempts*100):0;
+        return '<article><small>'+esc(d.name)+'</small><strong>'+d.hits+' / '+d.attempts+'</strong><span>respuestas del otro adivinadas</span><i><b style="width:'+pct+'%"></b></i><em>'+d.points+' puntos ganados leyendo al otro</em></article>';
+      }).join("")}</div>
+      <p class="muted">El puntaje no sale de respuestas “correctas” universales: sale de acertar lo que la otra persona había respondido en secreto antes de empezar.</p>
+    </section>`:""}
 
     <section class="podium final-podium">
       ${podium.map(x=>`<div class="podium-person place-${x.place}">
