@@ -246,7 +246,7 @@ async function api(url,o={}){
   const h={"Content-Type":"application/json",...(o.headers||{})};
   if(state.token)h.Authorization="Bearer "+state.token;
   const pass=accessToken();if(pass)h["X-La-Juntada-Access"]=pass;
-  const r=await fetch(url,{...o,headers:h});const d=await r.json().catch(()=>({}));
+  const r=await fetch(url,{...o,headers:h,cache:"no-store"});const d=await r.json().catch(()=>({}));
   if(!r.ok)throw new Error(d.error||"Algo salió mal");return d
 }
 async function loadAccess(){
