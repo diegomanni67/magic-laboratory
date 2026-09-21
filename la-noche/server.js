@@ -437,80 +437,293 @@ function assignMissions(room){
 }
 const DUO_BANKS={
   clasico:[
-    ["duo_read","¿Qué elegiría la otra persona para una noche libre?","Salir sin plan","Casa, comida y algo para ver"],
-    ["duo_read","Si pudiera escaparse mañana, ¿qué elegiría?","Playa","Montaña"],
-    ["duo_risk","¿Qué preferís perder durante un año?","Redes sociales","Series y películas"],
-    ["duo_risk","Si solo pudieras quedarte con una ventaja…","Viajar gratis","No volver a trabajar"],
-    ["duo_speed","¿Qué opción elegiría primero la otra persona?","Dormir hasta tarde","Arrancar temprano"]
+    ["¿Qué elegirías para una noche libre?","Salir sin plan","Casa, comida y algo para ver"],
+    ["Si mañana tuvieras el día libre, ¿qué preferirías?","Dormir hasta tarde","Aprovechar desde temprano"],
+    ["Para un viaje corto, ¿qué te representa más?","Improvisar","Planear todo"],
+    ["¿Qué te cuesta más abandonar?","El celular","El café"],
+    ["En un restaurante nuevo, ¿qué hacés?","Pedís algo conocido","Probás algo raro"],
+    ["Si te regalan entradas, ¿qué elegís?","Recital","Partido o evento deportivo"],
+    ["¿Qué plan te gana más fácil?","Asado con gente","Cena tranquila"],
+    ["¿Qué preferís encontrar de casualidad?","Plata","Un viaje barato"],
+    ["En vacaciones, ¿qué querés más?","Descansar","Hacer cosas todo el día"],
+    ["¿Qué te molesta más?","Esperar","Que te apuren"],
+    ["¿Qué elegís para desconectar?","Música","Serie o película"],
+    ["Si hay que decidir rápido, ¿qué hacés?","Voy por intuición","Pienso pros y contras"],
+    ["¿Qué te tienta más?","Comida salada","Algo dulce"],
+    ["¿Qué preferís para moverte por una ciudad nueva?","Caminar","Transporte"],
+    ["¿Qué te da más fiaca?","Cocinar","Ordenar"],
+    ["¿Qué te resulta más fácil?","Hablar con desconocidos","Quedarte observando"],
+    ["¿Qué preferís recibir?","Un regalo útil","Una sorpresa"],
+    ["Si algo sale mal, ¿qué sale primero?","Reírme","Enojarme"],
+    ["¿Qué te entusiasma más comprar?","Tecnología","Ropa o accesorios"],
+    ["¿Qué plan gana un domingo?","Salir","Quedarme en casa"],
+    ["¿Qué preferís aprender de golpe?","Un idioma","Un instrumento"],
+    ["¿Qué elegirías tener gratis por un año?","Comida","Transporte"],
+    ["¿Qué te representa más?","Llegar temprano","Llegar justo"],
+    ["¿Qué preferís perder por una semana?","Redes sociales","Streaming"],
+    ["¿Qué elegís frente a un problema?","Resolverlo ya","Dejarlo enfriar"],
+    ["¿Qué te importa más en un plan?","La gente","El lugar"],
+    ["¿Qué te convence más?","Una recomendación","Descubrirlo solo"],
+    ["¿Qué te gusta más recibir?","Un mensaje inesperado","Una llamada"],
+    ["¿Qué elegís para festejar algo?","Salir fuerte","Plan íntimo"],
+    ["¿Qué te da más curiosidad?","El futuro","El pasado"]
   ],
   profundo:[
-    ["duo_read","¿Qué pesa más para la otra persona al tomar una decisión importante?","La tranquilidad","La oportunidad"],
-    ["duo_read","¿Qué necesita más cuando está pasando un mal momento?","Que la escuchen","Que la ayuden a resolverlo"],
-    ["duo_read","¿Qué le costaría más perder?","Estabilidad","Libertad"],
-    ["duo_risk","¿Qué preferís saber con certeza?","Cómo será tu vida en 10 años","Qué piensa de verdad la gente que querés"],
-    ["duo_risk","¿Qué elegirías si no pudieras tener las dos?","Una vida segura","Una vida impredecible pero intensa"],
-    ["duo_speed","¿Qué valor sentís más importante hoy?","Lealtad","Independencia"],
-    ["duo_speed","¿Qué te da más miedo?","Arrepentirte de no intentar","Equivocarte por arriesgar"]
+    ["Cuando tenés una decisión difícil, ¿qué pesa más?","La tranquilidad","La oportunidad"],
+    ["En un mal momento, ¿qué necesitás primero?","Que me escuchen","Que me ayuden a resolverlo"],
+    ["¿Qué te costaría más perder?","Estabilidad","Libertad"],
+    ["¿Qué preferirías saber con certeza?","Cómo será tu vida en 10 años","Qué piensa de verdad la gente que querés"],
+    ["Si no pudieras tener las dos, ¿qué elegirías?","Una vida segura","Una vida intensa"],
+    ["¿Qué valor pesa más hoy?","Lealtad","Independencia"],
+    ["¿Qué te da más miedo?","No intentar","Equivocarme por arriesgar"],
+    ["¿Qué te cuesta más?","Pedir perdón","Perdonar"],
+    ["¿Qué preferís proteger?","Tu paz","Una relación importante"],
+    ["Cuando algo te duele, ¿qué hacés más?","Lo hablo","Me lo guardo"],
+    ["¿Qué te define más?","Lo que hacés","Lo que pensás"],
+    ["¿Qué te importaría más al cambiar de trabajo?","Sentido","Seguridad económica"],
+    ["¿Qué te resulta más difícil aceptar?","Cambiar de opinión","Que alguien cambie con vos"],
+    ["¿Qué valorás más en una amistad?","Presencia","Sinceridad"],
+    ["¿Qué te pesa más después de equivocarte?","Haber lastimado a alguien","Haber fallado"],
+    ["¿Qué preferís escuchar?","La verdad aunque duela","Algo que te dé calma"],
+    ["¿Qué te mueve más?","Curiosidad","Ambición"],
+    ["¿Qué te cuesta más soltar?","Una persona","Una idea"],
+    ["¿Qué preferís tener claro?","Lo que querés","Lo que no querés"],
+    ["¿Qué sentís más valioso?","Tiempo","Plata"],
+    ["¿Qué te marca más de alguien?","Cómo te trata","Cómo trata a los demás"],
+    ["¿Qué te cuesta más mostrar?","Miedo","Enojo"],
+    ["¿Qué pesa más en una decisión?","Lo racional","Lo emocional"],
+    ["¿Qué preferís para crecer?","Comodidad con estabilidad","Incomodidad con cambio"],
+    ["¿Qué te dolería más?","Que no te entiendan","Que no te valoren"],
+    ["¿Qué te parece más difícil?","Empezar de nuevo","Cerrar una etapa"],
+    ["¿Qué elegís si chocan entre sí?","Ser fiel a vos","No decepcionar a alguien"],
+    ["¿Qué te importa más dejar?","Recuerdos","Resultados"],
+    ["¿Qué preferís recuperar?","Tiempo perdido","Una oportunidad perdida"],
+    ["¿Qué te gustaría entender mejor?","A los demás","A vos mismo"]
   ],
   parejas:[
-    ["duo_read","¿Qué elegiría tu pareja para una cita ideal?","Plan afuera","Plan íntimo en casa"],
-    ["duo_read","¿Qué valora más tu pareja en la relación?","Sentirse acompañada","Tener espacio propio"],
-    ["duo_read","Después de una discusión, ¿qué necesita primero tu pareja?","Hablarlo enseguida","Un rato para bajar"],
-    ["duo_risk","¿Qué preferís recibir de tu pareja?","Una sorpresa grande","Un detalle inesperado"],
-    ["duo_speed","¿Qué recuerda mejor tu pareja?","Fechas y momentos","Frases y detalles"]
+    ["Para una cita ideal, ¿qué preferís?","Plan afuera","Plan íntimo en casa"],
+    ["Después de una discusión, ¿qué necesitás primero?","Hablarlo","Un rato de espacio"],
+    ["¿Qué valorás más de tu pareja?","Sentirme acompañado","Tener libertad"],
+    ["¿Qué te gusta más recibir?","Una sorpresa grande","Un detalle chico"],
+    ["¿Qué recordás mejor?","Fechas y momentos","Frases y detalles"],
+    ["¿Qué plan de viaje preferís en pareja?","Todo organizado","Improvisar juntos"],
+    ["¿Qué pesa más en una relación?","La confianza","La diversión"],
+    ["¿Qué te cuesta más?","Decir que algo te molestó","Aceptar una crítica"],
+    ["¿Qué gesto te llega más?","Que te ayuden","Que te digan algo lindo"],
+    ["¿Qué preferís para festejar aniversario?","Salir","Quedarse solos"],
+    ["¿Qué te parece más romántico?","Planear algo","Sorprender sin avisar"],
+    ["¿Qué necesitás más en una semana difícil?","Contención","Distracción"],
+    ["¿Qué preferís hacer juntos?","Viajar","Construir un proyecto"],
+    ["¿Qué te molesta más?","Que no respondan","Que respondan cortante"],
+    ["¿Qué valorás más?","Que te conozcan mucho","Que te sigan sorprendiendo"],
+    ["¿Qué te parece más importante?","Hablar todo","Saber cuándo no hablar"],
+    ["¿Qué preferís compartir?","Hobbies","Amigos"],
+    ["¿Qué te da más seguridad?","Rutina","Planes a futuro"],
+    ["¿Qué cuesta más perdonar?","Una mentira","Una indiferencia"],
+    ["¿Qué te gustaría que la otra persona adivine sin preguntar?","Que necesitás cariño","Que necesitás espacio"],
+    ["¿Qué plan gana un viernes?","Salir juntos","Serie y comida"],
+    ["¿Qué preferís que te regalen?","Una experiencia juntos","Algo personal"],
+    ["¿Qué te importa más en una pelea?","Resolverla","Sentirte escuchado"],
+    ["¿Qué elegís para una escapada?","Playa","Montaña"],
+    ["¿Qué te parece peor?","Olvidar una fecha","No notar que algo pasa"],
+    ["¿Qué te hace sentir más querido?","Tiempo juntos","Palabras"],
+    ["¿Qué preferís decidir en pareja?","Todo","Solo lo importante"],
+    ["¿Qué te divierte más?","Competir","Hacer equipo"],
+    ["¿Qué preferís descubrir del otro?","Un secreto viejo","Un sueño futuro"],
+    ["¿Qué te gustaría conservar siempre?","La complicidad","La pasión"]
   ],
   picante18:[
-    ["duo_read","¿Qué elegiría la otra persona?","Una cita que sorprenda","Una noche sin ningún plan"],
-    ["duo_risk","¿Qué pesa más en la atracción?","La química","La confianza"],
-    ["duo_speed","¿Qué genera más tensión?","La anticipación","La espontaneidad"]
+    ["¿Qué pesa más en la atracción?","La química","La confianza"],
+    ["¿Qué genera más tensión?","La anticipación","La espontaneidad"],
+    ["¿Qué te atrae más primero?","La mirada","La conversación"],
+    ["¿Qué preferís en una cita?","Que sorprendan","Saber el plan"],
+    ["¿Qué te parece más seductor?","Seguridad","Misterio"],
+    ["¿Qué te gana más?","Humor","Intensidad"],
+    ["¿Qué preferís?","Mensaje directo","Indirecta inteligente"],
+    ["¿Qué te intriga más?","Lo prohibido","Lo inesperado"],
+    ["¿Qué pesa más?","Conexión mental","Atracción física"],
+    ["¿Qué preferís en una primera cita?","Mucha charla","Más acción y menos charla"],
+    ["¿Qué te gusta más?","Tomar la iniciativa","Que la tome la otra persona"],
+    ["¿Qué te resulta más atractivo?","Confianza","Timidez"],
+    ["¿Qué preferís?","Plan preparado","Improvisación"],
+    ["¿Qué te marca más?","Un beso","Una conversación inolvidable"],
+    ["¿Qué te divierte más?","Coquetear","Ir de frente"],
+    ["¿Qué te da más curiosidad?","Lo que alguien piensa","Lo que alguien haría"],
+    ["¿Qué preferís descubrir primero?","Qué le gusta","Qué no tolera"],
+    ["¿Qué te atrae más?","Alguien parecido a vos","Alguien muy distinto"],
+    ["¿Qué te parece más importante?","La confianza","La sorpresa"],
+    ["¿Qué preferís?","Una noche intensa","Una conexión que crece lento"],
+    ["¿Qué te seduce más?","Voz","Perfume"],
+    ["¿Qué te gusta más recibir?","Cumplidos","Desafíos"],
+    ["¿Qué te parece más atractivo?","Espontaneidad","Elegancia"],
+    ["¿Qué te gana más rápido?","Una mirada","Una risa"],
+    ["¿Qué preferís?","Hablar sin filtro","Dejar cosas a la imaginación"],
+    ["¿Qué te interesa más?","La primera impresión","Lo que aparece después"],
+    ["¿Qué te parece más divertido?","Juego de preguntas","Reto"],
+    ["¿Qué preferís en una salida?","Lugar tranquilo","Lugar con mucha energía"],
+    ["¿Qué te atrae más?","Atrevimiento","Sensibilidad"],
+    ["¿Qué elegís?","Química instantánea","Confianza construida"]
   ],
   cumple:[
-    ["duo_read","En su cumpleaños ideal, ¿qué elegiría la otra persona?","Fiesta grande","Pocos y cercanos"],
-    ["duo_risk","¿Qué regalo preferís?","Una experiencia","Algo que querías hace tiempo"],
-    ["duo_speed","¿Qué importa más en un cumpleaños?","La gente","El plan"]
+    ["En tu cumpleaños ideal, ¿qué preferís?","Fiesta grande","Pocos y cercanos"],
+    ["¿Qué regalo preferís?","Una experiencia","Algo que querías hace tiempo"],
+    ["¿Qué importa más ese día?","La gente","El plan"],
+    ["¿Qué preferís?","Sorpresa","Saber todo de antemano"],
+    ["¿Qué torta elegís?","Chocolate","Algo frutal"],
+    ["¿Qué te gusta más?","Regalos","Mensajes"],
+    ["¿Qué plan de cumpleaños preferís?","Salir","Festejo en casa"],
+    ["¿Qué te incomoda más?","Que te canten","Abrir regalos adelante de todos"],
+    ["¿Qué te gustaría más recibir?","Un viaje","Algo tecnológico"],
+    ["¿Qué preferís para brindar?","Algo tranquilo","Fiesta hasta tarde"],
+    ["¿Qué te importa más?","La foto del momento","Vivirlo sin celular"],
+    ["¿Qué preferís?","Cumplir años","Que nadie mencione la edad"],
+    ["¿Qué invitás primero?","Amigos","Familia"],
+    ["¿Qué elegís para comer?","Asado","Pizza"],
+    ["¿Qué querés que haya sí o sí?","Música","Buena comida"],
+    ["¿Qué te hace más ilusión?","Plan sorpresa","Regalo sorpresa"],
+    ["¿Qué preferís guardar?","Fotos","Mensajes"],
+    ["¿Qué te gustaría más?","Fiesta temática","Plan improvisado"],
+    ["¿Qué preferís?","Muchos invitados","Grupo chico"],
+    ["¿Qué te gusta más organizar?","Tu cumpleaños","El de otra persona"],
+    ["¿Qué te gustaría que recuerden?","La fiesta","Algo que dijiste"],
+    ["¿Qué elegís para cerrar la noche?","Bailar","Charlar"],
+    ["¿Qué te gustaría más de regalo?","Tiempo juntos","Algo material"],
+    ["¿Qué te importa más?","Que estén todos","Que estén los importantes"],
+    ["¿Qué preferís recibir primero?","Abrazo","Regalo"],
+    ["¿Qué plan gana?","Cena elegante","Juntada informal"],
+    ["¿Qué te divierte más?","Juegos","Música"],
+    ["¿Qué preferís?","Festejar varios días","Un solo festejo fuerte"],
+    ["¿Qué te gustaría más?","Video con recuerdos","Carta"],
+    ["¿Qué elegís para el próximo cumpleaños?","Repetir algo que amaste","Hacer algo totalmente distinto"]
   ],
   caos:[
-    ["duo_read","Si un plan se descontrola, ¿qué haría primero la otra persona?","Improvisar","Intentar ordenar todo"],
-    ["duo_risk","¿Qué elegís para una noche caótica?","Plan sorpresa","Decidir sobre la marcha"],
-    ["duo_speed","¿Quién sos cuando todo sale mal?","El que se ríe","El que lo arregla"]
+    ["Si un plan se descontrola, ¿qué hacés primero?","Improviso","Intento ordenar todo"],
+    ["Para una noche caótica, ¿qué elegís?","Plan sorpresa","Decidir sobre la marcha"],
+    ["Cuando todo sale mal, ¿qué sos?","El que se ríe","El que lo arregla"],
+    ["Si pierden una reserva, ¿qué hacés?","Busco otro lugar","Insisto hasta resolverlo"],
+    ["¿Qué preferís?","Un viaje sin itinerario","Cada día planificado"],
+    ["Si se corta la luz, ¿qué hacés?","Armo algo","Me quiero ir"],
+    ["¿Qué te divierte más?","Un quilombo inesperado","Que todo salga perfecto"],
+    ["¿Qué elegís?","Último minuto","Con anticipación"],
+    ["Si alguien cancela, ¿qué hacés?","Cambio el plan","Cancelo todo"],
+    ["¿Qué te representa más?","Caos creativo","Orden total"],
+    ["¿Qué preferís?","Perderte y descubrir","Seguir el mapa"],
+    ["Si empieza a llover, ¿qué hacés?","Sigo igual","Cambio el plan"],
+    ["¿Qué te molesta más?","La rutina","La improvisación"],
+    ["¿Qué elegís?","Mesa desordenada","Todo en su lugar"],
+    ["¿Qué hacés con una idea absurda?","La pruebo","La pienso primero"],
+    ["¿Qué te sale más natural?","Resolver sobre la marcha","Prepararte"],
+    ["¿Qué preferís en un grupo?","El que agita","El que organiza"],
+    ["¿Qué te parece más divertido?","Anécdota desastrosa","Plan perfecto"],
+    ["¿Qué elegís?","Viajar liviano","Llevar de todo"],
+    ["¿Qué hacés si llegan tarde?","Me adapto","Me fastidio"],
+    ["¿Qué preferís?","Fiesta improvisada","Evento armado"],
+    ["¿Qué te representa más?","Vamos viendo","Ya lo tengo pensado"],
+    ["¿Qué te da más adrenalina?","No saber qué sigue","Que algo salga perfecto"],
+    ["¿Qué elegís si cambia todo?","Me entusiasmo","Me estreso"],
+    ["¿Qué preferís?","Sorpresas","Certezas"],
+    ["¿Qué hacés con un problema inesperado?","Pruebo algo","Pido ayuda"],
+    ["¿Qué te divierte más?","Romper el plan","Cumplirlo"],
+    ["¿Qué te gana?","Una idea loca","Una idea segura"],
+    ["¿Qué preferís?","Plan B","Sin plan B"],
+    ["¿Qué te representa más?","Caos","Control"]
   ],
   canceladisimos:[
-    ["duo_read","¿Qué tolera menos la otra persona?","La hipocresía","La falta de códigos"],
-    ["duo_risk","¿Qué preferís?","Decir una verdad incómoda","Callarte para evitar quilombo"],
-    ["duo_speed","¿Qué juzgás más?","Lo que alguien dice","Lo que alguien hace"]
+    ["¿Qué tolerás menos?","La hipocresía","La falta de códigos"],
+    ["¿Qué preferís?","Decir una verdad incómoda","Callarte para evitar quilombo"],
+    ["¿Qué juzgás más?","Lo que alguien dice","Lo que alguien hace"],
+    ["¿Qué te molesta más?","Que te claven el visto","Que te respondan con falsedad"],
+    ["¿Qué te parece peor?","Llegar siempre tarde","Cancelar a último momento"],
+    ["¿Qué perdonás menos?","Una mentira","Una traición"],
+    ["¿Qué te irrita más?","La gente intensa","La gente indiferente"],
+    ["¿Qué criticás primero?","Malos modales","Falta de sentido común"],
+    ["¿Qué te parece más grave?","Hablar a espaldas","Decirlo de frente sin filtro"],
+    ["¿Qué te molesta más en redes?","Presumir todo","Opinar de todo"],
+    ["¿Qué bancás menos?","Victimizarse","Creerse superior"],
+    ["¿Qué preferís?","Una persona brutalmente sincera","Una persona diplomática"],
+    ["¿Qué te parece peor?","Copiar ideas","No dar crédito"],
+    ["¿Qué te molesta más?","Interrumpir","No escuchar"],
+    ["¿Qué juzgás más?","Cómo trata a un mozo","Cómo trata a sus amigos"],
+    ["¿Qué te parece más cancelable?","Ser falso","Ser egoísta"],
+    ["¿Qué te cuesta más tolerar?","Desorden","Impuntualidad"],
+    ["¿Qué te enoja más?","Prometer y no cumplir","No prometer nada"],
+    ["¿Qué preferís?","Discusión frontal","Tensión silenciosa"],
+    ["¿Qué te parece peor?","Chisme","Indiferencia"],
+    ["¿Qué te da más rechazo?","Arrogancia","Victimismo"],
+    ["¿Qué te molesta más?","Que te corrijan","Que te ignoren"],
+    ["¿Qué juzgás más rápido?","Actitud","Apariencia"],
+    ["¿Qué preferís de alguien?","Que diga todo","Que mida lo que dice"],
+    ["¿Qué te parece más grave?","Romper una promesa","Ocultar algo"],
+    ["¿Qué te irrita más?","La gente que presume","La gente que se queja"],
+    ["¿Qué bancás menos?","Que lleguen tarde","Que te apuren"],
+    ["¿Qué te parece peor?","Ghostear","Responder por compromiso"],
+    ["¿Qué te molesta más?","No pedir perdón","Pedir perdón sin sentirlo"],
+    ["¿Qué juzgás más?","La intención","El resultado"]
   ],
   rompehielo:[
-    ["duo_read","¿Qué elegiría la otra persona para conocer gente?","Plan chico","Evento lleno de gente"],
-    ["duo_risk","¿Qué preferís al conocer a alguien?","Hablar mucho de entrada","Ir entrando en confianza"],
-    ["duo_speed","¿Qué te cae mejor primero?","Alguien gracioso","Alguien tranquilo"]
+    ["Para conocer gente, ¿qué preferís?","Plan chico","Evento lleno de gente"],
+    ["Al conocer a alguien, ¿qué te sale más?","Hablar mucho","Ir entrando en confianza"],
+    ["¿Quién te cae mejor primero?","Alguien gracioso","Alguien tranquilo"],
+    ["¿Qué pregunta preferís?","Algo divertido","Algo personal"],
+    ["¿Qué te resulta más fácil?","Empezar una charla","Seguir una charla"],
+    ["¿Qué preferís en un grupo nuevo?","Presentarte vos","Que te presenten"],
+    ["¿Qué rompe mejor el hielo?","Un chiste","Una pregunta"],
+    ["¿Qué te da menos vergüenza?","Bailar","Cantar"],
+    ["¿Qué elegís primero?","Hablar con uno","Hablar con todos"],
+    ["¿Qué te ayuda más a soltarte?","Música","Comida o bebida"],
+    ["¿Qué preferís?","Juego de preguntas","Charla libre"],
+    ["¿Qué recordás primero de alguien?","El nombre","La cara"],
+    ["¿Qué te cae mejor?","Extrovertido","Reservado"],
+    ["¿Qué preferís contar primero?","Algo gracioso","Algo que te gusta"],
+    ["¿Qué te da más curiosidad?","A qué se dedica","Qué hace en su tiempo libre"],
+    ["¿Qué te parece más fácil?","Hablar en persona","Hablar por chat"],
+    ["¿Qué elegís en una juntada nueva?","Quedarte con conocidos","Mezclarte"],
+    ["¿Qué te divierte más?","Anécdotas","Debates"],
+    ["¿Qué preferís?","Preguntar","Contar"],
+    ["¿Qué te hace confiar más rápido?","Humor","Sinceridad"],
+    ["¿Qué te resulta más incómodo?","Silencio","Hablar demasiado"],
+    ["¿Qué te gusta más descubrir?","Gustos en común","Diferencias"],
+    ["¿Qué preferís de entrada?","Confianza rápida","Ir de a poco"],
+    ["¿Qué te ayuda más a recordar a alguien?","Una historia","Un detalle visual"],
+    ["¿Qué te divierte más?","Juego competitivo","Juego cooperativo"],
+    ["¿Qué elegís?","Mesa grande","Grupo chico"],
+    ["¿Qué te sale primero?","Escuchar","Hablar"],
+    ["¿Qué te hace sentir más cómodo?","Que te pregunten","Que te dejen observar"],
+    ["¿Qué preferís?","Conocer mucha gente","Conocer bien a pocas"],
+    ["¿Qué te gustaría saber primero?","Qué le causa gracia","Qué le apasiona"]
   ]
 };
 function duoThemeBank(room){
-  const base=DUO_BANKS[room.themeId]||DUO_BANKS.clasico;
-  const expanded=[];
-  for(const q of base){
-    expanded.push(q);
-    expanded.push([q[0],q[1],q[3],q[2]]);
-  }
-  return expanded;
+  return DUO_BANKS[room.themeId]||DUO_BANKS.clasico;
 }
 function buildDuo2Rounds(room){
-  const bank=shuffle(duoThemeBank(room));
-  const players=shuffle(room.players);
-  const limit=Math.min(room.roundLimit||12,Math.max(8,bank.length));
-  const rounds=[];
-  for(let i=0;i<limit;i++){
-    const q=bank[i%bank.length],mode=q[0];
-    if(mode==="duo_read"){
-      const target=players[i%players.length];
-      const targetVote=room.submissions[target.id]?.majority?.[i%3]||null;
-      rounds.push({id:id(),mode:"duo_read",prompt:"¿Cuánto me conocés?",statement:q[1],targetId:target.id,targetName:target.name,correct:targetVote&&["a","b"].includes(targetVote)?targetVote:null,options:[{id:"a",label:q[2]},{id:"b",label:q[3]}],votes:{},scored:false,position:i});
-    }else{
-      rounds.push({id:id(),mode, prompt:mode==="duo_risk"?"Elegí distinto para ganar":"Duelo relámpago",statement:q[1],options:[{id:"a",label:q[2]},{id:"b",label:q[3]}],votes:{},scored:false,position:i});
-    }
+  const bank=duoThemeBank(room);
+  const used=new Set(Array.isArray(room.duoUsedQuestions)?room.duoUsedQuestions:[]);
+  let pool=shuffle(bank.map((q,i)=>({q,key:room.themeId+"|"+q[0]+"|"+q[1]+"|"+q[2]})).filter(x=>!used.has(x.key)));
+  const limit=Math.min(room.roundLimit||12,12);
+  if(pool.length<limit){
+    room.duoUsedQuestions=[];
+    pool=shuffle(bank.map(q=>({q,key:room.themeId+"|"+q[0]+"|"+q[1]+"|"+q[2]})));
   }
-  return rounds;
+  const chosen=pool.slice(0,Math.min(limit,pool.length));
+  room.duoUsedQuestions=(room.duoUsedQuestions||[]).concat(chosen.map(x=>x.key)).slice(-Math.max(60,bank.length));
+  room.duoEngineVersion=3;
+  const players=shuffle(room.players);
+  const modes=["duo_read","duo_risk","duo_speed"];
+  const points={duo_read:100,duo_risk:200,duo_speed:125};
+  return chosen.map((item,i)=>{
+    const target=players[i%players.length],mode=modes[i%modes.length],q=item.q;
+    return {
+      id:id(),mode,
+      prompt:mode==="duo_risk"?"Doble o nada":mode==="duo_speed"?"Instinto":"¿Cuánto me conocés?",
+      statement:q[0],targetId:target.id,targetName:target.name,
+      points:points[mode],
+      options:[{id:"a",label:q[1]},{id:"b",label:q[2]}],
+      votes:{},scored:false,position:i
+    };
+  });
 }
+
 function buildRounds(room){
   const disabled=new Set(room.disabledModes||[]);
   const allowed=(THEME_MODES[room.themeId]||THEME_MODES.clasico).filter(x=>IMPLEMENTED_MODES.includes(x)&&!disabled.has(x));
@@ -681,21 +894,18 @@ function scoreRound(room,round){
   if(round.scored)return;
 
   if(["duo_read","duo_risk","duo_speed"].includes(round.mode)){
-    const vals=room.players.map(p=>round.votes[p.id]);
-    if(vals.some(v=>v===undefined))return;
-    if(round.mode==="duo_read"){
-      const target=room.players.find(p=>p.id===round.targetId),other=room.players.find(p=>p.id!==round.targetId);
-      const actual=round.votes[round.targetId];round.correct=actual;
-      if(other&&round.votes[other.id]===actual)other.score+=150;
-      if(target)target.score+=25;
-    }else if(round.mode==="duo_risk"){
-      round.correct=vals[0]!==vals[1]?"different":"same";
-      if(vals[0]!==vals[1]){
-        const winner=room.players[crypto.randomInt(room.players.length)];winner.score+=125;round.bonusWinnerId=winner.id;
-      }
-    }else{
-      round.correct=vals[0]===vals[1]?"same":"different";
-      const winner=room.players[crypto.randomInt(room.players.length)];winner.score+=100;round.bonusWinnerId=winner.id;
+    const target=room.players.find(p=>p.id===round.targetId);
+    const guesser=room.players.find(p=>p.id!==round.targetId);
+    if(!target||!guesser)return;
+    const actual=round.votes[target.id],guess=round.votes[guesser.id];
+    if(actual===undefined||guess===undefined)return;
+    round.correct=actual;
+    round.guesserId=guesser.id;
+    round.pointsAwarded=0;
+    if(guess===actual){
+      const pts=Number(round.points)||100;
+      guesser.score+=pts;
+      round.pointsAwarded=pts;
     }
     round.scored=true;return;
   }
@@ -843,6 +1053,10 @@ function endArchive(room){
   });
 }
 function answerForRound(room,r){
+  if(["duo_read","duo_risk","duo_speed"].includes(r.mode)){
+    const label=(r.options||[]).find(o=>o.id===r.correct)?.label||"";
+    return (r.targetName||playerName(room,r.targetId))+" eligió: "+label;
+  }
   if(r.mode==="duo_coincidimos"||r.mode==="duo_dilema")return r.correct==="same"?"¡Coincidieron!":"Eligieron distinto";
   if(r.mode==="duo_duelo")return (r.options||[]).find(o=>o.id===r.correct)?.label||"";
   if(r.mode==="duo_5seg")return "Ronda de honor";
@@ -854,6 +1068,10 @@ function answerForRound(room,r){
 }
 function roundPointsForViewer(room,r,viewer){
   if(!viewer||!r.scored)return 0;
+  if(["duo_read","duo_risk","duo_speed"].includes(r.mode)){
+    if(viewer.id===r.targetId)return 0;
+    return r.votes[viewer.id]===r.correct?(Number(r.points)||100):0;
+  }
   if(r.mode==="duo_coincidimos"||r.mode==="duo_dilema")return r.correct==="same"?100:0;
   if(r.mode==="duo_duelo")return r.votes[viewer.id]===r.correct?100:0;
   if(r.mode==="duo_5seg")return r.votes[viewer.id]==="yes"?75:0;
@@ -908,6 +1126,12 @@ function finalAnalytics(room){
         const v=r.votes[p.id];if(v===undefined)continue;
         directAttempts++;if(v===r.correct)directHits++;
         else if(per[r.protagonistId])per[r.protagonistId].hardToRead++;
+      }
+    }else if(["duo_read","duo_risk","duo_speed"].includes(r.mode)){
+      const guesser=room.players.find(p=>p.id!==r.targetId);
+      if(guesser&&r.votes[guesser.id]!==undefined){
+        directAttempts++;
+        if(r.votes[guesser.id]===r.correct){directHits++;if(per[guesser.id])per[guesser.id].duoSync++}
       }
     }else if(r.mode==="duo"){
       const actual=r.correct||duoActual(room,r),pair=new Set(r.duoIds||[]);
@@ -970,6 +1194,23 @@ function roundSnapshot(room,raw,viewer){
     reveal:room.roundPhase==="locked"?{answer:answerForRound(room,raw),ownPoints:roundPointsForViewer(room,raw,viewer)}:null
   };
 
+  if(["duo_read","duo_risk","duo_speed"].includes(raw.mode)){
+    const target=room.players.find(p=>p.id===raw.targetId);
+    const other=room.players.find(p=>p.id!==raw.targetId);
+    const isTarget=!!(viewer&&viewer.id===raw.targetId);
+    return {
+      ...base,
+      prompt:isTarget?"Respondé por vos":"Adiviná a "+(target?.name||raw.targetName||"la otra persona"),
+      options:raw.options||[],
+      ownVote:viewer?raw.votes[viewer.id]||null:null,
+      skipVote:false,
+      duoRole:isTarget?"target":"guesser",
+      targetName:target?.name||raw.targetName||"",
+      otherName:other?.name||"",
+      pointsAtStake:Number(raw.points)||100
+    };
+  }
+
   if(raw.mode==="duo"){
     const pair=new Set(raw.duoIds||[]);
     const inPair=viewer?pair.has(viewer.id):false;
@@ -1022,7 +1263,7 @@ function snapshot(room,viewer){
     prepPrompts:room.prepPrompts,availableModes:(isDuoRoom(room)?["duo_read","duo_risk","duo_speed"]:(THEME_MODES[room.themeId]||[])).map(modeInfo),
     isHost:viewer?.id===room.hostPlayerId,
     me:viewer?{id:viewer.id,name:viewer.name,ready:viewer.ready,isHonoree:!!viewer.isHonoree,score:finished?viewer.score:null}:null,
-    players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,isHonoree:!!p.isHonoree,score:finished?p.score:null,isHost:p.id===room.hostPlayerId})),
+    players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,isHonoree:!!p.isHonoree,score:(finished||isDuoRoom(room))?p.score:null,isHost:p.id===room.hostPlayerId})),
     round:raw&&room.state==="playing"?roundSnapshot(room,raw,viewer):null,
     mission:viewer?room.missions[viewer.id]||null:null,
     answers:finished?endArchive(room):null,
